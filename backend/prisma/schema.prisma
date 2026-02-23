@@ -1,0 +1,223 @@
+// This is your Prisma schema file for Pharma B2B Dashboard
+// Learn more at: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Wholesaler {
+  id            String   @id @default(cuid())
+  username      String?  @unique
+  password_hash String?
+  name          String
+  phone         String   @unique
+  address       String?
+  gstin         String?
+  dl_number     String?
+  email         String?
+  bank_name     String?
+  bank_account  String?
+  ifsc          String?
+  plan          String   @default("starter") // starter | growth | pro
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  retailers        Retailer[]
+  medicines        Medicine[]
+  orders           Order[]
+  ledger_entries   LedgerEntry[]
+  payments         Payment[]
+  notifications    Notification[]
+  retailer_agencies RetailerAgency[]
+}
+
+model Retailer {
+  id                String     @id @default(cuid())
+  wholesaler_id     String?
+  wholesaler        Wholesaler? @relation(fields: [wholesaler_id], references: [id])
+  name              String
+  shop_name         String
+  phone             String     @unique
+  password_hash     String?
+  address           String?
+  gstin             String?
+  dl_number         String?
+  credit_limit      Float      @default(50000)
+  current_balance   Float      @default(0)
+  is_active         Boolean    @default(true)
+  is_self_registered Boolean   @default(false)
+  last_payment_date DateTime?
+  created_at        DateTime   @default(now())
+
+  orders         Order[]
+  ledger_entries LedgerEntry[]
+  payments       Payment[]
+  notifications  Notification[]
+  agencies       RetailerAgency[]
+}
+
+model RetailerAgency {
+  id            String     @id @default(cuid())
+  retailer_id   String
+  wholesaler_id String
+  retailer      Retailer   @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  wholesaler    Wholesaler @relation(fields: [wholesaler_id], references: [id], onDelete: Cascade)
+  is_primary    Boolean    @default(false)
+  status        String     @default("ACTIVE") // PENDING | ACTIVE | BLOCKED
+  created_at    DateTime   @default(now())
+
+  @@unique([retailer_id, wholesaler_id])
+}
+
+model Medicine {
+  id                String      @id @default(cuid())
+  wholesaler_id     String?     // null = catalog entry; non-null = wholesaler inventory item
+  wholesaler        Wholesaler? @relation(fields: [wholesaler_id], references: [id])
+  name              String
+  salt              String?
+  composition2      String?
+  brand             String?
+  unit              String     @default("strip")
+  pack_size         String?
+  mrp               Float
+  price             Float
+  gst_rate          Float      @default(12)
+  hsn_code          String     @default("3004")
+  stock_qty         Int        @default(0)
+  expiry_date       DateTime?
+  therapeutic_class String?
+  side_effects      String?
+  uses              String?
+  is_discontinued   Boolean    @default(false)
+  is_active         Boolean    @default(true)
+  created_at        DateTime   @default(now())
+
+  order_items OrderItem[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  invoice_no    String?
+  wholesaler_id String
+  retailer_id   String
+  wholesaler    Wholesaler  @relation(fields: [wholesaler_id], references: [id])
+  retailer      Retailer    @relation(fields: [retailer_id], references: [id])
+  retailer_name String
+  status        OrderStatus @default(PENDING)
+  sub_total     Float
+  tax_total     Float
+  total_amount  Float
+  payment_terms String?
+  notes         String?
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  items          OrderItem[]
+  ledger_entries LedgerEntry[]
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  DISPATCHED
+  DELIVERED
+  REJECTED
+  CANCELLED
+}
+
+model OrderItem {
+  id               String   @id @default(cuid())
+  order_id         String
+  medicine_id      String
+  order            Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  medicine         Medicine @relation(fields: [medicine_id], references: [id])
+  medicine_name    String
+  qty              Int
+  mrp              Float
+  unit_price       Float
+  discount_percent Float    @default(0)
+  discount_amount  Float    @default(0)
+  total_price      Float
+  hsn_code         String?
+  gst_rate         Float    @default(12)
+  taxable_value    Float
+  tax_amount       Float
+}
+
+model LedgerEntry {
+  id            String      @id @default(cuid())
+  wholesaler_id String
+  retailer_id   String
+  wholesaler    Wholesaler  @relation(fields: [wholesaler_id], references: [id])
+  retailer      Retailer    @relation(fields: [retailer_id], references: [id])
+  type          LedgerType
+  amount        Float
+  balance_after Float
+  reference_id  String?
+  description   String
+  order_id      String?
+  order         Order?      @relation(fields: [order_id], references: [id])
+  created_at    DateTime    @default(now())
+}
+
+enum LedgerType {
+  DEBIT
+  CREDIT
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  wholesaler_id String
+  retailer_id   String
+  wholesaler    Wholesaler    @relation(fields: [wholesaler_id], references: [id])
+  retailer      Retailer      @relation(fields: [retailer_id], references: [id])
+  retailer_name String
+  amount        Float
+  method        PaymentMethod
+  status        PaymentStatus @default(COMPLETED)
+  notes         String?
+  razorpay_id   String?
+  created_at    DateTime      @default(now())
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CHEQUE
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  wholesaler_id String
+  wholesaler    Wholesaler       @relation(fields: [wholesaler_id], references: [id])
+  retailer_id   String?
+  retailer      Retailer?        @relation(fields: [retailer_id], references: [id])
+  type          NotificationType
+  title         String
+  body          String
+  is_read       Boolean          @default(false)
+  created_at    DateTime         @default(now())
+}
+
+enum NotificationType {
+  NEW_ORDER
+  ORDER_DELIVERED
+  PAYMENT_RECEIVED
+  CREDIT_LIMIT_ALERT
+  OVERDUE_REMINDER
+  ORDER_STATUS_CHANGED
+  AGENCY_ACCEPTED
+  AGENCY_REJECTED
+}

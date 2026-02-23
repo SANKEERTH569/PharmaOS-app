@@ -1,0 +1,11 @@
+{
+  "name": "Pharma B2B Dashboard",
+  "short_name": "PharmaOS",
+  "description": "Premium B2B Operating System for Pharmaceutical Sub-Wholesalers.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "theme_color": "#1A56A0",
+  "background_color": "#F8FAFC"
+}
