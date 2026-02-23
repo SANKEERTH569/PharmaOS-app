@@ -6,6 +6,7 @@ import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, 
 import { OrderStatus, Order, PaymentMethod } from '../types';
 import { InvoiceModal } from '../components/InvoiceModal';
 import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
+import { CombinedPrintModal } from '../components/CombinedPrintModal';
 
 export const OrdersPage = () => {
   const { orders, updateOrderStatus, retailers, fetchOrders } = useDataStore();
@@ -15,6 +16,7 @@ export const OrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderToInvoice, setOrderToInvoice] = useState<Order | null>(null);
   const [orderToDelivery, setOrderToDelivery] = useState<Order | null>(null);
+  const [orderToCombinedPrint, setOrderToCombinedPrint] = useState<Order | null>(null);
 
   // Always refresh orders when visiting this page
   useEffect(() => { fetchOrders(); }, []);
@@ -93,6 +95,10 @@ export const OrdersPage = () => {
 
   const openDeliveryReceipt = (order: Order) => {
     setOrderToDelivery(order);
+  };
+
+  const openCombinedPrint = (order: Order) => {
+    setOrderToCombinedPrint(order);
   };
 
   const OrderDetailModal = ({ order, onClose }: { order: Order, onClose: () => void }) => {
@@ -227,8 +233,8 @@ export const OrdersPage = () => {
               key={tab}
               onClick={() => setFilter(tab as any)}
               className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 whitespace-nowrap ${filter === tab
-                  ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-md'
-                  : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
+                ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-md'
+                : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                 }`}
             >
               {tab}
@@ -288,13 +294,22 @@ export const OrdersPage = () => {
                         <Truck size={18} />
                       </button>
                       {order.invoice_no && (
-                        <button
-                          onClick={() => openInvoice(order)}
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Invoice"
-                        >
-                          <Printer size={18} />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openInvoice(order)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Invoice"
+                          >
+                            <Printer size={18} />
+                          </button>
+                          <button
+                            onClick={() => openCombinedPrint(order)}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            title="Print Both (Invoice + Challan)"
+                          >
+                            <ClipboardList size={18} />
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setSelectedOrder(order)}
@@ -356,6 +371,26 @@ export const OrdersPage = () => {
             }
           }
           onClose={() => setOrderToDelivery(null)}
+        />
+      )}
+
+      {orderToCombinedPrint && (
+        <CombinedPrintModal
+          order={orderToCombinedPrint}
+          retailer={
+            retailers.find(r => r.id === orderToCombinedPrint.retailer_id) ?? {
+              id: orderToCombinedPrint.retailer_id,
+              name: orderToCombinedPrint.retailer?.name ?? orderToCombinedPrint.retailer_name,
+              shop_name: orderToCombinedPrint.retailer?.shop_name ?? orderToCombinedPrint.retailer_name,
+              phone: '',
+              address: '',
+              gstin: '',
+              credit_limit: 0,
+              current_balance: 0,
+              is_active: true,
+            }
+          }
+          onClose={() => setOrderToCombinedPrint(null)}
         />
       )}
 

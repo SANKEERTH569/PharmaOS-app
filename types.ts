@@ -13,6 +13,7 @@ export interface Wholesaler {
   bank_name?: string;
   bank_account?: string;
   ifsc?: string;
+  upi_id?: string;
   email?: string;
 }
 

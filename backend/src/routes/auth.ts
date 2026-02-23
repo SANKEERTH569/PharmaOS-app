@@ -181,10 +181,28 @@ router.patch('/wholesaler', async (req, res) => {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
     if (payload.role !== 'WHOLESALER') return res.status(403).json({ error: 'Forbidden' });
 
-    const { password_hash, username, ...safeBody } = req.body;
+    // Extract specific fields from req.body, including upi_id, and exclude sensitive ones
+    const {
+      name,
+      phone,
+      address,
+      gstin,
+      dl_number,
+      email,
+      bank_name,
+      bank_account,
+      ifsc,
+      upi_id,
+      // Exclude sensitive fields that should not be updated via this route
+      password_hash,
+      username,
+      // Any other fields not explicitly listed will be ignored
+      ...rest
+    } = req.body;
+
     const updated = await prisma.wholesaler.update({
-      where: { id: payload.wholesaler_id },
-      data: safeBody,
+      where: { id: payload.wholesaler_id }, // Corrected from decoded.id to payload.wholesaler_id
+      data: { name, phone, address, gstin, dl_number, email, bank_name, bank_account, ifsc, upi_id },
     });
     const { password_hash: _pw, ...safeUpdated } = updated;
     res.json(safeUpdated);

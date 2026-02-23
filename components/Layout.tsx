@@ -14,44 +14,44 @@ const navGroups = [
   {
     label: 'Main',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard',  path: '/' },
-      { icon: ShoppingCart,    label: 'Orders',     path: '/orders' },
-      { icon: Users,           label: 'Retailers',  path: '/retailers' },
+      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: ShoppingCart, label: 'Orders', path: '/orders' },
+      { icon: Users, label: 'Retailers', path: '/retailers' },
     ],
   },
   {
     label: 'Finance',
     items: [
       { icon: HandCoins, label: 'Collection', path: '/collection' },
-      { icon: Activity,  label: 'Ledger',     path: '/ledger' },
-      { icon: Wallet,    label: 'Payments',   path: '/payments' },
+      { icon: Activity, label: 'Ledger', path: '/ledger' },
+      { icon: Wallet, label: 'Payments', path: '/payments' },
     ],
   },
   {
     label: 'Inventory',
     items: [
-      { icon: Pill,     label: 'Medicines', path: '/medicines' },
-      { icon: Settings, label: 'Settings',  path: '/settings' },
+      { icon: Pill, label: 'Medicines', path: '/medicines' },
+      { icon: Settings, label: 'Settings', path: '/settings' },
     ],
   },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  '/':           'Dashboard',
-  '/orders':     'Orders',
-  '/retailers':  'Retailers',
+  '/': 'Dashboard',
+  '/orders': 'Orders',
+  '/retailers': 'Retailers',
   '/collection': 'Collection',
-  '/ledger':     'Ledger',
-  '/payments':   'Payments',
-  '/medicines':  'Medicines',
-  '/settings':   'Settings',
+  '/ledger': 'Ledger',
+  '/payments': 'Payments',
+  '/medicines': 'Medicines',
+  '/settings': 'Settings',
 };
 
 export const Layout = ({ children }: { children?: React.ReactNode }) => {
-  const { logout, wholesaler }  = useAuthStore();
-  const { orders }              = useDataStore();
-  const location                = useLocation();
-  const navigate                = useNavigate();
+  const { logout, wholesaler } = useAuthStore();
+  const { orders } = useDataStore();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = React.useState(false);
 
   const pendingCount = orders.filter(
@@ -90,7 +90,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
             </div>
             <div>
               <p className="text-[18px] font-extrabold text-white leading-none tracking-tight">PharmaOS</p>
-              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 tracking-wider uppercase">Wholesale OS</p>
+              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 tracking-wider uppercase">Sub-Wholesale OS</p>
             </div>
           </div>
           <button
@@ -111,7 +111,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
               <div className="space-y-0.5">
                 {group.items.map(({ icon: Icon, label, path }) => {
                   const active = location.pathname === path;
-                  const badge  = path === '/orders' && pendingCount > 0 ? pendingCount : null;
+                  const badge = path === '/orders' && pendingCount > 0 ? pendingCount : null;
                   return (
                     <Link
                       key={path}

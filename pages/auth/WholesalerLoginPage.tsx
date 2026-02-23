@@ -75,15 +75,15 @@ export const WholesalerLoginPage = () => {
                         </div>
                         <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
                     </div>
-                    <p className="text-indigo-300/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">Wholesale Distribution OS</p>
+                    <p className="text-indigo-300/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">Sub-Wholesale Distribution OS</p>
                 </div>
 
                 <div className="relative z-10 max-w-md">
                     <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
-                        Manage your wholesale<br />distribution, <span className="text-indigo-400">effortlessly.</span>
+                        Manage your sub-wholesale<br />distribution, <span className="text-indigo-400">effortlessly.</span>
                     </h2>
                     <p className="text-slate-400 text-base leading-relaxed font-medium">
-                        Orders, inventory, payments, retailers — everything you need to run your pharma distribution business, in one place.
+                        Orders, inventory, payments, retailers — everything you need to run your pharma sub-distribution business, in one place.
                     </p>
 
                     <div className="mt-10 grid grid-cols-2 gap-4">
@@ -126,8 +126,8 @@ export const WholesalerLoginPage = () => {
                         </h1>
                         <p className="text-slate-400 text-sm font-medium mt-1.5">
                             {mode === 'LOGIN'
-                                ? 'Sign in to your wholesale dashboard'
-                                : 'Register your wholesale business'
+                                ? 'Sign in to your sub-wholesale dashboard'
+                                : 'Register your sub-wholesale business'
                             }
                         </p>
                     </div>

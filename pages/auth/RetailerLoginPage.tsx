@@ -182,10 +182,10 @@ export const RetailerLoginPage = () => {
                                 </p>
 
                                 <p className="text-center text-white/25 text-[11px]">
-                                    Wholesaler?{' '}
+                                    Sub-Wholesaler?{' '}
                                     <button type="button" onClick={() => navigate('/login/wholesaler')}
                                         className="text-indigo-400 font-bold hover:text-indigo-300 hover:underline transition-colors">
-                                        Business login →
+                                        Sub-Wholesale login →
                                     </button>
                                 </p>
                             </form>

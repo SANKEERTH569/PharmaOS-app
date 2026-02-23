@@ -23,6 +23,7 @@ model Wholesaler {
   bank_name     String?
   bank_account  String?
   ifsc          String?
+  upi_id        String?
   plan          String   @default("starter") // starter | growth | pro
   is_active     Boolean  @default(true)
   created_at    DateTime @default(now())

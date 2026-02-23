@@ -12,6 +12,13 @@ export const SettingsPage = () => {
     name: wholesaler?.name || '',
     phone: wholesaler?.phone || '',
     address: wholesaler?.address || '',
+    email: wholesaler?.email || '',
+    gstin: wholesaler?.gstin || '',
+    dl_number: wholesaler?.dl_number || '',
+    bank_name: wholesaler?.bank_name || '',
+    bank_account: wholesaler?.bank_account || '',
+    ifsc: wholesaler?.ifsc || '',
+    upi_id: wholesaler?.upi_id || '',
   });
 
   const handleSave = (e: React.FormEvent) => {
@@ -55,62 +62,137 @@ export const SettingsPage = () => {
         <div className="flex-1">
           {activeTab === 'PROFILE' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-slate-900 mb-6">Company Information</h2>
-              <form onSubmit={handleSave} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Business Name</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <h2 className="text-lg font-bold text-slate-900 mb-6 border-b border-slate-100 pb-4">Basic Information</h2>
+              <form onSubmit={handleSave} className="space-y-8">
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Business Name</label>
                     <div className="relative">
-                      <Phone className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+                      <Building2 className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
                       <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
                       />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="admin@example.com"
+                          className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-2">Email Address</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Office Address</label>
                     <div className="relative">
-                      <Mail className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+                      <MapPin className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
+                      <textarea
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        rows={3}
+                        className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6 pt-2">
+                  <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-100 pb-4">Business Details</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">GSTIN</label>
                       <input
-                        type="email"
-                        defaultValue="admin@sairamagencies.com"
-                        className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-500 bg-slate-50"
-                        readOnly
+                        type="text"
+                        value={formData.gstin}
+                        onChange={(e) => setFormData({ ...formData, gstin: e.target.value.toUpperCase() })}
+                        placeholder="e.g. 22AAAAA0000A1Z5"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Drug License (DL) Number</label>
+                      <input
+                        type="text"
+                        value={formData.dl_number}
+                        onChange={(e) => setFormData({ ...formData, dl_number: e.target.value.toUpperCase() })}
+                        placeholder="e.g. MH-MZ5-123456"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium uppercase"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Office Address</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-3 text-slate-400 w-5 h-5" />
-                    <textarea
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      rows={3}
-                      className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
-                    ></textarea>
+                <div className="space-y-6 pt-2">
+                  <h2 className="text-lg font-bold text-slate-900 mb-4 border-b border-slate-100 pb-4">Banking Information</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Bank Name</label>
+                      <input
+                        type="text"
+                        value={formData.bank_name}
+                        onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                        placeholder="e.g. HDFC Bank"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Account Number</label>
+                      <input
+                        type="text"
+                        value={formData.bank_account}
+                        onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                        placeholder="e.g. 50100234567890"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">IFSC Code</label>
+                      <input
+                        type="text"
+                        value={formData.ifsc}
+                        onChange={(e) => setFormData({ ...formData, ifsc: e.target.value.toUpperCase() })}
+                        placeholder="e.g. HDFC0001234"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">UPI ID</label>
+                      <input
+                        type="text"
+                        value={formData.upi_id}
+                        onChange={(e) => setFormData({ ...formData, upi_id: e.target.value })}
+                        placeholder="e.g. business@upi"
+                        className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="pt-4 flex items-center gap-4">
+                <div className="pt-4 flex items-center gap-4 border-t border-slate-100 mt-8 pt-8">
                   <button
                     type="submit"
                     className="flex items-center gap-2 bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
