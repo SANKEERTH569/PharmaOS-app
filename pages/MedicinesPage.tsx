@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -228,7 +229,7 @@ export const MedicinesPage = () => {
       {/* ── Inventory Table ──────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-slate-400 uppercase bg-slate-50/60 border-b border-slate-100">
+          <thead className="sticky top-0 text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 z-10 shadow-sm">
             <tr>
               <th className="px-6 py-4 font-bold tracking-wider">Product Name</th>
               <th className="px-6 py-4 font-bold tracking-wider">Brand</th>
@@ -297,8 +298,8 @@ export const MedicinesPage = () => {
                       const label = exp.toLocaleDateString('en-IN', { month: '2-digit', year: '2-digit' });
                       return (
                         <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded w-fit block ${diffMonths <= 0 ? 'bg-red-50 text-red-600 border border-red-200' :
-                            diffMonths <= 3 ? 'bg-orange-50 text-orange-600 border border-orange-200' :
-                              'bg-slate-50 text-slate-500 border border-slate-200'
+                          diffMonths <= 3 ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                            'bg-slate-50 text-slate-500 border border-slate-200'
                           }`}>
                           EXP: {label}
                         </span>
@@ -349,9 +350,9 @@ export const MedicinesPage = () => {
       {/* ══════════════════════════════════════════════════════════════════
           CATALOG BROWSER MODAL
       ═══════════════════════════════════════════════════════════════════ */}
-      {showCatalog && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col" style={{ height: '90vh' }}>
+      {showCatalog && createPortal(
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col" style={{ height: 'calc(100vh - 2rem)' }}>
 
             {/* Catalog header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
@@ -412,7 +413,7 @@ export const MedicinesPage = () => {
                 </div>
               ) : catalogData && catalogData.items.length > 0 ? (
                 <table className="w-full text-sm text-left">
-                  <thead className="sticky top-0 text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100 z-10">
+                  <thead className="sticky top-0 text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200 z-20 shadow-sm">
                     <tr>
                       <th className="px-5 py-3 font-bold tracking-wider">Medicine</th>
                       <th className="px-5 py-3 font-bold tracking-wider hidden md:table-cell">Composition</th>
@@ -511,13 +512,13 @@ export const MedicinesPage = () => {
             )}
           </div>
         </div>
-      )}
+        , document.body)}
 
       {/* ══════════════════════════════════════════════════════════════════
           IMPORT CONFIGURE MODAL (layers on top of catalog)
       ═══════════════════════════════════════════════════════════════════ */}
-      {importItem && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-150">
+      {importItem && createPortal(
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-start">
               <div>
@@ -633,12 +634,12 @@ export const MedicinesPage = () => {
             </form>
           </div>
         </div>
-      )}
+        , document.body)}
 
       {/* ══════════════════════════════════════════════════════════════════
           MANUAL ADD / EDIT MODAL
       ═══════════════════════════════════════════════════════════════════ */}
-      {showAddModal && (
+      {showAddModal && createPortal(
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
             <div className="bg-white px-6 py-5 border-b border-slate-100 flex justify-between items-center">
@@ -760,7 +761,7 @@ export const MedicinesPage = () => {
             </form>
           </div>
         </div>
-      )}
+        , document.body)}
     </div>
   );
 };

@@ -20,6 +20,9 @@ import { CartPage } from './pages/retailer/CartPage';
 import { RetailerOrdersPage } from './pages/retailer/RetailerOrdersPage';
 import { RetailerProfilePage } from './pages/retailer/RetailerProfilePage';
 import { AgencySetupPage } from './pages/retailer/AgencySetupPage';
+import { RetailerLedgerPage } from './pages/retailer/RetailerLedgerPage';
+import { RetailerReturnsPage } from './pages/retailer/RetailerReturnsPage';
+import { WholesalerReturnsPage } from './pages/WholesalerReturnsPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { UserRole } from './types';
@@ -122,6 +125,11 @@ function App() {
             <SettingsPage />
           </ProtectedRoute>
         } />
+        <Route path="/returns" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <WholesalerReturnsPage />
+          </ProtectedRoute>
+        } />
 
         {/* Retailer Routes */}
         <Route path="/shop" element={
@@ -142,6 +150,16 @@ function App() {
         <Route path="/shop/orders" element={
           <ProtectedRoute allowedRole="RETAILER">
             <RetailerOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/shop/returns" element={
+          <ProtectedRoute allowedRole="RETAILER">
+            <RetailerReturnsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/shop/ledger" element={
+          <ProtectedRoute allowedRole="RETAILER">
+            <RetailerLedgerPage />
           </ProtectedRoute>
         } />
         <Route path="/shop/profile" element={

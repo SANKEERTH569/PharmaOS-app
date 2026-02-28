@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason } from '../types';
 
 
 interface DataState {
@@ -12,6 +12,9 @@ interface DataState {
   ledgerEntries: LedgerEntry[];
   payments: Payment[];
   notifications: AppNotification[];
+  retailerLedgerSummary: { global_credit_limit: number, global_current_balance: number, agencies: any[] } | null;
+  retailerLedgerHistory: Record<string, LedgerEntry[]>;
+  returns: ReturnRequest[];
   isLoading: boolean;
 
   // Init
@@ -24,6 +27,9 @@ interface DataState {
   fetchLedger: (retailerId?: string) => Promise<void>;
   fetchPayments: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
+  fetchRetailerLedgerSummary: () => Promise<void>;
+  fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
+  fetchReturns: () => Promise<void>;
 
   // Mutations
   updateOrderStatus: (orderId: string, status: OrderStatus, wholesalerId: string, paymentData?: { amount: number; method: PaymentMethod } | null) => Promise<void>;
@@ -37,6 +43,8 @@ interface DataState {
   cancelOrder: (orderId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
+  submitReturn: (data: { wholesaler_id: string; reason: ReturnReason; notes?: string; items: any[] }) => Promise<void>;
+  updateReturnStatus: (returnId: string, status: 'APPROVED' | 'REJECTED', rejection_note?: string) => Promise<void>;
 
   // Getters
   getRetailer: (id: string) => Retailer | undefined;
@@ -50,6 +58,9 @@ export const useDataStore = create<DataState>()((set, get) => ({
   ledgerEntries: [],
   payments: [],
   notifications: [],
+  retailerLedgerSummary: null,
+  retailerLedgerHistory: {},
+  returns: [],
   isLoading: false,
 
   // ─── Init ──────────────────────────────────────────────────────────────
@@ -125,6 +136,18 @@ export const useDataStore = create<DataState>()((set, get) => ({
   },
   fetchPayments: async () => { const { data } = await api.get('/payments'); set({ payments: data }); },
   fetchNotifications: async () => { const { data } = await api.get('/notifications'); set({ notifications: data }); },
+  fetchRetailerLedgerSummary: async () => {
+    const { data } = await api.get('/retailer/ledger/summary');
+    set({ retailerLedgerSummary: data });
+  },
+  fetchRetailerLedgerHistory: async (wholesalerId) => {
+    const { data } = await api.get(`/retailer/ledger/history/${wholesalerId}`);
+    set((s) => ({ retailerLedgerHistory: { ...s.retailerLedgerHistory, [wholesalerId]: data } }));
+  },
+  fetchReturns: async () => {
+    const { data } = await api.get('/returns');
+    set({ returns: data });
+  },
 
   // ─── Mutations ─────────────────────────────────────────────────────────
   updateOrderStatus: async (orderId, status, _wholesalerId, paymentData) => {
@@ -200,6 +223,21 @@ export const useDataStore = create<DataState>()((set, get) => ({
   markAllNotificationsRead: async (_wholesalerId) => {
     await api.patch('/notifications/read-all');
     set((s) => ({ notifications: s.notifications.map(n => ({ ...n, is_read: true })) }));
+  },
+
+  submitReturn: async (returnData) => {
+    const { data: created } = await api.post('/returns', returnData);
+    set((s) => ({ returns: [created, ...s.returns] }));
+  },
+
+  updateReturnStatus: async (returnId, status, rejection_note) => {
+    const { data: updated } = await api.patch(`/returns/${returnId}/status`, { status, rejection_note });
+    set((s) => ({ returns: s.returns.map(r => r.id === returnId ? updated : r) }));
+    // Refresh ledger & retailers after approval
+    if (status === 'APPROVED') {
+      get().fetchLedger();
+      get().fetchRetailers();
+    }
   },
 
   // ─── Getters ───────────────────────────────────────────────────────────

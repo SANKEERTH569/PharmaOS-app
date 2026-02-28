@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
-import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown } from 'lucide-react';
 import { OrderStatus, Order, PaymentMethod } from '../types';
 import { InvoiceModal } from '../components/InvoiceModal';
 import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
 import { CombinedPrintModal } from '../components/CombinedPrintModal';
+import { DailyInvoiceModal } from '../components/DailyInvoiceModal';
 
 export const OrdersPage = () => {
   const { orders, updateOrderStatus, retailers, fetchOrders } = useDataStore();
@@ -17,6 +18,13 @@ export const OrdersPage = () => {
   const [orderToInvoice, setOrderToInvoice] = useState<Order | null>(null);
   const [orderToDelivery, setOrderToDelivery] = useState<Order | null>(null);
   const [orderToCombinedPrint, setOrderToCombinedPrint] = useState<Order | null>(null);
+
+  // Daily Invoice state
+  const [showDailyPicker, setShowDailyPicker] = useState(false);
+  const [dailyRetailerId, setDailyRetailerId] = useState<string>('');
+  const [dailyDate, setDailyDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [showDailyInvoice, setShowDailyInvoice] = useState(false);
+  const dailyPickerRef = useRef<HTMLDivElement>(null);
 
   // Always refresh orders when visiting this page
   useEffect(() => { fetchOrders(); }, []);
@@ -37,6 +45,51 @@ export const OrdersPage = () => {
       order.id.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  // Unique retailers who have orders (for daily invoice picker)
+  const retailersWithOrders = useMemo(() => {
+    const seen = new Set<string>();
+    return myOrders.reduce((acc, o) => {
+      if (!seen.has(o.retailer_id)) {
+        seen.add(o.retailer_id);
+        const r = retailers.find(r => r.id === o.retailer_id);
+        if (r) acc.push(r);
+      }
+      return acc;
+    }, [] as typeof retailers);
+  }, [myOrders, retailers]);
+
+  // Daily invoice orders
+  const dailyInvoiceOrders = useMemo(() => {
+    if (!dailyRetailerId || !dailyDate) return [];
+    return myOrders.filter(o => {
+      if (o.retailer_id !== dailyRetailerId) return false;
+      const orderDate = new Date(o.created_at).toISOString().slice(0, 10);
+      return orderDate === dailyDate;
+    });
+  }, [myOrders, dailyRetailerId, dailyDate]);
+
+  const dailyInvoiceRetailer = useMemo(() => {
+    return retailers.find(r => r.id === dailyRetailerId);
+  }, [retailers, dailyRetailerId]);
+
+  const handleGenerateDailyInvoice = () => {
+    if (dailyInvoiceOrders.length > 0 && dailyInvoiceRetailer) {
+      setShowDailyInvoice(true);
+      setShowDailyPicker(false);
+    }
+  };
+
+  // Close daily picker on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dailyPickerRef.current && !dailyPickerRef.current.contains(e.target as Node)) {
+        setShowDailyPicker(false);
+      }
+    };
+    if (showDailyPicker) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDailyPicker]);
 
   const StatusBadge = ({ status }: { status: OrderStatus }) => {
     const styles = {
@@ -220,9 +273,71 @@ export const OrdersPage = () => {
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Order Management</h1>
           <p className="text-slate-400 font-medium mt-1 text-sm">Track and manage all orders.</p>
         </div>
-        <button className="flex items-center gap-2 bg-white border border-slate-200/80 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Daily Invoice Button */}
+          <div className="relative" ref={dailyPickerRef}>
+            <button
+              onClick={() => setShowDailyPicker(!showDailyPicker)}
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:shadow-lg shadow-amber-500/20 transition-all"
+            >
+              <Calendar size={16} /> Daily Invoice <ChevronDown size={14} className={`transition-transform ${showDailyPicker ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Daily Invoice Picker Popover */}
+            {showDailyPicker && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 animate-in slide-in-from-top-2 fade-in duration-200">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Generate Daily Invoice</p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Retailer</label>
+                    <select
+                      value={dailyRetailerId}
+                      onChange={e => setDailyRetailerId(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-300 outline-none bg-slate-50"
+                    >
+                      <option value="">Select a retailer...</option>
+                      {retailersWithOrders.map(r => (
+                        <option key={r.id} value={r.id}>{r.shop_name || r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Date</label>
+                    <input
+                      type="date"
+                      value={dailyDate}
+                      onChange={e => setDailyDate(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-amber-500/30 focus:border-amber-300 outline-none bg-slate-50"
+                    />
+                  </div>
+
+                  {dailyRetailerId && dailyDate && (
+                    <div className={`p-2 rounded-lg text-xs font-bold ${dailyInvoiceOrders.length > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-600 border border-rose-200'}`}>
+                      {dailyInvoiceOrders.length > 0
+                        ? `✓ ${dailyInvoiceOrders.length} order${dailyInvoiceOrders.length !== 1 ? 's' : ''} found — ₹${dailyInvoiceOrders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()} total`
+                        : '✗ No orders found for this retailer on this date'
+                      }
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleGenerateDailyInvoice}
+                    disabled={dailyInvoiceOrders.length === 0 || !dailyInvoiceRetailer}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black uppercase tracking-widest text-xs rounded-xl hover:shadow-lg shadow-amber-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <FileText size={16} /> Generate Invoice
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button className="flex items-center gap-2 bg-white border border-slate-200/80 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
+            <Download size={16} /> Export CSV
+          </button>
+        </div>
       </div>
 
       {/* Filters & Search */}
@@ -391,6 +506,15 @@ export const OrdersPage = () => {
             }
           }
           onClose={() => setOrderToCombinedPrint(null)}
+        />
+      )}
+
+      {showDailyInvoice && dailyInvoiceRetailer && dailyInvoiceOrders.length > 0 && (
+        <DailyInvoiceModal
+          orders={dailyInvoiceOrders}
+          retailer={dailyInvoiceRetailer}
+          date={dailyDate}
+          onClose={() => setShowDailyInvoice(false)}
         />
       )}
 

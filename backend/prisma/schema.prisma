@@ -35,6 +35,7 @@ model Wholesaler {
   payments         Payment[]
   notifications    Notification[]
   retailer_agencies RetailerAgency[]
+  return_requests   ReturnRequest[]
 }
 
 model Retailer {
@@ -58,8 +59,9 @@ model Retailer {
   orders         Order[]
   ledger_entries LedgerEntry[]
   payments       Payment[]
-  notifications  Notification[]
-  agencies       RetailerAgency[]
+  notifications    Notification[]
+  agencies         RetailerAgency[]
+  return_requests  ReturnRequest[]
 }
 
 model RetailerAgency {
@@ -221,4 +223,44 @@ enum NotificationType {
   ORDER_STATUS_CHANGED
   AGENCY_ACCEPTED
   AGENCY_REJECTED
+}
+
+enum ReturnReason {
+  EXPIRED
+  DAMAGED
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ReturnRequest {
+  id              String       @id @default(cuid())
+  wholesaler_id   String
+  retailer_id     String
+  wholesaler      Wholesaler   @relation(fields: [wholesaler_id], references: [id])
+  retailer        Retailer     @relation(fields: [retailer_id], references: [id])
+  reason          ReturnReason
+  status          ReturnStatus @default(PENDING)
+  notes           String?
+  rejection_note  String?
+  total_amount    Float
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  items           ReturnItem[]
+}
+
+model ReturnItem {
+  id              String        @id @default(cuid())
+  return_id       String
+  return_request  ReturnRequest @relation(fields: [return_id], references: [id], onDelete: Cascade)
+  medicine_name   String
+  batch_no        String?
+  expiry_date     String?
+  qty             Int
+  unit_price      Float
+  total_price     Float
+  reason_detail   String?
 }

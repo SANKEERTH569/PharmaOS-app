@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
       include: {
         items: { include: { medicine: { select: { expiry_date: true } } } },
         wholesaler: { select: { id: true, name: true, phone: true } },
-        retailer:  { select: { id: true, name: true, shop_name: true } },
+        retailer: { select: { id: true, name: true, shop_name: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -117,7 +117,7 @@ router.post('/', requireRole('RETAILER'), async (req, res) => {
     });
 
     // Create notification
-    await prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         wholesaler_id: order.wholesaler_id,
         retailer_id: retailer.id,
@@ -127,8 +127,9 @@ router.post('/', requireRole('RETAILER'), async (req, res) => {
       },
     });
 
-    // Emit real-time event to wholesaler room
+    // Emit real-time events to wholesaler room
     io.to(`wholesaler_${order.wholesaler_id}`).emit('new_order', order);
+    io.to(`wholesaler_${order.wholesaler_id}`).emit('notification', notification);
 
     res.status(201).json(order);
   } catch (err: any) {

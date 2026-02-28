@@ -17,7 +17,7 @@ export interface Wholesaler {
   email?: string;
 }
 
-export type NotificationType = 'NEW_ORDER' | 'PAYMENT_RECEIVED' | 'CREDIT_LIMIT_ALERT' | 'ORDER_DELIVERED' | 'OVERDUE_REMINDER' | 'ORDER_STATUS';
+export type NotificationType = 'NEW_ORDER' | 'PAYMENT_RECEIVED' | 'CREDIT_LIMIT_ALERT' | 'ORDER_DELIVERED' | 'OVERDUE_REMINDER' | 'ORDER_STATUS' | 'ORDER_STATUS_CHANGED' | 'AGENCY_ACCEPTED' | 'AGENCY_REJECTED';
 
 export interface AppNotification {
   id: string;
@@ -191,6 +191,36 @@ export interface Payment {
   status: PaymentStatus;
   notes?: string;
   created_at: string;
+}
+
+export type ReturnReason = 'EXPIRED' | 'DAMAGED';
+export type ReturnStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ReturnItemType {
+  id: string;
+  medicine_name: string;
+  batch_no?: string;
+  expiry_date?: string;
+  qty: number;
+  unit_price: number;
+  total_price: number;
+  reason_detail?: string;
+}
+
+export interface ReturnRequest {
+  id: string;
+  wholesaler_id: string;
+  retailer_id: string;
+  reason: ReturnReason;
+  status: ReturnStatus;
+  notes?: string;
+  rejection_note?: string;
+  total_amount: number;
+  created_at: string;
+  updated_at: string;
+  items: ReturnItemType[];
+  retailer?: { id: string; name: string; shop_name: string; phone: string };
+  wholesaler?: { id: string; name: string; phone: string };
 }
 
 export interface StatCardProps {

@@ -15,6 +15,8 @@ import notificationsRouter from './routes/notifications';
 import retailerAgenciesRouter from './routes/retailerAgencies';
 import wholesalerAgenciesRouter from './routes/wholesalerAgencies';
 import marketplaceRouter from './routes/marketplace';
+import retailerLedgerRouter from './routes/retailerLedger';
+import returnsRouter from './routes/returns';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -53,8 +55,10 @@ app.use('/api/ledger', ledgerRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/retailer/agencies', retailerAgenciesRouter);
+app.use('/api/retailer/ledger', retailerLedgerRouter);
 app.use('/api/wholesaler/agencies', wholesalerAgenciesRouter);
 app.use('/api/marketplace', marketplaceRouter);
+app.use('/api/returns', returnsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
