@@ -4,6 +4,7 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
+import { PrismaClient } from '@prisma/client';
 
 import authRouter from './routes/auth';
 import retailersRouter from './routes/retailers';
@@ -21,7 +22,7 @@ import adminRouter from './routes/admin';
 
 const app = express();
 const httpServer = http.createServer(app);
-
+const prisma = new PrismaClient();
 // ── Socket.io ──────────────────────────────────────────────────────────────
 export const io = new SocketIOServer(httpServer, {
   cors: {
@@ -63,8 +64,15 @@ app.use('/api/returns', returnsRouter);
 app.use('/api/admin', adminRouter);
 
 // Health check
-app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
-
+app.get('/api/health', async (_req, res) => {
+  try {
+    // Make a tiny DB query so the Neon database also never sleeps!
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(500).json({ status: 'error', database: 'disconnected' });
+  }
+});
 // ── Global error handler ───────────────────────────────────────────────────
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[Error]', err.message);
