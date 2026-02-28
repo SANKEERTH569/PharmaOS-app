@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 // For the mobile app, use the absolute backend URL
-// Change this to your deployed backend URL for production
-const API_BASE_URL = 'http://10.0.2.2:3001/api';
+// Production: deployed Render backend
+const API_BASE_URL = 'https://pharmaos-app.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,

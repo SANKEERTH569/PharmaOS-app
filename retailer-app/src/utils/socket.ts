@@ -3,7 +3,8 @@ import { io, Socket } from 'socket.io-client';
 let socket: Socket | null = null;
 
 // For the mobile app, connect directly to the backend
-const SOCKET_URL = 'http://10.0.2.2:3001';
+// Production: deployed Render backend
+const SOCKET_URL = 'https://pharmaos-app.onrender.com';
 
 export const getSocket = (): Socket => {
     if (!socket) {
