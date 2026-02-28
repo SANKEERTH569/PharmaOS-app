@@ -5,7 +5,7 @@ import { useAuthStore } from '../store/authStore';
 import {
   Search, Plus, AlertTriangle, Pill, Edit, BookOpen,
   ChevronLeft, ChevronRight, X, Download, CheckCircle,
-  Loader2, Info, PackageSearch,
+  Loader2, Info, PackageSearch, MapPin, Crown,
   FlaskConical, Syringe, Droplets, Wind, Package2,
 } from 'lucide-react';
 import { Medicine, CatalogMedicine, CatalogPage } from '../types';
@@ -72,12 +72,15 @@ const EXP_YEARS = Array.from({ length: 8 }, (_, i) => String(new Date().getFullY
 const emptyForm = () => ({
   name: '', salt: '', brand: '', unit: 'strip',
   mrp: 0, price: 0, gst_rate: 12, hsn_code: '3004', stock_qty: 0, is_active: true,
-  expiry_date: '',
+  expiry_date: '', rack_location: '',
 });
 
 export const MedicinesPage = () => {
   const { medicines, addMedicine, updateMedicine, toggleMedicineStatus } = useDataStore();
   const { wholesaler } = useAuthStore();
+
+  // Pro plan check for rack locator feature
+  const isPro = wholesaler?.plan === 'pro' || (wholesaler?.plan as string) === 'enterprise';
 
   // ── Inventory list state ──────────────────────────────────────────────────
   const [search, setSearch] = useState('');
@@ -96,7 +99,7 @@ export const MedicinesPage = () => {
 
   // ── Import configure state ────────────────────────────────────────────────
   const [importItem, setImportItem] = useState<CatalogMedicine | null>(null);
-  const [importForm, setImportForm] = useState({ mrp: 0, price: 0, stock_qty: 100, gst_rate: 12, hsn_code: '3004' });
+  const [importForm, setImportForm] = useState({ mrp: 0, price: 0, stock_qty: 100, gst_rate: 12, hsn_code: '3004', rack_location: '' });
   const [importLoading, setImportLoading] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [importExpiry, setImportExpiry] = useState('');
@@ -108,7 +111,8 @@ export const MedicinesPage = () => {
   const filteredMedicines = myMedicines.filter(m =>
     m.name?.toLowerCase().includes(search.toLowerCase()) ||
     (m.salt || '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.brand || '').toLowerCase().includes(search.toLowerCase())
+    (m.brand || '').toLowerCase().includes(search.toLowerCase()) ||
+    (isPro && (m.rack_location || '').toLowerCase().includes(search.toLowerCase()))
   );
 
   // ── Load therapeutic classes once ─────────────────────────────────────────
@@ -144,7 +148,8 @@ export const MedicinesPage = () => {
       name: med.name, salt: med.salt, brand: med.brand, unit: med.unit,
       mrp: med.mrp, price: med.price, gst_rate: med.gst_rate,
       hsn_code: med.hsn_code, stock_qty: med.stock_qty, is_active: med.is_active,
-      expiry_date: med.expiry_date ? med.expiry_date.slice(0, 7) : ''
+      expiry_date: med.expiry_date ? med.expiry_date.slice(0, 7) : '',
+      rack_location: med.rack_location || '',
     });
     setShowAddModal(true);
   };
@@ -170,7 +175,7 @@ export const MedicinesPage = () => {
     setImportItem(item);
     setImportSuccess(null);
     setImportExpiry('');
-    setImportForm({ mrp: item.mrp, price: parseFloat((item.mrp * 0.75).toFixed(2)), stock_qty: 100, gst_rate: 12, hsn_code: '3004' });
+    setImportForm({ mrp: item.mrp, price: parseFloat((item.mrp * 0.75).toFixed(2)), stock_qty: 100, gst_rate: 12, hsn_code: '3004', rack_location: '' });
   };
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +183,8 @@ export const MedicinesPage = () => {
     setImportLoading(true);
     try {
       const expiry = importExpiry ? new Date(importExpiry + '-01').toISOString() : undefined;
-      const res = await api.post('/medicines/import', { catalog_id: importItem.id, ...importForm, expiry_date: expiry });
+      const { rack_location: rl, ...restImport } = importForm;
+      const res = await api.post('/medicines/import', { catalog_id: importItem.id, ...restImport, rack_location: rl || undefined, expiry_date: expiry });
       addMedicine(res.data);
       setImportSuccess(importItem.name);
       setImportItem(null);
@@ -189,6 +195,24 @@ export const MedicinesPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-slide-up">
+
+      {/* ── Pro Rack Locator Banner (for non-Pro users) ─────────────────── */}
+      {!isPro && (
+        <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border border-amber-200/80 rounded-2xl p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/25 shrink-0">
+            <Crown size={20} className="text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-extrabold text-amber-900">🔍 Medicine Rack Locator — Pro Feature</h3>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              Upgrade to <span className="font-bold">Pro</span> to assign rack/shelf locations to every medicine. Search to instantly find which rack any medicine is in!
+            </p>
+          </div>
+          <a href="#/settings" className="shrink-0 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-xl hover:shadow-lg shadow-sm transition-all">
+            Upgrade
+          </a>
+        </div>
+      )}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row justify-between items-end gap-4">
@@ -202,7 +226,7 @@ export const MedicinesPage = () => {
           <div className="relative flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
             <input
-              type="text" placeholder="Search inventory..."
+              type="text" placeholder={isPro ? 'Search by name, brand, rack...' : 'Search inventory...'}
               className="w-full sm:w-72 pl-10 pr-4 py-2.5 bg-white border border-slate-200/80 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-200 outline-none shadow-sm transition-all"
               value={search} onChange={e => setSearch(e.target.value)}
             />
@@ -233,6 +257,7 @@ export const MedicinesPage = () => {
             <tr>
               <th className="px-6 py-4 font-bold tracking-wider">Product Name</th>
               <th className="px-6 py-4 font-bold tracking-wider">Brand</th>
+              {isPro && <th className="px-6 py-4 font-bold tracking-wider"><div className="flex items-center gap-1.5"><MapPin size={12} className="text-orange-400" />Rack</div></th>}
               <th className="px-6 py-4 font-bold tracking-wider">Pricing</th>
               <th className="px-6 py-4 font-bold tracking-wider">GST</th>
               <th className="px-6 py-4 font-bold tracking-wider">Stock</th>
@@ -269,6 +294,18 @@ export const MedicinesPage = () => {
                       )}
                     </div>
                   </td>
+                  {isPro && (
+                    <td className="px-6 py-4">
+                      {med.rack_location ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200/80 rounded-xl shadow-sm">
+                          <MapPin size={13} className="text-orange-500" />
+                          <span className="text-xs font-bold text-orange-700 tracking-wide">{med.rack_location}</span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-300 italic">Not set</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
@@ -620,6 +657,20 @@ export const MedicinesPage = () => {
                   </select>
                 </div>
               </div>
+              {/* Rack Location — Pro only (Import modal) */}
+              {isPro && (
+                <div>
+                  <label className="block text-xs font-bold text-orange-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                    <MapPin size={12} /> Rack / Shelf Location
+                    <span className="ml-auto px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[8px] font-black uppercase tracking-widest rounded-md">PRO</span>
+                  </label>
+                  <input type="text" placeholder='e.g. Rack B - Shelf 1'
+                    className="w-full px-4 py-2.5 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-400/40 outline-none bg-orange-50/50 focus:bg-white text-sm font-bold text-orange-800 placeholder-orange-300"
+                    value={importForm.rack_location}
+                    onChange={e => setImportForm(f => ({ ...f, rack_location: e.target.value }))}
+                  />
+                </div>
+              )}
               <div className="pt-2 flex gap-3">
                 <button type="button" onClick={() => setImportItem(null)}
                   className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors border border-slate-200">
@@ -747,6 +798,20 @@ export const MedicinesPage = () => {
                   </select>
                 </div>
               </div>
+              {/* Rack Location — Pro only */}
+              {isPro && (
+                <div className="relative">
+                  <label className="block text-xs font-bold text-orange-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                    <MapPin size={12} /> Rack / Shelf Location
+                    <span className="ml-auto px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[8px] font-black uppercase tracking-widest rounded-md">PRO</span>
+                  </label>
+                  <input type="text" placeholder='e.g. Rack A - Shelf 3'
+                    className="w-full px-4 py-2.5 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-400/40 outline-none transition-all bg-orange-50/50 focus:bg-white text-sm font-bold text-orange-800 placeholder-orange-300"
+                    value={formData.rack_location}
+                    onChange={e => setFormData({ ...formData, rack_location: e.target.value })}
+                  />
+                </div>
+              )}
               <div className="pt-4 flex gap-4">
                 <button type="button" onClick={() => setShowAddModal(false)}
                   className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors border border-slate-200">

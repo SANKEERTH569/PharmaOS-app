@@ -6,7 +6,7 @@ import {
   LogOut, Menu, Wallet, Activity, HandCoins,
   Settings, Bell, X, ChevronRight, RotateCcw,
   Check, CheckCheck, Package, CreditCard, AlertTriangle,
-  Clock, ArrowRight,
+  Clock, ArrowRight, MapPin,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
@@ -36,6 +36,7 @@ const navGroups = [
     label: 'Inventory',
     items: [
       { icon: Pill, label: 'Medicines', path: '/medicines' },
+      { icon: MapPin, label: 'Rack Manager', path: '/rack-manager', pro: true },
       { icon: Settings, label: 'Settings', path: '/settings' },
     ],
   },
@@ -49,6 +50,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/ledger': 'Ledger',
   '/payments': 'Payments',
   '/medicines': 'Medicines',
+  '/rack-manager': 'Rack Manager',
   '/returns': 'Returns',
   '/settings': 'Settings',
 };
@@ -247,9 +249,10 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                 {group.label}
               </p>
               <div className="space-y-0.5">
-                {group.items.map(({ icon: Icon, label, path }) => {
+                {group.items.map(({ icon: Icon, label, path, ...rest }: any) => {
                   const active = location.pathname === path;
                   const badge = path === '/orders' && pendingCount > 0 ? pendingCount : null;
+                  const isProItem = rest.pro;
                   return (
                     <Link
                       key={path}
@@ -258,7 +261,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                       className={cn(
                         'flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group/nav',
                         active
-                          ? 'bg-white/[0.08] text-white'
+                          ? isProItem ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-300' : 'bg-white/[0.08] text-white'
                           : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
                       )}
                     >
@@ -266,12 +269,15 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                         <div className={cn(
                           'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200',
                           active
-                            ? 'bg-gradient-to-br from-indigo-500 to-blue-600 shadow-md shadow-indigo-500/20'
+                            ? isProItem ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shadow-amber-500/20' : 'bg-gradient-to-br from-indigo-500 to-blue-600 shadow-md shadow-indigo-500/20'
                             : 'bg-white/[0.05] group-hover/nav:bg-white/[0.08]'
                         )}>
                           <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
                         </div>
                         <span className={cn(active && 'font-semibold')}>{label}</span>
+                        {isProItem && (
+                          <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[7px] font-black uppercase tracking-widest rounded-md shadow-sm">PRO</span>
+                        )}
                       </div>
                       {badge && (
                         <span className={cn(

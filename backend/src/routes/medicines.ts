@@ -16,19 +16,19 @@ router.get('/catalog', requireRole('WHOLESALER'), async (req, res) => {
       therapeutic_class = '',
     } = req.query as Record<string, string>;
 
-    const pageNum  = Math.max(1, parseInt(page));
+    const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-    const skip     = (pageNum - 1) * limitNum;
+    const skip = (pageNum - 1) * limitNum;
 
     // Build where clause — catalog entries have wholesaler_id = null
     const where: any = { wholesaler_id: null };
     if (search.trim()) {
       where.OR = [
-        { name:              { contains: search.trim(), mode: 'insensitive' } },
-        { salt:              { contains: search.trim(), mode: 'insensitive' } },
-        { brand:             { contains: search.trim(), mode: 'insensitive' } },
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { salt: { contains: search.trim(), mode: 'insensitive' } },
+        { brand: { contains: search.trim(), mode: 'insensitive' } },
         { therapeutic_class: { contains: search.trim(), mode: 'insensitive' } },
-        { composition2:      { contains: search.trim(), mode: 'insensitive' } },
+        { composition2: { contains: search.trim(), mode: 'insensitive' } },
       ];
     }
     if (therapeutic_class.trim()) {
@@ -99,6 +99,7 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
       stock_qty,
       gst_rate,
       hsn_code,
+      rack_location,
     } = req.body as {
       catalog_id: string;
       mrp: number;
@@ -106,6 +107,7 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
       stock_qty: number;
       gst_rate: number;
       hsn_code: string;
+      rack_location?: string;
     };
 
     if (!catalog_id) return res.status(400).json({ error: 'catalog_id is required' });
@@ -115,23 +117,24 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
 
     const med = await prisma.medicine.create({
       data: {
-        wholesaler_id:     req.user!.wholesaler_id!,
-        name:              source.name,
-        salt:              source.salt,
-        composition2:      source.composition2,
-        brand:             source.brand,
-        unit:              source.unit,
-        pack_size:         source.pack_size,
+        wholesaler_id: req.user!.wholesaler_id!,
+        name: source.name,
+        salt: source.salt,
+        composition2: source.composition2,
+        brand: source.brand,
+        unit: source.unit,
+        pack_size: source.pack_size,
         therapeutic_class: source.therapeutic_class,
-        side_effects:      source.side_effects,
-        uses:              source.uses,
-        is_discontinued:   source.is_discontinued,
-        mrp:               mrp   ?? source.mrp,
-        price:             price ?? parseFloat((source.mrp * 0.75).toFixed(2)),
-        stock_qty:         stock_qty ?? 0,
-        gst_rate:          gst_rate  ?? 12,
-        hsn_code:          hsn_code  ?? '3004',
-        is_active:         !source.is_discontinued,
+        side_effects: source.side_effects,
+        uses: source.uses,
+        is_discontinued: source.is_discontinued,
+        mrp: mrp ?? source.mrp,
+        price: price ?? parseFloat((source.mrp * 0.75).toFixed(2)),
+        stock_qty: stock_qty ?? 0,
+        gst_rate: gst_rate ?? 12,
+        hsn_code: hsn_code ?? '3004',
+        rack_location: rack_location || null,
+        is_active: !source.is_discontinued,
       },
     });
     res.status(201).json(med);

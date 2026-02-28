@@ -77,7 +77,7 @@ const SubscriptionTab = ({ wholesaler, updateWholesaler }: {
     {
       key: 'pro', label: 'Pro', price: '₹2,499', priceNote: '/month', priceNum: 2499,
       icon: Crown, gradient: 'from-amber-500 to-orange-600', border: 'border-amber-200',
-      features: ['Up to 100 retailers', 'Everything in Growth', 'Multi-user access', 'Advanced analytics', 'Returns management', 'Custom invoice branding']
+      features: ['Up to 100 retailers', 'Everything in Growth', 'Multi-user access', 'Advanced analytics', 'Returns management', 'Custom invoice branding', '🔍 Medicine Rack Locator']
     },
     {
       key: 'enterprise', label: 'Enterprise', price: '₹4,999', priceNote: '/month', priceNum: 4999,

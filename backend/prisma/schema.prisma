@@ -99,6 +99,7 @@ model Medicine {
   uses              String?
   is_discontinued   Boolean    @default(false)
   is_active         Boolean    @default(true)
+  rack_location     String?    // Pro feature: physical rack/shelf location (e.g. "Rack A - Shelf 3")
   created_at        DateTime   @default(now())
 
   order_items OrderItem[]

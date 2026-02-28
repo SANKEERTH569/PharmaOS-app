@@ -13,6 +13,7 @@ import { OrdersPage } from './pages/OrdersPage';
 import { RetailersPage } from './pages/RetailersPage';
 import { RetailerDetailPage } from './pages/RetailerDetailPage';
 import { MedicinesPage } from './pages/MedicinesPage';
+import { RackManagerPage } from './pages/RackManagerPage';
 import { CollectionPage } from './pages/CollectionPage';
 import { LedgerPage } from './pages/LedgerPage';
 import { PaymentsPage } from './pages/PaymentsPage';
@@ -137,6 +138,11 @@ function App() {
         <Route path="/settings" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <SettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/rack-manager" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <RackManagerPage />
           </ProtectedRoute>
         } />
         <Route path="/returns" element={

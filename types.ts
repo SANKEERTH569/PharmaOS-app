@@ -103,6 +103,7 @@ export interface Medicine {
   side_effects?: string;
   uses?: string;
   is_discontinued?: boolean;
+  rack_location?: string;
   is_active: boolean;
   wholesaler?: { id: string; name: string; phone: string };
 }
