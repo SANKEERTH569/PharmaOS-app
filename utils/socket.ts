@@ -2,10 +2,14 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
+// Derive the Socket.io server URL from the API URL env var
+// e.g. "https://pharmaos-app.onrender.com/api" → "https://pharmaos-app.onrender.com"
+const apiUrl = import.meta.env.VITE_API_URL || '';
+const socketUrl = apiUrl.replace(/\/api\/?$/, '') || undefined; // undefined = same origin (local dev)
+
 export const getSocket = (): Socket => {
   if (!socket) {
-    // Connect through Vite proxy → avoids cross-origin issues
-    socket = io({
+    socket = io(socketUrl as string, {
       path: '/socket.io',
       autoConnect: false,
       reconnection: true,
