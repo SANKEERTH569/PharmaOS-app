@@ -24,7 +24,7 @@ model Wholesaler {
   bank_account  String?
   ifsc          String?
   upi_id        String?
-  plan          String   @default("starter") // starter | growth | pro
+  plan          String   @default("starter") // starter | growth | pro | enterprise
   is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
 
@@ -36,6 +36,7 @@ model Wholesaler {
   notifications    Notification[]
   retailer_agencies RetailerAgency[]
   return_requests   ReturnRequest[]
+  plan_requests     PlanRequest[]
 }
 
 model Retailer {
@@ -263,4 +264,42 @@ model ReturnItem {
   unit_price      Float
   total_price     Float
   reason_detail   String?
+}
+
+model Admin {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  password_hash String
+  name          String
+  email         String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+}
+
+model PlanRequest {
+  id              String   @id @default(cuid())
+  wholesaler_id   String
+  wholesaler      Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  current_plan    String
+  requested_plan  String
+  status          String   @default("PENDING")    // PENDING | APPROVED | REJECTED
+  coupon_code     String?
+  discount_amount Float    @default(0)
+  final_amount    Float    @default(0)
+  admin_note      String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discount_type   String   @default("PERCENTAGE")  // PERCENTAGE | FLAT
+  discount_value  Float
+  max_uses        Int      @default(0)              // 0 = unlimited
+  used_count      Int      @default(0)
+  is_active       Boolean  @default(true)
+  valid_plans     String?                            // comma-separated: "growth,pro" or null = all
+  expires_at      DateTime?
+  created_at      DateTime @default(now())
 }

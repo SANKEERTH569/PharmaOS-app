@@ -70,7 +70,7 @@ router.post('/login', async (req, res) => {
       username?: string;
       phone?: string;
       password: string;
-      role: 'WHOLESALER' | 'RETAILER';
+      role: 'WHOLESALER' | 'RETAILER' | 'ADMIN';
     };
 
     if (!password || !role) {
@@ -135,6 +135,26 @@ router.post('/login', async (req, res) => {
       return res.json({ token, user: safeRetailer, role: 'RETAILER' });
     }
 
+    if (role === 'ADMIN') {
+      if (!username) return res.status(400).json({ error: 'username is required for admin login' });
+
+      const admin = await prisma.admin.findUnique({ where: { username } });
+      if (!admin) return res.status(401).json({ error: 'Invalid credentials' });
+      if (!admin.is_active) return res.status(403).json({ error: 'Account deactivated' });
+
+      const valid = await bcrypt.compare(password, admin.password_hash);
+      if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+      const token = jwt.sign(
+        { id: admin.id, role: 'ADMIN' },
+        process.env.JWT_SECRET!,
+        { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+      );
+
+      const { password_hash: _pw, ...safeAdmin } = admin;
+      return res.json({ token, user: safeAdmin, role: 'ADMIN' });
+    }
+
     return res.status(400).json({ error: 'Invalid role' });
   } catch (err: any) {
     console.error(err);
@@ -144,7 +164,7 @@ router.post('/login', async (req, res) => {
 
 /**
  * GET /api/auth/me
- * Returns current wholesaler or retailer profile
+ * Returns current wholesaler, retailer or admin profile
  */
 router.get('/me', async (req, res) => {
   try {
@@ -153,7 +173,12 @@ router.get('/me', async (req, res) => {
     const token = header.split(' ')[1];
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
 
-    if (payload.role === 'WHOLESALER') {
+    if (payload.role === 'ADMIN') {
+      const admin = await prisma.admin.findUnique({ where: { id: payload.id } });
+      if (!admin) return res.status(404).json({ error: 'Not found' });
+      const { password_hash: _pw, ...safe } = admin;
+      return res.json({ user: safe, role: 'ADMIN' });
+    } else if (payload.role === 'WHOLESALER') {
       const ws = await prisma.wholesaler.findUnique({ where: { id: payload.wholesaler_id } });
       if (!ws) return res.status(404).json({ error: 'Not found' });
       const { password_hash: _pw, ...safeWs } = ws;
@@ -206,6 +231,147 @@ router.patch('/wholesaler', async (req, res) => {
     });
     const { password_hash: _pw, ...safeUpdated } = updated;
     res.json(safeUpdated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/auth/wholesaler/plan-request
+ * Sub-wholesaler requests a plan upgrade (goes to admin for approval)
+ * Body: { requested_plan, coupon_code? }
+ */
+router.post('/wholesaler/plan-request', async (req, res) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header) return res.status(401).json({ error: 'Unauthorized' });
+    const token = header.split(' ')[1];
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    if (payload.role !== 'WHOLESALER') return res.status(403).json({ error: 'Forbidden' });
+
+    const { requested_plan, coupon_code } = req.body as { requested_plan: string; coupon_code?: string };
+    if (!requested_plan || !['starter', 'growth', 'pro', 'enterprise'].includes(requested_plan)) {
+      return res.status(400).json({ error: 'Invalid plan' });
+    }
+
+    const wholesaler = await prisma.wholesaler.findUnique({ where: { id: payload.wholesaler_id } });
+    if (!wholesaler) return res.status(404).json({ error: 'Wholesaler not found' });
+
+    if (wholesaler.plan === requested_plan) {
+      return res.status(400).json({ error: 'You are already on this plan' });
+    }
+
+    // Check for existing pending request
+    const existing = await prisma.planRequest.findFirst({
+      where: { wholesaler_id: wholesaler.id, status: 'PENDING' },
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'You already have a pending plan request. Please wait for admin approval.' });
+    }
+
+    // Plan prices
+    const planPrices: Record<string, number> = { starter: 0, growth: 999, pro: 2499, enterprise: 4999 };
+    let baseAmount = planPrices[requested_plan] || 0;
+    let discountAmount = 0;
+
+    // Validate coupon if provided
+    if (coupon_code) {
+      const coupon = await prisma.coupon.findUnique({ where: { code: coupon_code } });
+      if (!coupon) return res.status(400).json({ error: 'Invalid coupon code' });
+      if (!coupon.is_active) return res.status(400).json({ error: 'This coupon is no longer active' });
+      if (coupon.expires_at && new Date() > coupon.expires_at) return res.status(400).json({ error: 'This coupon has expired' });
+      if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) return res.status(400).json({ error: 'This coupon has been fully used' });
+      if (coupon.valid_plans) {
+        const validPlans = coupon.valid_plans.split(',').map(p => p.trim());
+        if (!validPlans.includes(requested_plan)) {
+          return res.status(400).json({ error: `This coupon is not valid for the ${requested_plan} plan` });
+        }
+      }
+
+      if (coupon.discount_type === 'PERCENTAGE') {
+        discountAmount = Math.round(baseAmount * coupon.discount_value / 100);
+      } else {
+        discountAmount = Math.min(coupon.discount_value, baseAmount);
+      }
+    }
+
+    const finalAmount = Math.max(baseAmount - discountAmount, 0);
+
+    const planRequest = await prisma.planRequest.create({
+      data: {
+        wholesaler_id: wholesaler.id,
+        current_plan: wholesaler.plan,
+        requested_plan,
+        coupon_code: coupon_code || null,
+        discount_amount: discountAmount,
+        final_amount: finalAmount,
+      },
+    });
+
+    res.status(201).json(planRequest);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/auth/wholesaler/plan-requests
+ * Get current wholesaler's plan requests
+ */
+router.get('/wholesaler/plan-requests', async (req, res) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header) return res.status(401).json({ error: 'Unauthorized' });
+    const token = header.split(' ')[1];
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    if (payload.role !== 'WHOLESALER') return res.status(403).json({ error: 'Forbidden' });
+
+    const requests = await prisma.planRequest.findMany({
+      where: { wholesaler_id: payload.wholesaler_id },
+      orderBy: { created_at: 'desc' },
+    });
+    res.json(requests);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/auth/validate-coupon
+ * Validate a coupon code and return discount info
+ * Body: { code, plan }
+ */
+router.post('/validate-coupon', async (req, res) => {
+  try {
+    const { code, plan } = req.body as { code: string; plan: string };
+    if (!code || !plan) return res.status(400).json({ error: 'code and plan are required' });
+
+    const coupon = await prisma.coupon.findUnique({ where: { code } });
+    if (!coupon) return res.status(404).json({ error: 'Invalid coupon code' });
+    if (!coupon.is_active) return res.status(400).json({ error: 'This coupon is no longer active' });
+    if (coupon.expires_at && new Date() > coupon.expires_at) return res.status(400).json({ error: 'This coupon has expired' });
+    if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses) return res.status(400).json({ error: 'This coupon has been fully used' });
+    if (coupon.valid_plans) {
+      const validPlans = coupon.valid_plans.split(',').map(p => p.trim());
+      if (!validPlans.includes(plan)) return res.status(400).json({ error: `This coupon is not valid for the ${plan} plan` });
+    }
+
+    const planPrices: Record<string, number> = { starter: 0, growth: 999, pro: 2499, enterprise: 4999 };
+    const baseAmount = planPrices[plan] || 0;
+    let discountAmount = 0;
+    if (coupon.discount_type === 'PERCENTAGE') {
+      discountAmount = Math.round(baseAmount * coupon.discount_value / 100);
+    } else {
+      discountAmount = Math.min(coupon.discount_value, baseAmount);
+    }
+
+    res.json({
+      valid: true,
+      discount_type: coupon.discount_type,
+      discount_value: coupon.discount_value,
+      discount_amount: discountAmount,
+      final_amount: Math.max(baseAmount - discountAmount, 0),
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

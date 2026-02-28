@@ -3,9 +3,11 @@ import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { RetailerLayout } from './components/RetailerLayout';
+import { AdminLayout } from './components/AdminLayout';
 import { LoginSelectorPage } from './pages/auth/LoginSelectorPage';
 import { WholesalerLoginPage } from './pages/auth/WholesalerLoginPage';
 import { RetailerLoginPage } from './pages/auth/RetailerLoginPage';
+import { AdminLoginPage } from './pages/auth/AdminLoginPage';
 import { DashboardHome } from './pages/DashboardHome';
 import { OrdersPage } from './pages/OrdersPage';
 import { RetailersPage } from './pages/RetailersPage';
@@ -23,6 +25,13 @@ import { AgencySetupPage } from './pages/retailer/AgencySetupPage';
 import { RetailerLedgerPage } from './pages/retailer/RetailerLedgerPage';
 import { RetailerReturnsPage } from './pages/retailer/RetailerReturnsPage';
 import { WholesalerReturnsPage } from './pages/WholesalerReturnsPage';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { WholesalerManagement } from './pages/admin/WholesalerManagement';
+import { RetailerManagement } from './pages/admin/RetailerManagement';
+import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
+import { PlanManagement } from './pages/admin/PlanManagement';
+import { ActivityLog } from './pages/admin/ActivityLog';
+import { CouponManagement } from './pages/admin/CouponManagement';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { UserRole } from './types';
@@ -36,7 +45,12 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
   if (userRole !== allowedRole) {
     // Redirect to appropriate dashboard based on actual role
-    return <Navigate to={userRole === 'WHOLESALER' ? '/' : '/shop'} replace />;
+    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : '/shop';
+    return <Navigate to={dest} replace />;
+  }
+
+  if (allowedRole === 'ADMIN') {
+    return <AdminLayout>{children}</AdminLayout>;
   }
 
   return allowedRole === 'WHOLESALER' ? (
@@ -55,7 +69,7 @@ const RetailerAuthOnly = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { initFromStorage, isAuthenticated, wholesaler, retailer } = useAuthStore();
+  const { initFromStorage, isAuthenticated, wholesaler, retailer, userRole } = useAuthStore();
   const { initData } = useDataStore();
 
   // Restore auth from localStorage on app load
@@ -63,9 +77,8 @@ function App() {
     initFromStorage();
   }, []);
 
-  // Load all data once authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && userRole !== 'ADMIN') {
       const id = wholesaler?.id || retailer?.id || '';
       const role = wholesaler ? 'WHOLESALER' : 'RETAILER';
       initData(id, role);
@@ -78,6 +91,7 @@ function App() {
         <Route path="/login" element={<LoginSelectorPage />} />
         <Route path="/login/wholesaler" element={<WholesalerLoginPage />} />
         <Route path="/login/retailer" element={<RetailerLoginPage />} />
+        <Route path="/login/admin" element={<AdminLoginPage />} />
 
         {/* Wholesaler Routes */}
         <Route path="/" element={
@@ -165,6 +179,48 @@ function App() {
         <Route path="/shop/profile" element={
           <ProtectedRoute allowedRole="RETAILER">
             <RetailerProfilePage />
+          </ProtectedRoute>
+        } />
+
+        {/* Admin Routes */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <AdminDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/wholesalers" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <WholesalerManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/retailers" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <RetailerManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/orders" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <AdminOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/revenue" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <PlanManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/plans" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <PlanManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/activity" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <ActivityLog />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/coupons" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <CouponManagement />
           </ProtectedRoute>
         } />
 

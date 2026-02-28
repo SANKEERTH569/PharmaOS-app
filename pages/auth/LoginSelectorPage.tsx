@@ -108,6 +108,12 @@ export const LoginSelectorPage = () => {
                 <p className="text-slate-600 text-[10px] font-medium tracking-[0.2em] mt-10">
                     A product of <span className="text-indigo-400 font-bold">leeep dev</span>
                 </p>
+                <button
+                    onClick={() => navigate('/login/admin')}
+                    className="mt-3 text-[10px] text-slate-600 hover:text-rose-400 font-medium transition-colors"
+                >
+                    Admin Login →
+                </button>
             </div>
         </div>
     );

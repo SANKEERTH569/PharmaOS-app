@@ -375,10 +375,25 @@ export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, re
 
                                     <div className="flex-1 space-y-2">
                                         <div className="p-2 border border-blue-100 bg-blue-50/50 rounded">
-                                            <p className="text-[7px] text-blue-600 font-black uppercase tracking-widest leading-none mb-1 flex gap-1"><CreditCard size={9} /> Bank Transfer PayTo</p>
-                                            <div className="text-[8px] text-slate-700 font-bold space-y-0.5 leading-tight">
-                                                <p>{wholesaler?.bank_name} • A/C: {wholesaler?.bank_account}</p>
-                                                <p>IFSC: {wholesaler?.ifsc} {wholesaler?.upi_id ? `• UPI: ${wholesaler.upi_id}` : ''}</p>
+                                            <div className="flex items-start gap-2">
+                                                <div className="flex-1">
+                                                    <p className="text-[7px] text-blue-600 font-black uppercase tracking-widest leading-none mb-1 flex gap-1"><CreditCard size={9} /> Bank & UPI PayTo</p>
+                                                    <div className="text-[8px] text-slate-700 font-bold space-y-0.5 leading-tight">
+                                                        <p>{wholesaler?.bank_name} • A/C: {wholesaler?.bank_account}</p>
+                                                        <p>IFSC: {wholesaler?.ifsc} {wholesaler?.upi_id ? `• UPI: ${wholesaler.upi_id}` : ''}</p>
+                                                    </div>
+                                                </div>
+                                                {wholesaler?.upi_id && (
+                                                    <div className="shrink-0 text-center">
+                                                        <img
+                                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`upi://pay?pa=${wholesaler.upi_id}&pn=${encodeURIComponent(wholesaler.name || 'Merchant')}&am=${netPayable.toFixed(2)}&cu=INR`)}`}
+                                                            alt="UPI QR"
+                                                            className="w-[52px] h-[52px] rounded border border-blue-200"
+                                                        />
+                                                        <p className="text-[6px] font-bold text-blue-600 mt-0.5">Scan to Pay</p>
+                                                        <p className="text-[6px] font-black text-slate-800">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div>

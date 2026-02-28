@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { connectSocket, disconnectSocket } from '../utils/socket';
-import { Wholesaler, Retailer, UserRole } from '../types';
+import { Wholesaler, Retailer, Admin, UserRole } from '../types';
 
 interface AuthState {
   token: string | null;
   userRole: UserRole | null;
   wholesaler: Wholesaler | null;
   retailer: Retailer | null;
+  admin: Admin | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   authError: string | null;
@@ -21,6 +22,7 @@ interface AuthState {
   initFromStorage: () => void;
   updateWholesaler: (data: Partial<Wholesaler>) => Promise<void>;
   updateRetailerProfile: (data: Partial<Retailer>) => Promise<void>;
+  loginAdmin: (username: string, password: string) => Promise<void>;
 }
 
 // 5 Mock Sub-Wholesalers (kept for MarketplacePage compatibility)
@@ -37,6 +39,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   userRole: null,
   wholesaler: null,
   retailer: null,
+  admin: null,
   isAuthenticated: false,
   isLoading: false,
   authError: null,
@@ -47,8 +50,14 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (!token || !raw) return;
     try {
       const { role, user } = JSON.parse(raw) as { role: UserRole; user: any };
-      set({ token, userRole: role, wholesaler: role === 'WHOLESALER' ? user : null, retailer: role === 'RETAILER' ? user : null, isAuthenticated: true });
-      connectSocket(`${role.toLowerCase()}_${user.id}`);
+      set({
+        token, userRole: role,
+        wholesaler: role === 'WHOLESALER' ? user : null,
+        retailer: role === 'RETAILER' ? user : null,
+        admin: role === 'ADMIN' ? user : null,
+        isAuthenticated: true,
+      });
+      if (role !== 'ADMIN') connectSocket(`${role.toLowerCase()}_${user.id}`);
     } catch {
       localStorage.removeItem('pharma_token');
       localStorage.removeItem('pharma_auth');
@@ -58,9 +67,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   login: async (identifier, password, role) => {
     set({ isLoading: true, authError: null });
     try {
-      const payload = role === 'WHOLESALER'
-        ? { username: identifier, password, role }
-        : { phone: identifier, password, role };
+      const payload = role === 'RETAILER'
+        ? { phone: identifier, password, role }
+        : { username: identifier, password, role };
       const { data } = await api.post('/auth/login', payload);
       localStorage.setItem('pharma_token', data.token);
       localStorage.setItem('pharma_auth', JSON.stringify({ role: data.role, user: data.user }));
@@ -69,10 +78,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         userRole: data.role as UserRole,
         wholesaler: data.role === 'WHOLESALER' ? data.user : null,
         retailer: data.role === 'RETAILER' ? data.user : null,
+        admin: data.role === 'ADMIN' ? data.user : null,
         isAuthenticated: true,
         isLoading: false,
       });
-      connectSocket(`${(data.role as string).toLowerCase()}_${data.user.id}`);
+      if (data.role !== 'ADMIN') connectSocket(`${(data.role as string).toLowerCase()}_${data.user.id}`);
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Login failed. Check your connection.';
       set({ isLoading: false, authError: msg });
@@ -133,7 +143,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (userRole === 'RETAILER' && retailer) disconnectSocket(`retailer_${retailer.id}`);
     localStorage.removeItem('pharma_token');
     localStorage.removeItem('pharma_auth');
-    set({ token: null, userRole: null, wholesaler: null, retailer: null, isAuthenticated: false, authError: null });
+    set({ token: null, userRole: null, wholesaler: null, retailer: null, admin: null, isAuthenticated: false, authError: null });
   },
 
   updateWholesaler: async (data) => {
@@ -148,5 +158,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const { data: updated } = await api.patch(`/retailers/${retailer.id}/profile`, data);
     localStorage.setItem('pharma_auth', JSON.stringify({ role: 'RETAILER', user: updated }));
     set((s) => ({ retailer: s.retailer ? { ...s.retailer, ...updated } : null }));
+  },
+
+  loginAdmin: async (username, password) => {
+    await get().login(username, password, 'ADMIN');
   },
 }));

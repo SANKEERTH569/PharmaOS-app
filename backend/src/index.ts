@@ -17,6 +17,7 @@ import wholesalerAgenciesRouter from './routes/wholesalerAgencies';
 import marketplaceRouter from './routes/marketplace';
 import retailerLedgerRouter from './routes/retailerLedger';
 import returnsRouter from './routes/returns';
+import adminRouter from './routes/admin';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -59,6 +60,7 @@ app.use('/api/retailer/ledger', retailerLedgerRouter);
 app.use('/api/wholesaler/agencies', wholesalerAgenciesRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/returns', returnsRouter);
+app.use('/api/admin', adminRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));

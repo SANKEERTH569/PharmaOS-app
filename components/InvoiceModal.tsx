@@ -10,55 +10,55 @@ interface InvoiceModalProps {
 }
 
 // ── Amount in words ──────────────────────────────────────────────────────────
-const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
-  'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
-const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 function numToWords(n: number): string {
   const num = Math.round(n);
   if (num === 0) return 'Zero';
   if (num < 20) return ones[num];
-  if (num < 100) return tens[Math.floor(num/10)] + (num%10 ? ' '+ones[num%10] : '');
-  if (num < 1000) return ones[Math.floor(num/100)] + ' Hundred' + (num%100 ? ' '+numToWords(num%100) : '');
-  if (num < 100000) return numToWords(Math.floor(num/1000)) + ' Thousand' + (num%1000 ? ' '+numToWords(num%1000) : '');
-  if (num < 10000000) return numToWords(Math.floor(num/100000)) + ' Lakh' + (num%100000 ? ' '+numToWords(num%100000) : '');
-  return numToWords(Math.floor(num/10000000)) + ' Crore' + (num%10000000 ? ' '+numToWords(num%10000000) : '');
+  if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+  if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' ' + numToWords(num % 100) : '');
+  if (num < 100000) return numToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + numToWords(num % 1000) : '');
+  if (num < 10000000) return numToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + numToWords(num % 100000) : '');
+  return numToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + numToWords(num % 10000000) : '');
 }
 function amountInWords(amount: number): string {
-  const r = Math.floor(amount), p = Math.round((amount-r)*100);
-  return numToWords(r) + ' Rupees' + (p>0 ? ' and '+numToWords(p)+' Paise' : '') + ' Only';
+  const r = Math.floor(amount), p = Math.round((amount - r) * 100);
+  return numToWords(r) + ' Rupees' + (p > 0 ? ' and ' + numToWords(p) + ' Paise' : '') + ' Only';
 }
 
 // ── GST slab summary ─────────────────────────────────────────────────────────
 function buildGstSummary(items: Order['items']) {
-  const map = new Map<number, { taxable:number; cgst:number; sgst:number }>();
+  const map = new Map<number, { taxable: number; cgst: number; sgst: number }>();
   for (const item of items) {
     const rate = item.gst_rate ?? 0;
     const half = (item.tax_amount ?? 0) / 2;
-    const ex = map.get(rate) || { taxable:0, cgst:0, sgst:0 };
-    map.set(rate, { taxable: ex.taxable+(item.taxable_value??0), cgst: ex.cgst+half, sgst: ex.sgst+half });
+    const ex = map.get(rate) || { taxable: 0, cgst: 0, sgst: 0 };
+    map.set(rate, { taxable: ex.taxable + (item.taxable_value ?? 0), cgst: ex.cgst + half, sgst: ex.sgst + half });
   }
-  return Array.from(map.entries()).sort(([a],[b])=>a-b).map(([rate,v])=>({ rate, ...v }));
+  return Array.from(map.entries()).sort(([a], [b]) => a - b).map(([rate, v]) => ({ rate, ...v }));
 }
 
 function fmtExp(d: string | null | undefined): string {
   if (!d) return '—';
   const dt = new Date(d);
-  return dt.toLocaleDateString('en-IN', { month:'2-digit', year:'2-digit' });
+  return dt.toLocaleDateString('en-IN', { month: '2-digit', year: '2-digit' });
 }
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onClose }) => {
   const { wholesaler } = useAuthStore();
 
-  const gstSummary    = buildGstSummary(order.items);
-  const totalCGST     = gstSummary.reduce((s,r)=>s+r.cgst, 0);
-  const totalSGST     = gstSummary.reduce((s,r)=>s+r.sgst, 0);
-  const grossTotal    = order.items.reduce((s,i)=>s+(i.taxable_value??0), 0);
-  const totalDiscount = order.items.reduce((s,i)=>s+(i.discount_amount??0), 0);
-  const netPayable    = grossTotal + totalCGST + totalSGST;
+  const gstSummary = buildGstSummary(order.items);
+  const totalCGST = gstSummary.reduce((s, r) => s + r.cgst, 0);
+  const totalSGST = gstSummary.reduce((s, r) => s + r.sgst, 0);
+  const grossTotal = order.items.reduce((s, i) => s + (i.taxable_value ?? 0), 0);
+  const totalDiscount = order.items.reduce((s, i) => s + (i.discount_amount ?? 0), 0);
+  const netPayable = grossTotal + totalCGST + totalSGST;
 
   const invoiceDate = new Date(order.created_at);
-  const dueDate     = new Date(invoiceDate.getTime() + 15*24*60*60*1000);
-  const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const dueDate = new Date(invoiceDate.getTime() + 15 * 24 * 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <>
@@ -160,9 +160,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                 </div>
                 <div className="flex flex-col justify-center space-y-1.5 pl-1">
                   {[
-                    { label: 'Order Ref',     value: `#${order.id.slice(-8).toUpperCase()}`, mono: true },
+                    { label: 'Order Ref', value: `#${order.id.slice(-8).toUpperCase()}`, mono: true },
                     { label: 'Payment Terms', value: order.payment_terms || 'NET 15', blue: true },
-                    { label: 'Order Status',  value: order.status, green: true },
+                    { label: 'Order Status', value: order.status, green: true },
                   ].map(({ label, value, mono, blue, green }) => (
                     <div key={label} className="flex justify-between text-[9px] border-b border-slate-100 pb-1">
                       <span className="text-slate-400 font-bold uppercase">{label}:</span>
@@ -190,12 +190,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {order.items.map((item, idx) => {
-                      const mrp    = item.mrp ?? 0;
-                      const rate   = item.unit_price ?? 0;
+                      const mrp = item.mrp ?? 0;
+                      const rate = item.unit_price ?? 0;
                       const amount = item.taxable_value ?? (rate * item.qty);
                       return (
                         <tr key={item.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                          <td className="px-1.5 py-2 text-center text-slate-400 font-bold">{idx+1}</td>
+                          <td className="px-1.5 py-2 text-center text-slate-400 font-bold">{idx + 1}</td>
                           <td className="px-1.5 py-2 text-center font-mono text-slate-500">{item.hsn_code || '3004'}</td>
                           <td className="px-2 py-2 font-black text-slate-900 uppercase">{item.medicine_name}</td>
                           <td className="px-1.5 py-2 text-right font-mono text-slate-500">{fmtExp(item.expiry_date)}</td>
@@ -211,7 +211,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                   <tfoot>
                     <tr className="bg-slate-100 border-t-2 border-slate-300">
                       <td colSpan={5} className="px-2 py-1.5 font-black text-right text-slate-500 uppercase text-[7px] tracking-wider">
-                        Total — {order.items.length} item{order.items.length !== 1 ? 's' : ''} | Qty: {order.items.reduce((s,i)=>s+i.qty,0)}
+                        Total — {order.items.length} item{order.items.length !== 1 ? 's' : ''} | Qty: {order.items.reduce((s, i) => s + i.qty, 0)}
                       </td>
                       <td></td>
                       <td></td>
@@ -264,15 +264,31 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                     <p className="text-[8px] font-black text-slate-900 italic uppercase leading-tight">{amountInWords(netPayable)}</p>
                   </div>
 
-                  <div className="p-2.5 rounded-lg border border-blue-100 bg-blue-50/50 flex items-start gap-2">
-                    <CreditCard size={11} className="text-blue-600 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-[7px] text-blue-600 font-black uppercase tracking-widest mb-1">Bank Details</p>
-                      <div className="text-[8px] text-slate-700 space-y-0.5">
-                        <p><span className="font-bold">Bank:</span> {wholesaler?.bank_name || '—'}</p>
-                        <p><span className="font-bold">A/c:</span> {wholesaler?.bank_account || '—'}</p>
-                        <p><span className="font-bold">IFSC:</span> {wholesaler?.ifsc || '—'}</p>
+                  <div className="p-2.5 rounded-lg border border-blue-100 bg-blue-50/50">
+                    <div className="flex items-start gap-2">
+                      <CreditCard size={11} className="text-blue-600 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-[7px] text-blue-600 font-black uppercase tracking-widest mb-1">Bank & UPI Details</p>
+                        <div className="text-[8px] text-slate-700 space-y-0.5">
+                          <p><span className="font-bold">Bank:</span> {wholesaler?.bank_name || '—'}</p>
+                          <p><span className="font-bold">A/c:</span> {wholesaler?.bank_account || '—'}</p>
+                          <p><span className="font-bold">IFSC:</span> {wholesaler?.ifsc || '—'}</p>
+                          {wholesaler?.upi_id && (
+                            <p><span className="font-bold">UPI:</span> <span className="text-blue-700 font-black">{wholesaler.upi_id}</span></p>
+                          )}
+                        </div>
                       </div>
+                      {wholesaler?.upi_id && (
+                        <div className="shrink-0 text-center ml-1">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(`upi://pay?pa=${wholesaler.upi_id}&pn=${encodeURIComponent(wholesaler.name || 'Merchant')}&am=${netPayable.toFixed(2)}&cu=INR`)}`}
+                            alt="UPI QR"
+                            className="w-[60px] h-[60px] rounded border border-blue-200"
+                          />
+                          <p className="text-[6px] font-bold text-blue-600 mt-0.5">Scan to Pay</p>
+                          <p className="text-[6px] font-black text-slate-800">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -291,9 +307,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                   <div className="space-y-1.5">
                     {[
                       { label: 'Gross Total', value: `₹${grossTotal.toFixed(2)}` },
-                      { label: 'Discount',    value: totalDiscount > 0 ? `-₹${totalDiscount.toFixed(2)}` : '₹0.00', green: totalDiscount > 0 },
-                      { label: 'Add CGST',    value: `₹${totalCGST.toFixed(2)}` },
-                      { label: 'Add SGST',    value: `₹${totalSGST.toFixed(2)}` },
+                      { label: 'Discount', value: totalDiscount > 0 ? `-₹${totalDiscount.toFixed(2)}` : '₹0.00', green: totalDiscount > 0 },
+                      { label: 'Add CGST', value: `₹${totalCGST.toFixed(2)}` },
+                      { label: 'Add SGST', value: `₹${totalSGST.toFixed(2)}` },
                     ].map(({ label, value, green }) => (
                       <div key={label} className="flex justify-between text-[9px] border-b border-slate-100 pb-1">
                         <span className="text-slate-400 font-bold uppercase">{label}:</span>
@@ -303,7 +319,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                     <div className="pt-2 border-t-2 border-[#0D2B5E] flex justify-between items-end">
                       <span className="text-[9px] font-black text-[#0D2B5E] italic uppercase leading-none">Net Payable:</span>
                       <span className="text-xl font-black text-[#0D2B5E] tracking-tighter leading-none">
-                        ₹{netPayable.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+                        ₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>

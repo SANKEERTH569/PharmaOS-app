@@ -17,6 +17,15 @@ export interface Wholesaler {
   email?: string;
 }
 
+// Admin interface
+export interface Admin {
+  id: string;
+  username: string;
+  name: string;
+  email?: string;
+  is_active?: boolean;
+}
+
 export type NotificationType = 'NEW_ORDER' | 'PAYMENT_RECEIVED' | 'CREDIT_LIMIT_ALERT' | 'ORDER_DELIVERED' | 'OVERDUE_REMINDER' | 'ORDER_STATUS' | 'ORDER_STATUS_CHANGED' | 'AGENCY_ACCEPTED' | 'AGENCY_REJECTED';
 
 export interface AppNotification {
@@ -30,7 +39,7 @@ export interface AppNotification {
   created_at: string;
 }
 
-export type UserRole = 'WHOLESALER' | 'RETAILER';
+export type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN';
 
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'DISPATCHED' | 'DELIVERED' | 'REJECTED' | 'CANCELLED';
 
