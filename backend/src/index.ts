@@ -26,7 +26,13 @@ const prisma = new PrismaClient();
 // ── Socket.io ──────────────────────────────────────────────────────────────
 export const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || /^http:\/\/localhost:\d+$/,
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      const allowedOrigins = [process.env.CLIENT_URL, 'capacitor://localhost', 'http://localhost', 'https://localhost'];
+      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(null, false);
+    },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     credentials: true,
   },
@@ -44,8 +50,31 @@ io.on('connection', (socket) => {
 });
 
 // ── Middleware ─────────────────────────────────────────────────────────────
+// Create a function to handle multiple CORS origins dynamically
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  'capacitor://localhost',
+  'http://localhost',
+  'https://localhost'
+];
+
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps sometimes send)
+    if (!origin) return callback(null, true);
+
+    // Check if the origin matches our allowed list or is localhost on any port
+    if (allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    callback(null, false);
+  },
+  credentials: true,
+};
+
 app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL || /^http:\/\/localhost:\d+$/, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
 // ── Routes ─────────────────────────────────────────────────────────────────
