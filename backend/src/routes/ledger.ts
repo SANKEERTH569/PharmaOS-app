@@ -109,4 +109,62 @@ router.get('/overdue', async (req, res) => {
   }
 });
 
+
+
+// POST /api/ledger/opening-balance
+router.post('/opening-balance', async (req, res) => {
+  try {
+    const { retailer_id, amount, notes } = req.body as {
+      retailer_id: string;
+      amount: number;
+      notes?: string;
+    };
+
+    if (!retailer_id || amount <= 0) {
+      return res.status(400).json({ error: 'Valid retailer_id and positive amount are required' });
+    }
+
+    const wholesaler_id = req.user!.wholesaler_id!;
+
+    // Using transaction to ensure atomic update of retailer balance and ledger entry
+    const result = await prisma.$transaction(async (tx) => {
+      const retailer = await tx.retailer.findFirst({
+        where: { id: retailer_id, wholesaler_id },
+      });
+
+      if (!retailer) {
+        throw new Error('Retailer not found');
+      }
+
+      const newBalance = retailer.current_balance + amount;
+
+      const ledgerEntry = await tx.ledgerEntry.create({
+        data: {
+          wholesaler_id,
+          retailer_id,
+          type: 'DEBIT',
+          amount,
+          balance_after: newBalance,
+          description: notes || 'Opening Balance / Old Debt recorded',
+        },
+      });
+
+      const updatedRetailer = await tx.retailer.update({
+        where: { id: retailer_id },
+        data: { current_balance: newBalance },
+      });
+
+      return { ledgerEntry, retailer: updatedRetailer };
+    });
+
+    res.status(201).json({ ledgerEntry: result.ledgerEntry, retailer: result.retailer });
+  } catch (err: any) {
+    if (err.message === 'Retailer not found') {
+      res.status(404).json({ error: err.message });
+    } else {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 export default router;

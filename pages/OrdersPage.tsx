@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
-import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown, RefreshCw } from 'lucide-react';
 import { OrderStatus, Order, PaymentMethod } from '../types';
 import { InvoiceModal } from '../components/InvoiceModal';
 import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
@@ -334,6 +334,12 @@ export const OrdersPage = () => {
             )}
           </div>
 
+          <button
+            onClick={() => fetchOrders()}
+            className="flex items-center gap-2 bg-white border border-slate-200/80 text-blue-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-50 hover:border-blue-300 transition-all shadow-sm"
+          >
+            <RefreshCw size={16} /> Refresh
+          </button>
           <button className="flex items-center gap-2 bg-white border border-slate-200/80 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm">
             <Download size={16} /> Export CSV
           </button>

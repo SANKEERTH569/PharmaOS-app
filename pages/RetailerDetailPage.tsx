@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
-import { 
-  ArrowLeft, Phone, MapPin, Edit, IndianRupee, 
+import {
+  ArrowLeft, Phone, MapPin, Edit, IndianRupee,
   CreditCard, TrendingUp, History, FileText,
   Calendar
 } from 'lucide-react';
@@ -19,6 +19,8 @@ export const RetailerDetailPage = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>('CASH');
+  const [paymentType, setPaymentType] = useState<'PAYMENT' | 'OPENING_BALANCE'>('PAYMENT');
+  const [openingBalanceNotes, setOpeningBalanceNotes] = useState('');
 
   const retailer = getRetailer(id || '');
 
@@ -38,10 +40,15 @@ export const RetailerDetailPage = () => {
   const handlePayment = (e: React.FormEvent) => {
     e.preventDefault();
     if (amount && wholesaler) {
-      recordPayment(retailer.id, parseFloat(amount), method, wholesaler.id, "Manual Entry from Profile");
+      if (paymentType === 'PAYMENT') {
+        recordPayment(retailer.id, parseFloat(amount), method, wholesaler.id, "Manual Entry from Profile");
+      } else {
+        useDataStore.getState().addOpeningBalance(retailer.id, parseFloat(amount), openingBalanceNotes || "Opening Balance added");
+      }
       setShowPaymentModal(false);
       setAmount('');
       setMethod('CASH');
+      setOpeningBalanceNotes('');
     }
   };
 
@@ -75,41 +82,41 @@ export const RetailerDetailPage = () => {
               <IndianRupee size={24} />
             </div>
           </div>
-          
+
           <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2 relative z-10">
-            <div 
+            <div
               className={`h-2.5 rounded-full transition-all duration-1000 ${percentUsed > 80 ? 'bg-rose-500' : 'bg-blue-500'}`}
               style={{ width: `${Math.min(percentUsed, 100)}%` }}
             />
           </div>
           <div className="flex justify-between items-center text-xs font-medium text-slate-400 relative z-10">
-             <span>Used: {percentUsed.toFixed(0)}%</span>
-             <span>Limit: ₹{retailer.credit_limit.toLocaleString()}</span>
+            <span>Used: {percentUsed.toFixed(0)}%</span>
+            <span>Limit: ₹{retailer.credit_limit.toLocaleString()}</span>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
-            <div className="space-y-4">
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                    <Phone size={16} />
-                 </div>
-                 <span className="text-slate-700 font-medium">{retailer.phone}</span>
-               </div>
-               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                    <MapPin size={16} />
-                 </div>
-                 <span className="text-slate-700 font-medium text-sm truncate">{retailer.address || 'No address'}</span>
-               </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                <Phone size={16} />
+              </div>
+              <span className="text-slate-700 font-medium">{retailer.phone}</span>
             </div>
-            <button className="mt-4 text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline w-fit">
-              <Edit size={14} /> Edit Details
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                <MapPin size={16} />
+              </div>
+              <span className="text-slate-700 font-medium text-sm truncate">{retailer.address || 'No address'}</span>
+            </div>
+          </div>
+          <button className="mt-4 text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline w-fit">
+            <Edit size={14} /> Edit Details
+          </button>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-2xl shadow-lg shadow-slate-900/10 flex flex-col justify-center items-center gap-4 text-white">
-          <button 
+          <button
             onClick={() => setShowPaymentModal(true)}
             className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
           >
@@ -124,14 +131,14 @@ export const RetailerDetailPage = () => {
       {/* Transaction History Tabs */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[500px] flex flex-col">
         <div className="flex border-b border-slate-100">
-          <button 
+          <button
             onClick={() => setActiveTab('LEDGER')}
             className={`flex-1 py-5 text-sm font-bold border-b-2 transition-all flex items-center justify-center gap-2
               ${activeTab === 'LEDGER' ? 'border-blue-600 text-blue-600 bg-blue-50/20' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
           >
             <History size={18} /> Ledger History
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('PAYMENTS')}
             className={`flex-1 py-5 text-sm font-bold border-b-2 transition-all flex items-center justify-center gap-2
               ${activeTab === 'PAYMENTS' ? 'border-blue-600 text-blue-600 bg-blue-50/20' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
@@ -142,87 +149,87 @@ export const RetailerDetailPage = () => {
 
         <div className="flex-1">
           {activeTab === 'LEDGER' && (
-             <div className="overflow-x-auto">
-             <table className="w-full text-sm text-left">
-               <thead className="bg-slate-50/50 text-slate-400 uppercase text-xs font-semibold">
-                 <tr>
-                   <th className="px-6 py-4">Date</th>
-                   <th className="px-6 py-4">Description</th>
-                   <th className="px-6 py-4 text-center">Type</th>
-                   <th className="px-6 py-4 text-right">Amount</th>
-                   <th className="px-6 py-4 text-right">Balance</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-slate-50">
-                 {retailerLedger.map((entry) => (
-                   <tr key={entry.id} className="hover:bg-slate-50/50">
-                     <td className="px-6 py-4 text-slate-500 font-medium">{new Date(entry.created_at).toLocaleDateString()}</td>
-                     <td className="px-6 py-4 text-slate-700">{entry.description}</td>
-                     <td className="px-6 py-4 text-center">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50/50 text-slate-400 uppercase text-xs font-semibold">
+                  <tr>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Description</th>
+                    <th className="px-6 py-4 text-center">Type</th>
+                    <th className="px-6 py-4 text-right">Amount</th>
+                    <th className="px-6 py-4 text-right">Balance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {retailerLedger.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-50/50">
+                      <td className="px-6 py-4 text-slate-500 font-medium">{new Date(entry.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 text-slate-700">{entry.description}</td>
+                      <td className="px-6 py-4 text-center">
                         <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${entry.type === 'DEBIT' ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
                           {entry.type}
                         </span>
-                     </td>
-                     <td className={`px-6 py-4 text-right font-bold ${entry.type === 'DEBIT' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      </td>
+                      <td className={`px-6 py-4 text-right font-bold ${entry.type === 'DEBIT' ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {entry.type === 'DEBIT' ? '+' : '-'} ₹{entry.amount.toLocaleString()}
-                     </td>
-                     <td className="px-6 py-4 text-right font-bold text-slate-900">
-                        - 
-                     </td>
-                   </tr>
-                 ))}
-                 {retailerLedger.length === 0 && (
-                   <tr>
-                     <td colSpan={5} className="p-12 text-center text-slate-400">No ledger activity recorded yet.</td>
-                   </tr>
-                 )}
-               </tbody>
-             </table>
-           </div>
+                      </td>
+                      <td className="px-6 py-4 text-right font-bold text-slate-900">
+                        -
+                      </td>
+                    </tr>
+                  ))}
+                  {retailerLedger.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-12 text-center text-slate-400">No ledger activity recorded yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {activeTab === 'PAYMENTS' && (
             <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50/50 text-slate-400 uppercase text-xs font-semibold">
-                <tr>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Payment ID</th>
-                  <th className="px-6 py-4">Method</th>
-                  <th className="px-6 py-4">Amount</th>
-                  <th className="px-6 py-4">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {retailerPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50/50">
-                    <td className="px-6 py-4 text-slate-500 font-medium">{new Date(payment.created_at).toLocaleDateString()}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-slate-400">{payment.id}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold text-slate-600">
-                        {payment.method}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-emerald-600">₹{payment.amount.toLocaleString()}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded text-xs font-bold uppercase">{payment.status}</span>
-                    </td>
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50/50 text-slate-400 uppercase text-xs font-semibold">
+                  <tr>
+                    <th className="px-6 py-4">Date</th>
+                    <th className="px-6 py-4">Payment ID</th>
+                    <th className="px-6 py-4">Method</th>
+                    <th className="px-6 py-4">Amount</th>
+                    <th className="px-6 py-4">Status</th>
                   </tr>
-                ))}
-                {retailerPayments.length === 0 && (
-                   <tr>
-                     <td colSpan={5} className="p-12 text-center text-slate-400">No payments recorded yet.</td>
-                   </tr>
-                 )}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {retailerPayments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-slate-50/50">
+                      <td className="px-6 py-4 text-slate-500 font-medium">{new Date(payment.created_at).toLocaleDateString()}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-slate-400">{payment.id}</td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-md text-xs font-semibold text-slate-600">
+                          {payment.method}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-600">₹{payment.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded text-xs font-bold uppercase">{payment.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {retailerPayments.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-12 text-center text-slate-400">No payments recorded yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
 
-       {/* Payment Modal */}
-       {showPaymentModal && (
+      {/* Payment Modal */}
+      {showPaymentModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-white px-6 py-5 border-b border-slate-100 flex justify-between items-center">
@@ -231,13 +238,31 @@ export const RetailerDetailPage = () => {
                 <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
-            
+
             <form onSubmit={handlePayment} className="p-6">
+
+              <div className="flex bg-slate-50 p-1.5 rounded-xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => setPaymentType('PAYMENT')}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentType === 'PAYMENT' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentType('OPENING_BALANCE')}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentType === 'OPENING_BALANCE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  Old Balance
+                </button>
+              </div>
+
               <div className="mb-5">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Amount</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">{paymentType === 'PAYMENT' ? 'Payment Amount' : 'Balance Amount'}</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
-                  <input 
+                  <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
@@ -249,29 +274,42 @@ export const RetailerDetailPage = () => {
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
-                <select 
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-                  className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="UPI">UPI</option>
-                  <option value="CHEQUE">Cheque</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                </select>
-              </div>
+              {paymentType === 'PAYMENT' ? (
+                <div className="mb-6 animate-in fade-in zoom-in-95 duration-200">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Payment Method</label>
+                  <select
+                    value={method}
+                    onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium"
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="CHEQUE">Cheque</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                  </select>
+                </div>
+              ) : (
+                <div className="mb-6 animate-in fade-in zoom-in-95 duration-200">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Notes (Optional)</label>
+                  <input
+                    type="text"
+                    value={openingBalanceNotes}
+                    onChange={(e) => setOpeningBalanceNotes(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-slate-900 placeholder:text-slate-400"
+                    placeholder="e.g., Previous month due"
+                  />
+                </div>
+              )}
 
               <div className="flex gap-4">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowPaymentModal(false)}
                   className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-1 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-500/30 transition-colors"
                 >

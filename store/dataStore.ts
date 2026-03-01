@@ -36,7 +36,9 @@ interface DataState {
   addRetailer: (retailer: Omit<Retailer, 'id' | 'current_balance' | 'is_active'>) => Promise<void>;
   updateRetailer: (id: string, updates: Partial<Retailer>) => Promise<void>;
   recordPayment: (retailerId: string, amount: number, method: PaymentMethod, wholesalerId: string, notes?: string) => Promise<void>;
+  addOpeningBalance: (retailerId: string, amount: number, notes?: string) => Promise<void>;
   addMedicine: (medicine: Omit<Medicine, 'id'>) => Promise<void>;
+  addMedicineToStore: (medicine: Medicine) => void;
   updateMedicine: (id: string, updates: Partial<Medicine>) => Promise<void>;
   toggleMedicineStatus: (id: string) => Promise<void>;
   placeOrder: (order: Omit<Order, 'id' | 'invoice_no' | 'created_at' | 'updated_at'>) => Promise<void>;
@@ -190,9 +192,23 @@ export const useDataStore = create<DataState>()((set, get) => ({
     }));
   },
 
-  addMedicine: async (data) => {
+  addOpeningBalance: async (retailerId, amount, notes) => {
+    const { data } = await api.post('/ledger/opening-balance', { retailer_id: retailerId, amount, notes });
+    set((s) => ({
+      ledgerEntries: [data.ledgerEntry, ...s.ledgerEntries],
+      retailers: s.retailers.map(r =>
+        r.id === retailerId ? { ...r, current_balance: r.current_balance + amount } : r
+      ),
+    }));
+  },
+
+  addMedicine: async (data: any) => {
     const { data: created } = await api.post('/medicines', data);
     set((s) => ({ medicines: [created, ...s.medicines] }));
+  },
+
+  addMedicineToStore: (medicine: Medicine) => {
+    set((s) => ({ medicines: [medicine, ...s.medicines] }));
   },
 
   updateMedicine: async (id, updates) => {

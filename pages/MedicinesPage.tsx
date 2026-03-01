@@ -76,7 +76,7 @@ const emptyForm = () => ({
 });
 
 export const MedicinesPage = () => {
-  const { medicines, addMedicine, updateMedicine, toggleMedicineStatus } = useDataStore();
+  const { medicines, addMedicine, addMedicineToStore, updateMedicine, toggleMedicineStatus } = useDataStore();
   const { wholesaler } = useAuthStore();
 
   // Pro plan check for rack locator feature
@@ -185,7 +185,7 @@ export const MedicinesPage = () => {
       const expiry = importExpiry ? new Date(importExpiry + '-01').toISOString() : undefined;
       const { rack_location: rl, ...restImport } = importForm;
       const res = await api.post('/medicines/import', { catalog_id: importItem.id, ...restImport, rack_location: rl || undefined, expiry_date: expiry });
-      addMedicine(res.data);
+      addMedicineToStore(res.data);
       setImportSuccess(importItem.name);
       setImportItem(null);
     } catch (err: any) { alert(err.response?.data?.error || 'Import failed'); }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDataStore } from '../../store/dataStore';
 import { useAuthStore } from '../../store/authStore';
-import { Clock, CheckCircle, Package, XCircle, Store, ChevronDown, ChevronUp, Loader2, Filter, Receipt, ShoppingBag, Truck } from 'lucide-react';
+import { Clock, CheckCircle, Package, XCircle, Store, ChevronDown, ChevronUp, Loader2, Filter, Receipt, ShoppingBag, Truck, RefreshCw } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
 
 export const RetailerOrdersPage = () => {
@@ -58,24 +58,33 @@ export const RetailerOrdersPage = () => {
                </div>
             </div>
 
-            <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-[20px] border border-slate-200/60 shadow-sm shadow-slate-100">
-               <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                  <Filter size={16} className="text-slate-400" />
-               </div>
-               <select
-                  value={filter}
-                  onChange={e => setFilter(e.target.value as OrderStatus | 'ALL')}
-                  className="bg-transparent border-none text-sm font-bold text-slate-700 outline-none cursor-pointer pr-4 focus:ring-0 appearance-none"
+            <div className="flex items-center gap-3">
+               <button
+                  onClick={() => fetchOrders()}
+                  className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-[20px] border border-slate-200/60 shadow-sm shadow-slate-100 text-indigo-600 text-sm font-bold hover:bg-indigo-50 hover:border-indigo-200 transition-all"
                >
-                  <option value="ALL">All Orders ({myOrders.length})</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="ACCEPTED">Accepted</option>
-                  <option value="DISPATCHED">Dispatched</option>
-                  <option value="DELIVERED">Delivered</option>
-                  <option value="CANCELLED">Cancelled</option>
-                  <option value="REJECTED">Rejected</option>
-               </select>
-               <ChevronDown size={14} className="text-slate-400 pointer-events-none -ml-2" />
+                  <RefreshCw size={16} />
+                  <span className="hidden sm:inline">Refresh</span>
+               </button>
+               <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-[20px] border border-slate-200/60 shadow-sm shadow-slate-100">
+                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                     <Filter size={16} className="text-slate-400" />
+                  </div>
+                  <select
+                     value={filter}
+                     onChange={e => setFilter(e.target.value as OrderStatus | 'ALL')}
+                     className="bg-transparent border-none text-sm font-bold text-slate-700 outline-none cursor-pointer pr-4 focus:ring-0 appearance-none"
+                  >
+                     <option value="ALL">All Orders ({myOrders.length})</option>
+                     <option value="PENDING">Pending</option>
+                     <option value="ACCEPTED">Accepted</option>
+                     <option value="DISPATCHED">Dispatched</option>
+                     <option value="DELIVERED">Delivered</option>
+                     <option value="CANCELLED">Cancelled</option>
+                     <option value="REJECTED">Rejected</option>
+                  </select>
+                  <ChevronDown size={14} className="text-slate-400 pointer-events-none -ml-2" />
+               </div>
             </div>
          </div>
 
