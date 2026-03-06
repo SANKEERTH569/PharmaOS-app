@@ -164,7 +164,7 @@ export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, re
             />
             {/* Drawer panel */}
             <div
-                className="absolute top-0 right-0 h-full w-full sm:w-[580px] lg:w-[640px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-slate-200"
+                className="absolute top-0 right-0 h-full w-full sm:w-[85vw] md:w-[75vw] lg:w-[60vw] xl:w-[50vw] max-w-[900px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-slate-200"
                 style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
             >
                     {/* ── Toolbar ── */}
@@ -201,8 +201,8 @@ export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, re
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto bg-slate-50 flex-1 p-4 lg:p-6 flex justify-center w-full">
-                        <div id="daily-invoice-print" className="bg-white w-[210mm] max-w-full shadow-lg flex flex-col relative shrink-0 overflow-hidden box-border p-[10mm] rounded-lg border border-slate-200">
+                    <div className="overflow-y-auto bg-slate-50 flex-1 p-3 sm:p-4 flex justify-center w-full">
+                        <div id="daily-invoice-print" className="bg-white w-full shadow-lg flex flex-col relative overflow-hidden box-border p-4 sm:p-6 rounded-lg border border-slate-200">
 
                             {/* ══ HEADER ══ */}
                             <div className="bg-gradient-to-r from-[#0D2B5E] to-[#1a4a99] px-5 py-3 flex justify-between items-start rounded-t-lg">

@@ -150,8 +150,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
 
   /* ── Invoice Document ── */
   const invoiceBody = (
-    <div className={`overflow-y-auto bg-slate-50 flex justify-center w-full ${variant === 'drawer' ? 'flex-1 p-4 lg:p-6' : 'p-4 lg:p-6 rounded-b-xl'}`}>
-      <div id="invoice-print" className="bg-white w-[210mm] max-w-full shadow-lg flex flex-col relative shrink-0 overflow-hidden box-border p-[10mm] rounded-lg border border-slate-200">
+    <div className={`overflow-y-auto bg-slate-50 flex justify-center w-full ${variant === 'drawer' ? 'flex-1 p-3 sm:p-4' : 'p-4 lg:p-6 rounded-b-xl'}`}>
+      <div id="invoice-print" className={`bg-white shadow-lg flex flex-col relative overflow-hidden box-border rounded-lg border border-slate-200 ${variant === 'drawer' ? 'w-full p-4 sm:p-6' : 'w-[210mm] max-w-full p-[10mm] shrink-0'}`}>
         <div className="border border-slate-200 overflow-hidden rounded-xl">
 
                 {/* ══ HEADER ══ */}
@@ -400,7 +400,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
       />
       {/* Drawer panel */}
       <div
-        className="absolute top-0 right-0 h-full w-full sm:w-[580px] lg:w-[640px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-slate-200"
+        className="absolute top-0 right-0 h-full w-full sm:w-[85vw] md:w-[75vw] lg:w-[60vw] xl:w-[50vw] max-w-[900px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-slate-200"
         style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {toolbar}
