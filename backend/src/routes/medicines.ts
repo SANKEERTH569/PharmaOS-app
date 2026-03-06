@@ -100,6 +100,7 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
       gst_rate,
       hsn_code,
       rack_location,
+      expiry_date,
     } = req.body as {
       catalog_id: string;
       mrp: number;
@@ -108,12 +109,22 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
       gst_rate: number;
       hsn_code: string;
       rack_location?: string;
+      expiry_date?: string;
     };
 
     if (!catalog_id) return res.status(400).json({ error: 'catalog_id is required' });
 
     const source = await prisma.medicine.findUnique({ where: { id: catalog_id } });
     if (!source) return res.status(404).json({ error: 'Catalog medicine not found' });
+
+    // Prevent duplicate import
+    const existing = await prisma.medicine.findFirst({
+      where: {
+        wholesaler_id: req.user!.wholesaler_id!,
+        name: source.name,
+      },
+    });
+    if (existing) return res.status(409).json({ error: `"${source.name}" is already in your inventory` });
 
     const med = await prisma.medicine.create({
       data: {
@@ -134,6 +145,7 @@ router.post('/import', requireRole('WHOLESALER'), async (req, res) => {
         gst_rate: gst_rate ?? 12,
         hsn_code: hsn_code ?? '3004',
         rack_location: rack_location || null,
+        expiry_date: expiry_date ? new Date(expiry_date) : null,
         is_active: !source.is_discontinued,
       },
     });

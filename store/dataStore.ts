@@ -42,6 +42,7 @@ interface DataState {
   updateMedicine: (id: string, updates: Partial<Medicine>) => Promise<void>;
   toggleMedicineStatus: (id: string) => Promise<void>;
   placeOrder: (order: Omit<Order, 'id' | 'invoice_no' | 'created_at' | 'updated_at'>) => Promise<void>;
+  createQuickSale: (data: { retailer_id: string; items: any[]; notes?: string }) => Promise<any>;
   cancelOrder: (orderId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
@@ -70,21 +71,20 @@ export const useDataStore = create<DataState>()((set, get) => ({
     set({ isLoading: true });
     try {
       if (role === 'RETAILER') {
-        // Retailers only need their own orders — other endpoints require WHOLESALER role
         const [o, n] = await Promise.all([
-          api.get('/orders'),
+          api.get('/orders').catch(() => ({ data: [] })),
           api.get('/notifications').catch(() => ({ data: [] })),
         ]);
         set({ orders: o.data, notifications: n.data, isLoading: false });
       } else {
-        // Wholesaler — fetch all relevant data
+        // Wholesaler — fetch all relevant data; each call catches independently
         const [r, m, o, l, p, n] = await Promise.all([
-          api.get('/retailers'),
-          api.get('/medicines'),
-          api.get('/orders'),
-          api.get('/ledger'),
-          api.get('/payments'),
-          api.get('/notifications'),
+          api.get('/retailers').catch(() => ({ data: [] })),
+          api.get('/medicines').catch(() => ({ data: [] })),
+          api.get('/orders').catch(() => ({ data: [] })),
+          api.get('/ledger').catch(() => ({ data: [] })),
+          api.get('/payments').catch(() => ({ data: [] })),
+          api.get('/notifications').catch(() => ({ data: [] })),
         ]);
         set({
           retailers: r.data,
@@ -154,7 +154,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ─── Mutations ─────────────────────────────────────────────────────────
   updateOrderStatus: async (orderId, status, _wholesalerId, paymentData) => {
     const body: any = { status };
-    if (paymentData) body.paymentData = paymentData;
+    if (paymentData) {
+      body.payment_amount = paymentData.amount;
+      body.payment_method = paymentData.method;
+    }
     const { data: updated } = await api.patch(`/orders/${orderId}/status`, body);
     set((s) => ({ orders: s.orders.map(o => o.id === orderId ? updated : o) }));
     // Refresh medicines stock after ACCEPTED (stock deducted) or REJECTED (stock restored)
@@ -224,6 +227,12 @@ export const useDataStore = create<DataState>()((set, get) => ({
   placeOrder: async (order) => {
     const { data: created } = await api.post('/orders', order);
     set((s) => ({ orders: [created, ...s.orders] }));
+  },
+
+  createQuickSale: async (data) => {
+    const { data: created } = await api.post('/orders/quick-sale', data);
+    set((s) => ({ orders: [created, ...s.orders] }));
+    return created;
   },
 
   cancelOrder: async (orderId) => {

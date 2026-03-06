@@ -44,6 +44,21 @@ router.get('/history/:retailer_id', async (req, res) => {
   }
 });
 
+// GET /api/payments/my — Payments for the logged-in retailer
+router.get('/my', requireRole('RETAILER'), async (req, res) => {
+  try {
+    const retailer_id = req.user!.retailer_id;
+    const payments = await prisma.payment.findMany({
+      where: { retailer_id },
+      orderBy: { created_at: 'desc' },
+      take: 200,
+    });
+    res.json(payments);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/payments — All payments for wholesaler
 router.get('/', async (req, res) => {
   try {

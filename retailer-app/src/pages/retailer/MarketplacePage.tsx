@@ -1,386 +1,377 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { useCartStore } from '../../store/cartStore';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Plus, Minus, ShoppingCart, Tag, Pill, Store,
-  AlertCircle, Loader2, RefreshCw, ChevronDown, ChevronUp, Building2,
-  FlaskConical, Syringe, Droplets, Wind, Package2, Sparkles
+  Search, Filter, Pill, ShoppingCart, Plus, Minus, ChevronDown, ChevronUp,
+  Building2, Package, AlertTriangle, Sparkles, Clock, X, RefreshCw,
 } from 'lucide-react';
+import api from '../../utils/api';
+import { useCartStore } from '../../store/cartStore';
+import { useDataStore } from '../../store/dataStore';
+import { useAuthStore } from '../../store/authStore';
+import { cn } from '../../utils/cn';
+import { Medicine, MedicineWithAlternatives, RetailerAgency } from '../../types';
+import { MedicineDetailSheet } from '../../components/MedicineDetailSheet';
+import { SearchCommand } from '../../components/SearchCommand';
 
-// ── Medicine type helpers ────────────────────────────────────────────────────
-type MedType = 'tablet' | 'syrup' | 'injection' | 'cream' | 'inhaler' | 'powder';
+const CATEGORIES = ['All', 'Tablets', 'Syrups', 'Injections', 'Creams', 'Drops', 'Inhalers', 'Capsules'];
 
-function getMedType(unit: string, packSize?: string | null): MedType {
-  const s = ((packSize || '') + ' ' + (unit || '')).toLowerCase();
-  if (s.includes('syrup') || s.includes('suspension') || s.includes('solution') || s.includes('drops') || s.includes('bottle')) return 'syrup';
-  if (s.includes('injection') || s.includes('vial') || s.includes('ampoule') || s.includes('infusion')) return 'injection';
-  if (s.includes('cream') || s.includes('gel') || s.includes('ointment') || s.includes('lotion') || s.includes('tube')) return 'cream';
-  if (s.includes('inhaler') || s.includes('rotacap') || s.includes('respule')) return 'inhaler';
-  if (s.includes('sachet') || s.includes('powder')) return 'powder';
-  return 'tablet';
-}
-
-function getPackLabel(packSize?: string | null, unit?: string): string {
-  const s = (packSize || '').toLowerCase();
-  const type = getMedType(unit || '', packSize);
-  if (type === 'syrup' || type === 'injection') {
-    const ml = s.match(/(\d+(?:\.\d+)?)\s*ml/);
-    return ml ? `${ml[1]} ml` : packSize || '';
-  } else if (type === 'cream') {
-    const gm = s.match(/(\d+(?:\.\d+)?)\s*(?:gm|g\b|gram)/);
-    return gm ? `${gm[1]} gm` : packSize || '';
-  } else {
-    const n = s.match(/\b(\d+)\b/);
-    return n ? `${n[1]} tabs/strip` : packSize || '';
-  }
-}
-
-const MED_ICON: Record<MedType, { Icon: React.ElementType; bg: string; color: string; label: string }> = {
-  tablet: { Icon: Pill, bg: 'bg-blue-50/80', color: 'text-blue-500', label: 'Tablet' },
-  syrup: { Icon: FlaskConical, bg: 'bg-amber-50/80', color: 'text-amber-500', label: 'Syrup' },
-  injection: { Icon: Syringe, bg: 'bg-rose-50/80', color: 'text-rose-500', label: 'Injection' },
-  cream: { Icon: Droplets, bg: 'bg-emerald-50/80', color: 'text-emerald-500', label: 'Cream/Gel' },
-  inhaler: { Icon: Wind, bg: 'bg-purple-50/80', color: 'text-purple-500', label: 'Inhaler' },
-  powder: { Icon: Package2, bg: 'bg-slate-50/80', color: 'text-slate-500', label: 'Powder' },
+const getMedicineType = (name: string) => {
+  const n = name.toLowerCase();
+  if (n.includes('tab') || n.includes('cap')) return { label: 'Tablet', color: 'bg-blue-50 text-blue-600 border-blue-200' };
+  if (n.includes('syrup') || n.includes('suspension')) return { label: 'Syrup', color: 'bg-amber-50 text-amber-600 border-amber-200' };
+  if (n.includes('injection') || n.includes('vial')) return { label: 'Injection', color: 'bg-rose-50 text-rose-600 border-rose-200' };
+  if (n.includes('cream') || n.includes('ointment') || n.includes('gel')) return { label: 'Topical', color: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+  if (n.includes('inhaler') || n.includes('rotacap')) return { label: 'Inhaler', color: 'bg-purple-50 text-purple-600 border-purple-200' };
+  if (n.includes('drop') || n.includes('eye') || n.includes('ear')) return { label: 'Drops', color: 'bg-cyan-50 text-cyan-600 border-cyan-200' };
+  return { label: 'Medicine', color: 'bg-slate-50 text-slate-500 border-slate-200' };
 };
 
-import api from '../../utils/api';
-import { MedicineWithAlternatives, Medicine } from '../../types';
-
-interface AgencyInfo {
-  wholesaler_id: string;
-  is_primary: boolean;
-  name: string;
-  phone: string;
-}
-
-export const MarketplacePage = () => {
-  const { addItem, items, updateQty } = useCartStore();
-  const navigate = useNavigate();
-
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [activeAgency, setActiveAgency] = useState<string>('ALL');
-  const [medicines, setMedicines] = useState<MedicineWithAlternatives[]>([]);
-  const [agencies, setAgencies] = useState<AgencyInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedAlts, setExpandedAlts] = useState<string | null>(null);
-
-  const fetchMedicines = useCallback(async (searchTerm = '', agency = 'ALL') => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (searchTerm) params.set('search', searchTerm);
-      if (agency !== 'ALL') params.set('agency', agency);
-      const { data } = await api.get(`/marketplace/medicines?${params.toString()}`);
-      setMedicines(data.medicines || []);
-      if (data.agencies) setAgencies(data.agencies);
-    } catch (err: any) {
-      const msg = err.response?.data?.error || 'Failed to load medicines';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMedicines('', 'ALL');
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => { setSearch(searchInput); }, 400);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
-
-  useEffect(() => {
-    fetchMedicines(search, activeAgency);
-  }, [search, activeAgency]);
-
-  const getCartQty = (id: string) => items.find((i) => i.medicine.id === id)?.qty || 0;
-  const totalCartItems = items.reduce((sum, i) => sum + i.qty, 0);
-  const toggleAlternatives = (id: string) => setExpandedAlts((prev) => (prev === id ? null : id));
-
-  const MedicineCard = ({ med, isAlternative = false }: { med: MedicineWithAlternatives | Medicine; isAlternative?: boolean }) => {
-    const qty = getCartQty(med.id);
-    const margin = ((med.mrp - med.price) / med.mrp * 100).toFixed(0);
-    const isHighMargin = parseInt(margin) > 25;
-    const supplierName = (med as any).wholesaler?.name || 'Unknown';
-    const alts = !isAlternative ? (med as MedicineWithAlternatives).alternatives : undefined;
-    const hasAlts = !!alts && alts.length > 0;
-    const isExpanded = expandedAlts === med.id;
-
-    const medType = getMedType(med.unit, med.pack_size);
-    const { Icon, bg, color, label } = MED_ICON[medType];
-    const packLabel = getPackLabel(med.pack_size, med.unit);
-    const salt = (med as any).salt || '';
-
-    return (
-      <div className={`bg-white rounded-[24px] border border-slate-200/60 transition-all duration-300 flex flex-col relative group ${isAlternative ? 'p-4 hover:bg-slate-50' : 'p-5 hover:shadow-xl hover:shadow-emerald-900/5 hover:-translate-y-1 hover:border-emerald-200/50'}`}>
-
-        {/* Badges */}
-        {isHighMargin && !isAlternative && (
-          <div className="absolute top-4 left-4 bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1 z-10">
-            <Tag size={10} /> {margin}% Margin
-          </div>
-        )}
-        {(med as any).stock_qty <= 0 && (
-          <div className="absolute top-4 right-4 bg-rose-500 text-white px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest z-10 shadow-sm border border-rose-600">
-            Out of Stock
-          </div>
-        )}
-
-        {/* Icon */}
-        {!isAlternative && (
-          <div className="flex justify-center mt-2 mb-4 group-hover:scale-105 transition-transform duration-300">
-            <div className={`w-16 h-16 rounded-[20px] ${bg} border border-white/50 flex flex-col items-center justify-center gap-1 shadow-sm`}>
-              <Icon size={26} className={color} strokeWidth={2} />
-              <span className={`text-[8px] font-black uppercase tracking-widest ${color}`}>{label}</span>
-            </div>
-          </div>
-        )}
-
-        {isAlternative && (
-          <div className={`inline-flex items-center justify-center gap-1 mb-2 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${bg} ${color} w-fit`}>
-            <Icon size={9} strokeWidth={2.5} /> {label}
-          </div>
-        )}
-
-        {/* Info */}
-        <div className={isAlternative ? 'mb-3' : 'mt-1 mb-1 text-center px-2'}>
-          <h3 className={`font-extrabold text-slate-800 leading-tight mb-1 group-hover:text-emerald-700 transition-colors ${isAlternative ? 'text-sm' : 'text-[17px] text-center'}`}>{med.name}</h3>
-
-          <div className={`flex flex-wrap items-center gap-1.5 ${isAlternative ? '' : 'justify-center'} mt-1`}>
-            <p className="text-slate-400 font-bold uppercase tracking-wide text-[10px] bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded">{med.brand}</p>
-            {packLabel && (
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${color} ${bg}`}>
-                {packLabel}
-              </span>
-            )}
-          </div>
-
-          {salt && (
-            <p className={`text-slate-500 font-medium ${isAlternative ? 'text-[10px] mt-2' : 'text-[11px] text-center mt-2 line-clamp-1'}`} title={salt}>
-              {salt}
-            </p>
-          )}
-        </div>
-
-        {/* Bottom Section */}
-        <div className="mt-auto pt-4 space-y-3">
-          <div className={`flex items-center gap-1.5 text-[11px] text-slate-500 font-medium px-2 ${isAlternative ? '' : 'justify-center'}`}>
-            <Building2 size={13} className="text-indigo-400" /> Sold by: <span className="font-bold text-slate-700 truncate">{supplierName}</span>
-          </div>
-
-          <div className="flex justify-between items-center bg-slate-50/80 border border-slate-100/80 rounded-[16px] p-3">
-            <div className="text-center flex-1 border-r border-slate-200">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">MRP</p>
-              <p className="text-slate-500 line-through font-semibold text-sm">₹{med.mrp}</p>
-            </div>
-            <div className="text-center flex-1">
-              <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wide">PTR</p>
-              <p className="text-slate-900 font-black text-lg leading-none">₹{med.price}</p>
-            </div>
-          </div>
-
-          {qty === 0 ? (
-            <button
-              onClick={() => addItem((med as any), 1)}
-              disabled={(med as any).stock_qty <= 0}
-              className="w-full bg-slate-900 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 shadow-md shadow-slate-900/10 hover:shadow-emerald-600/30 transition-all active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2 group/btn"
-            >
-              <Plus size={14} className="group-hover/btn:rotate-90 transition-transform" /> Add to Cart
-            </button>
-          ) : (
-            <div className="flex items-center justify-between bg-emerald-50 text-emerald-900 p-1.5 rounded-2xl border border-emerald-200/60 shadow-inner">
-              <button onClick={() => updateQty(med.id, qty - 1)} className="w-10 h-10 flex items-center justify-center bg-white hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors shadow-sm text-emerald-700"><Minus size={16} strokeWidth={2.5} /></button>
-              <span className="text-base font-black flex-1 text-center">{qty}</span>
-              <button
-                onClick={() => updateQty(med.id, qty + 1)}
-                disabled={(med as any).stock_qty <= qty}
-                className="w-10 h-10 flex items-center justify-center bg-white hover:bg-emerald-100 hover:text-emerald-700 rounded-xl transition-colors shadow-sm text-emerald-700 disabled:opacity-50"><Plus size={16} strokeWidth={2.5} /></button>
-            </div>
-          )}
-
-          {hasAlts && (
-            <button onClick={() => toggleAlternatives(med.id)}
-              className="w-full flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100/50 hover:border-indigo-200 rounded-2xl py-2.5 transition-all"
-            >
-              <Store size={12} />
-              {alts!.length} other supplier{alts!.length > 1 ? 's' : ''}
-              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-            </button>
-          )}
-        </div>
-
-        {hasAlts && isExpanded && (
-          <div className="mt-3 pt-4 border-t border-slate-100 space-y-3">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2.5 flex items-center gap-2">
-              <span className="h-px bg-slate-200 flex-1"></span>
-              Also available from
-              <span className="h-px bg-slate-200 flex-1"></span>
-            </p>
-            {alts!.map((alt) => (
-              <div key={alt.id}>
-                <MedicineCard med={alt as MedicineWithAlternatives} isAlternative={true} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+const MedicineCard: React.FC<{
+  med: MedicineWithAlternatives;
+  cartQty: number;
+  onAdd: () => void;
+  onInc: () => void;
+  onDec: () => void;
+  onDetail: () => void;
+}> = ({ med, cartQty, onAdd, onInc, onDec, onDetail }) => {
+  const [showAlts, setShowAlts] = useState(false);
+  const margin = med.mrp > 0 ? ((med.mrp - med.price) / med.mrp * 100) : 0;
+  const typeInfo = getMedicineType(med.name);
+  const isOutOfStock = med.stock_qty <= 0;
+  const isLow = med.stock_qty > 0 && med.stock_qty <= 10;
+  const { addItem } = useCartStore();
 
   return (
-    <div className="space-y-6 lg:space-y-8 pb-24 animate-in fade-in zoom-in-95 duration-500">
-
-      {/* Search Banner */}
-      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#042F2E] via-[#064E3B] to-[#0D9488] shadow-2xl shadow-emerald-900/15">
-        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[150%] bg-emerald-400/10 blur-[100px] rounded-full mix-blend-overlay" />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[120%] bg-teal-300/10 blur-[80px] rounded-full mix-blend-overlay" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-30" />
-        </div>
-
-        <div className="relative z-10 px-6 py-10 lg:px-12 lg:py-14 max-w-4xl mx-auto flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-6 shadow-sm">
-            <Sparkles size={12} className="text-emerald-300" />
-            <span className="text-[10px] sm:text-xs font-bold text-emerald-50 tracking-widest uppercase">Browse over 2.5L+ medicines</span>
-          </div>
-
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mb-4 leading-tight drop-shadow-sm">
-            Search & Order Medicines<br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 to-teal-100">Instantly.</span>
-          </h2>
-          <p className="text-emerald-100/80 text-sm sm:text-base font-medium max-w-xl mx-auto mb-10 leading-relaxed">
-            Search by brand, salt, or category. Connect directly with your approved wholesale agencies.
-          </p>
-
-          <div className="relative w-full shadow-2xl group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6 group-focus-within:text-emerald-500 transition-colors" />
-            <input type="text" placeholder="Search for Paracetamol, Amoxicillin..."
-              className="w-full pl-16 pr-6 py-5 rounded-[24px] text-slate-900 font-bold placeholder-slate-400 focus:ring-4 focus:ring-emerald-500/30 outline-none border-0 text-lg transition-all"
-              value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-            />
-            {searchInput && (
-              <button onClick={() => setSearchInput('')} className="absolute right-6 top-1/2 -translate-y-1/2 bg-slate-100 text-slate-500 hover:bg-slate-200 px-3 py-1 rounded-lg text-xs font-bold transition-colors">
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Left Sidebar (Agencies filter) */}
-        <div className="w-full lg:w-[260px] space-y-4 shrink-0">
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/60 shadow-sm">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Store size={18} className="text-slate-400" />
-              <h3 className="font-extrabold text-slate-800 tracking-tight text-[15px]">My Agencies</h3>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <button onClick={() => setActiveAgency('ALL')}
-                className={`text-left px-4 py-3 rounded-2xl text-[13px] font-bold transition-all ${activeAgency === 'ALL' ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}
-              >All Agencies</button>
-              {agencies.map((ag) => (
-                <button key={ag.wholesaler_id} onClick={() => setActiveAgency(ag.wholesaler_id)}
-                  className={`text-left px-4 py-3 rounded-2xl text-[13px] font-bold transition-all flex items-center gap-2.5 ${activeAgency === ag.wholesaler_id ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-100'}`}
-                >
-                  <Building2 size={14} className={activeAgency === ag.wholesaler_id ? 'text-emerald-200' : 'text-slate-400'} />
-                  <span className="truncate">{ag.name}</span>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => navigate('/shop/setup-agencies')}
-              className="mt-4 w-full flex items-center justify-center gap-2 bg-white border-2 border-dashed border-slate-300 text-slate-500 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 font-black text-[11px] uppercase tracking-widest rounded-2xl py-3.5 transition-all"
-            >
-              <Plus size={14} /> Manage Agencies
-            </button>
-          </div>
-        </div>
-
-        {/* Main Grid */}
-        <div className="flex-1 min-w-0">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-32 gap-5">
-              <Loader2 size={36} className="text-emerald-500 animate-spin" />
-              <p className="text-slate-400 font-bold text-sm tracking-wide">Loading Catalogue...</p>
-            </div>
-          ) : error ? (
-            <div className="bg-rose-50 border border-rose-200 rounded-3xl p-10 flex flex-col items-center text-center max-w-md mx-auto mt-10">
-              <AlertCircle size={44} className="text-rose-500 mb-4" />
-              <h3 className="text-xl font-bold text-rose-900 mb-2">Error Loading Data</h3>
-              <p className="text-rose-600 font-medium mb-6">{error}</p>
-              <button onClick={() => fetchMedicines(search, activeAgency)} className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shadow-md shadow-rose-600/20">
-                <RefreshCw size={16} /> Try Again
-              </button>
-            </div>
-          ) : agencies.length === 0 ? (
-            <div className="bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9] border-2 border-dashed border-slate-300 rounded-[32px] p-12 lg:p-16 text-center space-y-6 max-w-2xl mx-auto mt-8">
-              <div className="w-24 h-24 rounded-[32px] bg-white shadow-xl shadow-slate-200/50 flex items-center justify-center mx-auto border border-slate-100">
-                <Store size={48} className="text-emerald-500" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-800 mb-2">No Agencies Linked Yet</h3>
-                <p className="text-slate-500 font-medium max-w-md mx-auto leading-relaxed">Connect with wholesale agencies to browse their catalogue and start placing orders directly.</p>
-              </div>
-              <button onClick={() => navigate('/shop/setup-agencies')}
-                className="inline-flex items-center gap-2 bg-slate-900 text-white font-bold text-sm px-8 py-4 rounded-2xl hover:bg-slate-800 hover:shadow-xl transition-all hover:-translate-y-0.5"
-              >
-                <Plus size={18} /> Add Your First Agency
-              </button>
-            </div>
-          ) : medicines.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 px-4 text-center bg-white rounded-[32px] border border-slate-200/60 shadow-sm mt-4">
-              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-5 border border-slate-100">
-                <Search className="h-10 w-10 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-black text-slate-800 mb-2">No medicines found</h3>
-              {search && <p className="text-slate-500 font-medium max-w-sm">We couldn't find any exact matches for "{search}".</p>}
-            </div>
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn("bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden group", isOutOfStock && "opacity-60")}
+    >
+      <div className="p-4 cursor-pointer" onClick={onDetail}>
+        {/* Top row: Type + Stock */}
+        <div className="flex items-center justify-between mb-3">
+          <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full border", typeInfo.color)}>{typeInfo.label}</span>
+          {isOutOfStock ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-rose-600"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" />Out of Stock</span>
+          ) : isLow ? (
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-600"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />Low Stock</span>
           ) : (
-            <>
-              <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
-                <h3 className="text-lg font-black text-slate-800 tracking-tight">Available Medicines <span className="text-slate-400 font-bold ml-2 text-sm">({medicines.length})</span></h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6">
-                {medicines.map((med) => (
-                  <div key={med.id}>
-                    <MedicineCard med={med} />
-                  </div>
-                ))}
-              </div>
-            </>
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />In Stock</span>
           )}
         </div>
+
+        {/* Medicine Info */}
+        <h3 className="text-sm font-semibold text-slate-800 leading-tight line-clamp-2 group-hover:text-blue-700 transition-colors">{med.name}</h3>
+        <p className="text-xs text-slate-400 mt-0.5">{med.brand}</p>
+        {med.pack_size && <p className="text-[11px] text-slate-500 mt-1">{med.pack_size}</p>}
+        {med.salt && <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{med.salt}</p>}
+
+        {/* Pricing */}
+        <div className="flex items-end justify-between mt-3 pt-3 border-t border-slate-50">
+          <div>
+            <span className="text-xs text-slate-400 line-through mr-1.5">₹{med.mrp.toFixed(0)}</span>
+            <span className="text-base font-bold text-blue-700">₹{med.price.toFixed(2)}</span>
+          </div>
+          {margin > 15 && (
+            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+              {margin.toFixed(0)}% Margin
+            </span>
+          )}
+        </div>
+
+        {/* Supplier */}
+        {med.wholesaler && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <Building2 size={10} className="text-slate-400" />
+            <span className="text-[10px] text-slate-400 truncate">{med.wholesaler.name}</span>
+          </div>
+        )}
       </div>
 
-      {/* Floating View Cart */}
-      {totalCartItems > 0 && (
-        <div className="fixed lg:hidden bottom-[84px] left-6 right-6 z-40 animate-slide-up">
-          <button onClick={() => navigate('/shop/cart')}
-            className="w-full flex items-center justify-between bg-emerald-600 text-white p-4 rounded-2xl shadow-xl shadow-emerald-900/20 active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <div className="bg-emerald-700 w-10 h-10 rounded-xl flex items-center justify-center font-black">
-                {totalCartItems}
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-200">Cart Total</p>
-                <p className="text-base font-black leading-none mt-0.5">₹{items.reduce((sum, item) => sum + ((item as any).unit_price * item.qty), 0).toFixed(2)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 font-bold text-sm bg-white/20 px-4 py-2 rounded-xl">
-              View Cart <ShoppingCart size={16} />
-            </div>
+      {/* Cart Controls */}
+      <div className="px-4 pb-3" onClick={e => e.stopPropagation()}>
+        {isOutOfStock ? (
+          <div className="py-2 text-center text-xs text-slate-400 bg-slate-50 rounded-lg">Unavailable</div>
+        ) : cartQty > 0 ? (
+          <div className="flex items-center justify-between bg-blue-50 rounded-lg p-1">
+            <button onClick={onDec} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"><Minus size={14} /></button>
+            <span className="text-sm font-bold text-blue-700">{cartQty}</span>
+            <button onClick={onInc} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-100 text-blue-600 transition-colors"><Plus size={14} /></button>
+          </div>
+        ) : (
+          <button onClick={onAdd} className="w-full py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors flex items-center justify-center gap-1.5">
+            <Plus size={14} /> Add to Cart
           </button>
+        )}
+      </div>
+
+      {/* Alternatives */}
+      {med.alternatives && med.alternatives.length > 0 && (
+        <div className="border-t border-slate-50">
+          <button onClick={() => setShowAlts(!showAlts)} className="w-full flex items-center justify-center gap-1 py-2 text-[10px] font-semibold text-slate-500 hover:text-blue-600 transition-colors">
+            {med.alternatives.length} more supplier{med.alternatives.length > 1 ? 's' : ''}
+            {showAlts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+          <AnimatePresence>
+            {showAlts && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                <div className="px-4 pb-3 space-y-2">
+                  {med.alternatives.map(alt => (
+                    <div key={alt.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                      <div>
+                        <p className="text-[10px] text-slate-500">{alt.wholesaler?.name}</p>
+                        <p className="text-xs font-bold text-slate-700">₹{alt.price.toFixed(2)}</p>
+                      </div>
+                      <button onClick={() => addItem(alt, 1)} disabled={alt.stock_qty <= 0} className="text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-40">
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
+export const MarketplacePage: React.FC = () => {
+  const [medicines, setMedicines] = useState<MedicineWithAlternatives[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All');
+  const [agencies, setAgencies] = useState<RetailerAgency[]>([]);
+  const [selectedAgency, setSelectedAgency] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedMedicine, setSelectedMedicine] = useState<MedicineWithAlternatives | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const { items, addItem, updateQty, removeItem } = useCartStore();
+  const { orders } = useDataStore();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Fetch agencies
+  useEffect(() => {
+    api.get('/retailer/agencies').then(r => {
+      const active = (r.data || []).filter((a: RetailerAgency) => a.status === 'ACTIVE');
+      setAgencies(active);
+    }).catch(() => {});
+  }, []);
+
+  // Fetch medicines
+  const fetchMedicines = useCallback(async (q?: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set('search', q);
+      if (selectedAgency) params.set('agency_id', selectedAgency);
+      const { data } = await api.get(`/marketplace/medicines?${params.toString()}`);
+      setMedicines(Array.isArray(data) ? data : data?.medicines || []);
+    } catch { setMedicines([]); }
+    setLoading(false);
+  }, [selectedAgency]);
+
+  useEffect(() => { fetchMedicines(); }, [selectedAgency]);
+
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchMedicines(val), 400);
+  };
+
+  // Category filter (client-side)
+  const filtered = category === 'All' ? medicines : medicines.filter(m => {
+    const n = m.name.toLowerCase();
+    const cat = category.toLowerCase();
+    if (cat === 'tablets') return n.includes('tab');
+    if (cat === 'syrups') return n.includes('syrup') || n.includes('suspension');
+    if (cat === 'injections') return n.includes('injection') || n.includes('vial');
+    if (cat === 'creams') return n.includes('cream') || n.includes('ointment') || n.includes('gel');
+    if (cat === 'drops') return n.includes('drop') || n.includes('eye') || n.includes('ear');
+    if (cat === 'inhalers') return n.includes('inhaler') || n.includes('rotacap');
+    if (cat === 'capsules') return n.includes('cap');
+    return true;
+  });
+
+  // Quick Reorder: derive recently ordered medicines
+  const recentMedicines = React.useMemo(() => {
+    const delivered = orders.filter(o => o.status === 'DELIVERED');
+    const seen = new Set<string>();
+    const result: { name: string; medicine?: Medicine }[] = [];
+    for (const order of delivered) {
+      for (const item of order.items) {
+        if (!seen.has(item.medicine_name) && result.length < 6) {
+          seen.add(item.medicine_name);
+          const found = medicines.find(m => m.name === item.medicine_name || m.id === item.medicine_id);
+          if (found) result.push({ name: item.medicine_name, medicine: found });
+        }
+      }
+    }
+    return result;
+  }, [orders, medicines]);
+
+  const cartCount = items.length;
+
+  // Keyboard shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setSearchOpen(true); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <div className="flex-1 relative" onClick={() => setSearchOpen(true)}>
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={e => handleSearch(e.target.value)}
+            onClick={e => e.stopPropagation()}
+            placeholder="Search medicines, salts, brands..."
+            className="w-full pl-9 pr-16 py-2.5 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-slate-400 transition-all"
+          />
+          <kbd className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 items-center gap-0.5">⌘K</kbd>
+        </div>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={cn("px-3 py-2.5 rounded-xl border transition-colors flex items-center gap-1.5", showFilters ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}
+        >
+          <Filter size={16} />
+          <span className="text-xs font-medium hidden sm:inline">Filters</span>
+        </button>
+      </div>
+
+      {/* Filters Panel */}
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Agency</p>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setSelectedAgency('')} className={cn("text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors", !selectedAgency ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                    All Agencies
+                  </button>
+                  {agencies.map(a => (
+                    <button key={a.wholesaler_id} onClick={() => setSelectedAgency(a.wholesaler_id)}
+                      className={cn("text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors", selectedAgency === a.wholesaler_id ? "bg-blue-50 border-blue-200 text-blue-600" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                      {a.wholesaler.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Category Pills */}
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={cn("text-xs font-medium px-4 py-1.5 rounded-full border whitespace-nowrap transition-colors",
+              category === cat ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50")}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Quick Reorder Section */}
+      {recentMedicines.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Sparkles size={14} className="text-amber-500" />
+            <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Order Again</h3>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            {recentMedicines.map((item, i) => (
+              <motion.div key={i} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                className="min-w-[140px] bg-white rounded-xl border border-slate-100 p-3 shadow-sm shrink-0">
+                <p className="text-xs font-medium text-slate-700 line-clamp-2">{item.name}</p>
+                {item.medicine && (
+                  <>
+                    <p className="text-sm font-bold text-blue-700 mt-1">₹{item.medicine.price.toFixed(0)}</p>
+                    <button onClick={() => item.medicine && addItem(item.medicine, 1)} className="w-full mt-2 py-1.5 text-[10px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                      + Add to Cart
+                    </button>
+                  </>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Results Count */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500">{filtered.length} medicine{filtered.length !== 1 ? 's' : ''} found</p>
+        <button onClick={() => fetchMedicines(search)} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 font-medium"><RefreshCw size={12} />Refresh</button>
+      </div>
+
+      {/* Medicine Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl border border-slate-100 p-4 animate-pulse">
+              <div className="flex justify-between mb-3"><div className="w-16 h-5 bg-slate-100 rounded-full" /><div className="w-12 h-4 bg-slate-100 rounded-full" /></div>
+              <div className="w-3/4 h-4 bg-slate-100 rounded mb-2" />
+              <div className="w-1/2 h-3 bg-slate-100 rounded mb-4" />
+              <div className="w-1/3 h-6 bg-slate-100 rounded" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <Package size={40} className="text-slate-300 mx-auto mb-3" />
+          <p className="text-sm font-medium text-slate-500">No medicines found</p>
+          <p className="text-xs text-slate-400 mt-1">Try a different search or filter</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((med, i) => {
+            const cartItem = items.find(ci => ci.medicine.id === med.id);
+            return (
+              <MedicineCard
+                key={med.id}
+                med={med}
+                cartQty={cartItem?.qty || 0}
+                onAdd={() => addItem(med, 1)}
+                onInc={() => updateQty(med.id, (cartItem?.qty || 0) + 1)}
+                onDec={() => { const q = (cartItem?.qty || 0); q <= 1 ? removeItem(med.id) : updateQty(med.id, q - 1); }}
+                onDetail={() => setSelectedMedicine(med)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {/* Floating Cart Banner (mobile) */}
+      {cartCount > 0 && (
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="fixed bottom-[84px] left-4 right-4 lg:hidden z-40">
+          <a href="#/shop/cart" className="flex items-center justify-between bg-blue-600 text-white px-5 py-3.5 rounded-2xl shadow-lg shadow-blue-600/30">
+            <div className="flex items-center gap-2.5">
+              <ShoppingCart size={18} />
+              <span className="text-sm font-semibold">{cartCount} item{cartCount > 1 ? 's' : ''}</span>
+            </div>
+            <span className="text-sm font-bold">View Cart →</span>
+          </a>
+        </motion.div>
+      )}
+
+      {/* Medicine Detail Sheet */}
+      {selectedMedicine && <MedicineDetailSheet medicine={selectedMedicine} onClose={() => setSelectedMedicine(null)} />}
+
+      {/* Search Command */}
+      <SearchCommand isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+    </div>
+  );
+};

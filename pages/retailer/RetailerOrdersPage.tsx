@@ -1,178 +1,233 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ClipboardList, Clock, CheckCircle, Truck, Package, XCircle,
+  ChevronDown, ChevronUp, Building2, RefreshCw, ShoppingBag,
+  ShoppingCart, Calendar, Hash, ArrowRight, TrendingUp,
+} from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { useAuthStore } from '../../store/authStore';
-import { Clock, CheckCircle, Package, XCircle, Store, ChevronDown, ChevronUp, Loader2, Filter, Receipt, ShoppingBag, Truck, RefreshCw } from 'lucide-react';
+import { useCartStore } from '../../store/cartStore';
+import { cn } from '../../utils/cn';
 import { Order, OrderStatus } from '../../types';
+import { OrderTimeline } from '../../components/OrderTimeline';
 
-export const RetailerOrdersPage = () => {
-   const { orders, fetchOrders, cancelOrder } = useDataStore();
-   const { retailer } = useAuthStore();
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; bg: string }> = {
+  PENDING: { label: 'Pending', color: 'text-amber-600', icon: Clock, bg: 'bg-amber-50 border-amber-200' },
+  ACCEPTED: { label: 'Accepted', color: 'text-blue-600', icon: CheckCircle, bg: 'bg-blue-50 border-blue-200' },
+  DISPATCHED: { label: 'Dispatched', color: 'text-indigo-600', icon: Truck, bg: 'bg-indigo-50 border-indigo-200' },
+  DELIVERED: { label: 'Delivered', color: 'text-emerald-600', icon: Package, bg: 'bg-emerald-50 border-emerald-200' },
+  CANCELLED: { label: 'Cancelled', color: 'text-rose-600', icon: XCircle, bg: 'bg-rose-50 border-rose-200' },
+  REJECTED: { label: 'Rejected', color: 'text-rose-600', icon: XCircle, bg: 'bg-rose-50 border-rose-200' },
+};
 
-   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
-   const [expandedOrders, setExpandedOrders] = useState<Record<string, boolean>>({});
-   const [cancellingId, setCancellingId] = useState<string | null>(null);
+const TABS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'ACTIVE', label: 'Active' },
+  { key: 'DELIVERED', label: 'Completed' },
+  { key: 'CANCELLED', label: 'Cancelled' },
+];
 
-   // Always refresh orders when visiting this page
-   useEffect(() => { fetchOrders(); }, []);
+export const RetailerOrdersPage: React.FC = () => {
+  const { orders, fetchOrders, cancelOrder } = useDataStore();
+  const { addMultipleItems } = useCartStore();
+  const [tab, setTab] = useState('ALL');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
-   const myOrders = orders.filter(o => o.retailer_id === retailer?.id);
-   const filteredOrders = filter === 'ALL' ? myOrders : myOrders.filter(o => o.status === filter);
+  useEffect(() => { fetchOrders().catch(() => {}); }, []);
 
-   const toggleExpand = (id: string) => setExpandedOrders(prev => ({ ...prev, [id]: !prev[id] }));
+  const filtered = orders.filter(o => {
+    if (tab === 'ALL') return true;
+    if (tab === 'ACTIVE') return ['PENDING', 'ACCEPTED', 'DISPATCHED'].includes(o.status);
+    if (tab === 'DELIVERED') return o.status === 'DELIVERED';
+    if (tab === 'CANCELLED') return o.status === 'CANCELLED' || o.status === 'REJECTED';
+    return true;
+  }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-   const handleCancelOrder = async (orderId: string) => {
-      if (!window.confirm('Are you sure you want to cancel this order?')) return;
-      setCancellingId(orderId);
-      try {
-         await cancelOrder(orderId);
-      } catch (err: any) {
-         alert(err?.response?.data?.error || 'Failed to cancel order');
-      } finally {
-         setCancellingId(null);
-      }
-   };
+  const handleCancel = async (orderId: string) => {
+    setCancelling(orderId);
+    try { await cancelOrder(orderId); } catch (e) { console.error(e); }
+    setCancelling(null);
+    setConfirmCancel(null);
+  };
 
-   const getSupplierName = (order: any) =>
-      order.wholesaler?.name || 'Supplier';
+  const handleReorder = (order: Order) => {
+    const cartItems = order.items.map(item => ({
+      medicine: {
+        id: item.medicine_id,
+        wholesaler_id: order.wholesaler_id,
+        name: item.medicine_name,
+        salt: '',
+        brand: '',
+        unit: '',
+        mrp: item.mrp,
+        price: item.unit_price,
+        gst_rate: item.gst_rate,
+        hsn_code: item.hsn_code || '',
+        stock_qty: 999,
+        is_active: true,
+      },
+      qty: item.qty,
+    }));
+    addMultipleItems(cartItems);
+  };
 
-   const StatusBadge = ({ status }: { status: OrderStatus }) => {
-      switch (status) {
-         case 'PENDING': return <div className="flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1.5 rounded-xl border border-amber-200/50 shadow-sm"><Clock size={14} strokeWidth={2.5} /><span className="text-[11px] font-black uppercase tracking-widest">Pending</span></div>;
-         case 'ACCEPTED': return <div className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl border border-blue-200/50 shadow-sm"><CheckCircle size={14} strokeWidth={2.5} /><span className="text-[11px] font-black uppercase tracking-widest">Accepted</span></div>;
-         case 'DISPATCHED': return <div className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl border border-indigo-200/50 shadow-sm"><Truck size={14} strokeWidth={2.5} /><span className="text-[11px] font-black uppercase tracking-widest">Dispatched</span></div>;
-         case 'DELIVERED': return <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl border border-emerald-200/50 shadow-sm"><CheckCircle size={14} strokeWidth={2.5} /><span className="text-[11px] font-black uppercase tracking-widest">Delivered</span></div>;
-         default: return <div className="flex items-center gap-1.5 bg-rose-50 text-rose-600 px-3 py-1.5 rounded-xl border border-rose-200/50 shadow-sm"><XCircle size={14} strokeWidth={2.5} /><span className="text-[11px] font-black uppercase tracking-widest">{status}</span></div>;
-      }
-   };
-
-   return (
-      <div className="animate-in fade-in zoom-in-95 duration-500 space-y-6 pb-24">
-         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-            <div className="flex items-center gap-4">
-               <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-sm border border-indigo-100 shrink-0">
-                  <Receipt size={24} strokeWidth={2} />
-               </div>
-               <div>
-                  <h1 className="text-3xl lg:text-4xl font-black text-slate-800 tracking-tight leading-none mb-1">My Orders</h1>
-                  <p className="text-slate-500 font-medium text-sm">Track and manage your recent purchases</p>
-               </div>
+  return (
+    <div className="space-y-5">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: orders.length, icon: ClipboardList, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-50' },
+          { label: 'Active', value: orders.filter(o => ['PENDING','ACCEPTED','DISPATCHED'].includes(o.status)).length, icon: Clock, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50' },
+          { label: 'Delivered', value: orders.filter(o => o.status === 'DELIVERED').length, icon: Package, color: 'from-emerald-500 to-green-500', bg: 'bg-emerald-50' },
+          { label: 'Value', value: `₹${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`, icon: TrendingUp, color: 'from-indigo-500 to-purple-500', bg: 'bg-indigo-50' },
+        ].map((stat, i) => (
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className="bg-white rounded-2xl border border-slate-100/80 p-3.5 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn("w-7 h-7 rounded-lg bg-gradient-to-br flex items-center justify-center", stat.color)}>
+                <stat.icon size={13} className="text-white" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
             </div>
-
-            <div className="flex items-center gap-3">
-               <button
-                  onClick={() => fetchOrders()}
-                  className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-[20px] border border-slate-200/60 shadow-sm shadow-slate-100 text-indigo-600 text-sm font-bold hover:bg-indigo-50 hover:border-indigo-200 transition-all"
-               >
-                  <RefreshCw size={16} />
-                  <span className="hidden sm:inline">Refresh</span>
-               </button>
-               <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-[20px] border border-slate-200/60 shadow-sm shadow-slate-100">
-                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                     <Filter size={16} className="text-slate-400" />
-                  </div>
-                  <select
-                     value={filter}
-                     onChange={e => setFilter(e.target.value as OrderStatus | 'ALL')}
-                     className="bg-transparent border-none text-sm font-bold text-slate-700 outline-none cursor-pointer pr-4 focus:ring-0 appearance-none"
-                  >
-                     <option value="ALL">All Orders ({myOrders.length})</option>
-                     <option value="PENDING">Pending</option>
-                     <option value="ACCEPTED">Accepted</option>
-                     <option value="DISPATCHED">Dispatched</option>
-                     <option value="DELIVERED">Delivered</option>
-                     <option value="CANCELLED">Cancelled</option>
-                     <option value="REJECTED">Rejected</option>
-                  </select>
-                  <ChevronDown size={14} className="text-slate-400 pointer-events-none -ml-2" />
-               </div>
-            </div>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredOrders.map(order => {
-               const isExpanded = expandedOrders[order.id];
-               const visibleItems = isExpanded ? order.items : order.items.slice(0, 2);
-
-               return (
-                  <div key={order.id} className="bg-white p-6 rounded-[32px] border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 flex flex-col group">
-                     <div className="flex justify-between items-start mb-5">
-                        <div className="space-y-2">
-                           <div className="flex items-center gap-2">
-                              <span className="font-black text-slate-800 text-lg tracking-tight">#{order.invoice_no || order.id.slice(-6).toUpperCase()}</span>
-                           </div>
-                           <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                           <div className="inline-flex items-center gap-1.5 text-[10px] text-indigo-600 font-bold uppercase tracking-widest bg-indigo-50/80 px-2 py-1 rounded border border-indigo-100 mt-1">
-                              <Store size={12} /> {getSupplierName(order)}
-                           </div>
-                        </div>
-                        <StatusBadge status={order.status} />
-                     </div>
-
-                     <div className="space-y-3 mb-5 border-t border-slate-100 pt-5 flex-1 p-1">
-                        {visibleItems.map(item => (
-                           <div key={item.id} className="flex items-start gap-4 text-sm group/item">
-                              <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
-                                 <Package size={14} className="text-slate-400 group-hover/item:text-emerald-500 transition-colors" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                 <span className="block text-slate-700 font-semibold truncate leading-tight group-hover/item:text-emerald-700 transition-colors">{item.medicine_name}</span>
-                                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded mt-0.5 inline-block">Qty: {item.qty}</span>
-                              </div>
-                              <span className="font-black text-slate-800">₹{item.total_price.toFixed(2)}</span>
-                           </div>
-                        ))}
-                        {order.items.length > 2 && (
-                           <button
-                              onClick={() => toggleExpand(order.id)}
-                              className="w-full flex justify-center items-center gap-2 text-[11px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50/50 hover:bg-emerald-50 mt-3 py-2.5 rounded-xl border border-emerald-100/50 transition-colors"
-                           >
-                              {isExpanded ? (
-                                 <><ChevronUp size={14} /> Show Less</>
-                              ) : (
-                                 <><ChevronDown size={14} /> + {order.items.length - 2} more items</>
-                              )}
-                           </button>
-                        )}
-                     </div>
-
-                     <div className="pt-5 border-t border-slate-100 flex justify-between items-center mt-auto">
-                        <div className="flex-1">
-                           {order.status === 'PENDING' ? (
-                              <button
-                                 onClick={() => handleCancelOrder(order.id)}
-                                 disabled={cancellingId === order.id}
-                                 className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 transition-colors disabled:opacity-50 border border-rose-100"
-                              >
-                                 {cancellingId === order.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} strokeWidth={2.5} />} Cancel
-                              </button>
-                           ) : (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1"><CheckCircle size={12} className="text-emerald-400" /> Order locked</span>
-                           )}
-                        </div>
-                        <div className="text-right pl-4">
-                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Amount</p>
-                           <p className="text-2xl font-black text-slate-800 leading-none">₹{order.total_amount.toFixed(2)}</p>
-                        </div>
-                     </div>
-                  </div>
-               );
-            })}
-         </div>
-
-         {filteredOrders.length === 0 && (
-            <div className="py-20 flex flex-col items-center justify-center text-center bg-white rounded-[40px] border border-slate-200/60 border-dashed max-w-2xl mx-auto mt-10 shadow-sm">
-               <div className="w-24 h-24 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                  <ShoppingBag size={40} className="text-slate-300" />
-               </div>
-               <p className="text-2xl font-black text-slate-800 mb-2">No orders found</p>
-               <p className="text-slate-500 font-medium max-w-sm mb-8">You haven't placed any orders that match the selected filter yet.</p>
-               {filter !== 'ALL' && (
-                  <button onClick={() => setFilter('ALL')} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl transition-colors">
-                     View All Orders
-                  </button>
-               )}
-            </div>
-         )}
+            <p className="text-lg font-extrabold text-slate-800">{stat.value}</p>
+          </motion.div>
+        ))}
       </div>
-   );
+
+      {/* Tabs */}
+      <div className="flex gap-1.5 bg-white rounded-2xl border border-slate-100/80 p-1.5 shadow-sm">
+        {TABS.map(t => {
+          const count = t.key === 'ALL' ? orders.length : t.key === 'ACTIVE' ? orders.filter(o => ['PENDING','ACCEPTED','DISPATCHED'].includes(o.status)).length : t.key === 'DELIVERED' ? orders.filter(o => o.status === 'DELIVERED').length : orders.filter(o => o.status === 'CANCELLED' || o.status === 'REJECTED').length;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className={cn("flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all", tab === t.key ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/20" : "text-slate-500 hover:bg-slate-50")}>
+              {t.label} <span className={cn("text-[10px] ml-0.5", tab === t.key ? "text-blue-200" : "text-slate-400")}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Refresh */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-slate-500 font-medium">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</p>
+        <motion.button whileTap={{ scale: 0.95 }} onClick={() => fetchOrders()} className="text-xs text-blue-600 flex items-center gap-1.5 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-all"><RefreshCw size={12} />Refresh</motion.button>
+      </div>
+
+      {/* Orders */}
+      {filtered.length === 0 ? (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
+          <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <ShoppingBag size={32} className="text-slate-300" />
+          </div>
+          <p className="text-base font-semibold text-slate-600">No orders found</p>
+          <p className="text-sm text-slate-400 mt-1">Your orders will appear here</p>
+        </motion.div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((order, i) => {
+            const config = STATUS_CONFIG[order.status] || STATUS_CONFIG.PENDING;
+            const StatusIcon = config.icon;
+            const isExpanded = expandedId === order.id;
+            const showItems = isExpanded ? order.items : order.items.slice(0, 2);
+            const hasMore = order.items.length > 2;
+
+            return (
+              <motion.div key={order.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
+                className="bg-white rounded-2xl border border-slate-100/80 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                {/* Header */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn("text-[10px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1", config.bg, config.color)}>
+                          <StatusIcon size={10} />{config.label}
+                        </span>
+                        {order.invoice_no && <span className="text-[10px] text-slate-400 flex items-center gap-0.5 bg-slate-50 px-2 py-0.5 rounded-md font-medium"><Hash size={10} />{order.invoice_no}</span>}
+                      </div>
+                      <div className="flex items-center gap-3 mt-2.5 text-xs text-slate-500">
+                        <span className="flex items-center gap-1 font-medium"><Calendar size={11} />{new Date(order.created_at).toLocaleDateString()}</span>
+                        <span className="flex items-center gap-1 font-medium"><Building2 size={11} />{order.wholesaler_id?.slice(-6) || 'Supplier'}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-extrabold text-slate-800">₹{order.total_amount.toFixed(0)}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold">{order.items.length} items</p>
+                    </div>
+                  </div>
+
+                  {/* Items Preview */}
+                  <div className="mt-3.5 space-y-1.5">
+                    {showItems.map((item, j) => (
+                      <div key={j} className="flex items-center justify-between text-xs bg-slate-50/80 rounded-xl px-3.5 py-2.5 border border-slate-100/50">
+                        <span className="text-slate-600 flex-1 truncate font-medium">{item.medicine_name}</span>
+                        <span className="text-slate-400 shrink-0 ml-2 font-semibold">×{item.qty}</span>
+                        <span className="text-slate-700 font-bold shrink-0 ml-3 w-16 text-right">₹{item.total_price.toFixed(0)}</span>
+                      </div>
+                    ))}
+                    {hasMore && !isExpanded && (
+                      <button onClick={() => setExpandedId(order.id)} className="text-[10px] text-blue-600 font-semibold flex items-center gap-0.5 mt-1.5 hover:text-blue-700 transition-colors">
+                        +{order.items.length - 2} more items <ChevronDown size={10} />
+                      </button>
+                    )}
+                    {isExpanded && hasMore && (
+                      <button onClick={() => setExpandedId(null)} className="text-[10px] text-blue-600 font-semibold flex items-center gap-0.5 mt-1.5 hover:text-blue-700 transition-colors">
+                        Show less <ChevronUp size={10} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded: Timeline + Actions */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                      <div className="px-4 pb-4 space-y-4 border-t border-slate-100/60 pt-4">
+                        {/* Timeline */}
+                        <OrderTimeline currentStatus={order.status} createdAt={order.created_at} updatedAt={order.updated_at} />
+
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          {order.status === 'PENDING' && (
+                            confirmCancel === order.id ? (
+                              <div className="flex gap-2 w-full">
+                                <motion.button whileTap={{ scale: 0.97 }} onClick={() => handleCancel(order.id)} disabled={cancelling === order.id}
+                                  className="flex-1 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 rounded-xl transition-all shadow-sm">
+                                  {cancelling === order.id ? 'Cancelling...' : 'Confirm Cancel'}
+                                </motion.button>
+                                <motion.button whileTap={{ scale: 0.97 }} onClick={() => setConfirmCancel(null)} className="flex-1 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                                  Keep Order
+                                </motion.button>
+                              </div>
+                            ) : (
+                              <motion.button whileTap={{ scale: 0.97 }} onClick={() => setConfirmCancel(order.id)} className="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-4 py-2.5 rounded-xl transition-all border border-rose-200">
+                                Cancel Order
+                              </motion.button>
+                            )
+                          )}
+                          {order.status === 'DELIVERED' && (
+                            <motion.button whileTap={{ scale: 0.97 }} onClick={() => handleReorder(order)} className="text-xs font-bold text-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 border border-blue-200/50">
+                              <ShoppingCart size={12} /> Reorder
+                            </motion.button>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Expand Toggle */}
+                {!isExpanded && (
+                  <button onClick={() => setExpandedId(order.id)} className="w-full py-2.5 text-[10px] font-bold text-slate-500 hover:text-blue-600 bg-slate-50/50 hover:bg-blue-50 transition-all flex items-center justify-center gap-1 border-t border-slate-100/60">
+                    View Details <ChevronDown size={10} />
+                  </button>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };

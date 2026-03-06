@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import {
-  Search, Plus, AlertTriangle, Pill, Edit, BookOpen,
+  Search, Plus, AlertTriangle, AlertCircle, Pill, Edit, BookOpen,
   ChevronLeft, ChevronRight, X, Download, CheckCircle,
   Loader2, Info, PackageSearch, MapPin, Crown,
   FlaskConical, Syringe, Droplets, Wind, Package2,
@@ -88,6 +88,7 @@ export const MedicinesPage = () => {
   const [showCatalog, setShowCatalog] = useState(false);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [formData, setFormData] = useState(emptyForm());
+  const [activeAlertFilter, setActiveAlertFilter] = useState<'all' | 'low_stock' | 'expiring'>('all');
 
   // ── Catalog state ─────────────────────────────────────────────────────────
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -108,12 +109,37 @@ export const MedicinesPage = () => {
 
   // ── My filtered inventory ─────────────────────────────────────────────────
   const myMedicines = medicines.filter(m => m.wholesaler_id === wholesaler?.id);
-  const filteredMedicines = myMedicines.filter(m =>
-    m.name?.toLowerCase().includes(search.toLowerCase()) ||
-    (m.salt || '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.brand || '').toLowerCase().includes(search.toLowerCase()) ||
-    (isPro && (m.rack_location || '').toLowerCase().includes(search.toLowerCase()))
-  );
+  const importedNames = new Set(myMedicines.map(m => m.name.toLowerCase().trim()));
+
+  // Calculate alerts dynamically
+  const lowStockCount = myMedicines.filter(m => m.stock_qty <= 20).length;
+  const expiringCount = myMedicines.filter(m => {
+    if (!m.expiry_date) return false;
+    const exp = new Date(m.expiry_date);
+    const now = new Date();
+    const diffMonths = (exp.getFullYear() - now.getFullYear()) * 12 + (exp.getMonth() - now.getMonth());
+    return diffMonths <= 3;
+  }).length;
+
+  const filteredMedicines = myMedicines.filter(m => {
+    const matchesSearch = m.name?.toLowerCase().includes(search.toLowerCase()) ||
+      (m.salt || '').toLowerCase().includes(search.toLowerCase()) ||
+      (m.brand || '').toLowerCase().includes(search.toLowerCase()) ||
+      (isPro && (m.rack_location || '').toLowerCase().includes(search.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    if (activeAlertFilter === 'low_stock') return m.stock_qty <= 20;
+    if (activeAlertFilter === 'expiring') {
+      if (!m.expiry_date) return false;
+      const exp = new Date(m.expiry_date);
+      const now = new Date();
+      const diffMonths = (exp.getFullYear() - now.getFullYear()) * 12 + (exp.getMonth() - now.getMonth());
+      return diffMonths <= 3;
+    }
+
+    return true;
+  });
 
   // ── Load therapeutic classes once ─────────────────────────────────────────
   useEffect(() => {
@@ -250,6 +276,57 @@ export const MedicinesPage = () => {
         </div>
       </div>
 
+      {/* ── Alerts & Filters ────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-4">
+        <button
+          onClick={() => setActiveAlertFilter('all')}
+          className={`flex-1 sm:flex-none flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${activeAlertFilter === 'all'
+            ? 'bg-indigo-50 border-indigo-200 shadow-sm shadow-indigo-100/50'
+            : 'bg-white border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
+            }`}
+        >
+          <div className={`p-2 rounded-xl ${activeAlertFilter === 'all' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+            <Package2 size={18} />
+          </div>
+          <div className="text-left leading-tight">
+            <p className={`text-xs font-bold uppercase tracking-wider ${activeAlertFilter === 'all' ? 'text-indigo-600' : 'text-slate-500'}`}>All Items</p>
+            <p className={`text-sm font-black ${activeAlertFilter === 'all' ? 'text-indigo-900' : 'text-slate-700'}`}>{myMedicines.length}</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveAlertFilter('low_stock')}
+          className={`flex-1 sm:flex-none flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${activeAlertFilter === 'low_stock'
+            ? 'bg-orange-50 border-orange-200 shadow-sm shadow-orange-100/50'
+            : 'bg-white border-slate-200 hover:border-orange-200 hover:bg-slate-50'
+            }`}
+        >
+          <div className={`p-2 rounded-xl ${activeAlertFilter === 'low_stock' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+            <AlertTriangle size={18} />
+          </div>
+          <div className="text-left leading-tight">
+            <p className={`text-xs font-bold uppercase tracking-wider ${activeAlertFilter === 'low_stock' ? 'text-orange-600' : 'text-slate-500'}`}>Low Stock</p>
+            <p className={`text-sm font-black ${activeAlertFilter === 'low_stock' ? 'text-orange-900' : 'text-slate-700'}`}>{lowStockCount}</p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveAlertFilter('expiring')}
+          className={`flex-1 sm:flex-none flex items-center gap-3 px-5 py-3 rounded-2xl border transition-all ${activeAlertFilter === 'expiring'
+            ? 'bg-red-50 border-red-200 shadow-sm shadow-red-100/50'
+            : 'bg-white border-slate-200 hover:border-red-200 hover:bg-slate-50'
+            }`}
+        >
+          <div className={`p-2 rounded-xl ${activeAlertFilter === 'expiring' ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+            <AlertCircle size={18} />
+          </div>
+          <div className="text-left leading-tight">
+            <p className={`text-xs font-bold uppercase tracking-wider ${activeAlertFilter === 'expiring' ? 'text-red-600' : 'text-slate-500'}`}>Expiring Soon</p>
+            <p className={`text-sm font-black ${activeAlertFilter === 'expiring' ? 'text-red-900' : 'text-slate-700'}`}>{expiringCount}</p>
+          </div>
+        </button>
+      </div>
+
       {/* ── Inventory Table ──────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
         <table className="w-full text-sm text-left">
@@ -324,8 +401,8 @@ export const MedicinesPage = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className={`flex items-center font-bold text-sm ${med.stock_qty < 250 ? 'text-orange-600' : 'text-slate-700'}`}>
-                      {med.stock_qty < 250 && <AlertTriangle size={14} className="mr-1.5" />}
+                    <div className={`flex items-center font-bold text-sm ${med.stock_qty <= 20 ? 'text-orange-600' : 'text-slate-700'}`}>
+                      {med.stock_qty <= 20 && <AlertTriangle size={14} className="mr-1.5" />}
                       {med.stock_qty}
                     </div>
                     {med.expiry_date && (() => {
@@ -504,13 +581,19 @@ export const MedicinesPage = () => {
                           })()}
                         </td>
                         <td className="px-5 py-3 text-right">
-                          <button
-                            onClick={() => openImport(item)}
-                            disabled={item.is_discontinued}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
-                          >
-                            <Download size={12} /> Add
-                          </button>
+                          {importedNames.has(item.name.toLowerCase().trim()) ? (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-lg border border-emerald-200">
+                              <CheckCircle size={12} /> Added
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => openImport(item)}
+                              disabled={item.is_discontinued}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                            >
+                              <Download size={12} /> Add
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

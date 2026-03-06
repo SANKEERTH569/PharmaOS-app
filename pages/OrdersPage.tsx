@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
-import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown, RefreshCw } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown, RefreshCw, Loader2, AlertCircle, CheckCheck } from 'lucide-react';
 import { OrderStatus, Order, PaymentMethod } from '../types';
 import { InvoiceModal } from '../components/InvoiceModal';
 import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
@@ -35,6 +35,19 @@ export const OrdersPage = () => {
   const [paymentMode, setPaymentMode] = useState<'CREDIT' | 'PAID'>('CREDIT');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
   const [paymentAmount, setPaymentAmount] = useState<string>('');
+
+  // Action feedback state
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Auto-dismiss messages
+  useEffect(() => {
+    if (actionError || successMsg) {
+      const t = setTimeout(() => { setActionError(null); setSuccessMsg(null); }, 5000);
+      return () => clearTimeout(t);
+    }
+  }, [actionError, successMsg]);
 
   // Filter orders for current wholesaler
   const myOrders = orders.filter(o => o.wholesaler_id === wholesaler?.id);
@@ -107,8 +120,9 @@ export const OrdersPage = () => {
     );
   };
 
-  const handleAction = (id: string, action: OrderStatus) => {
-    if (!wholesaler) return;
+  const handleAction = async (id: string, action: OrderStatus) => {
+    if (!wholesaler || actionLoading) return;
+    setActionError(null);
 
     if (action === 'DELIVERED') {
       const order = orders.find(o => o.id === id);
@@ -116,30 +130,48 @@ export const OrdersPage = () => {
         setDeliveryOrder(order);
         setPaymentAmount(order.total_amount.toString());
         setShowDeliveryConfirm(true);
-        // Close detail modal if open
         setSelectedOrder(null);
       }
-    } else {
-      updateOrderStatus(id, action, wholesaler.id);
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await updateOrderStatus(id, action, wholesaler.id);
       setSelectedOrder(null);
+      setSuccessMsg(`Order ${action === 'ACCEPTED' ? 'accepted' : action === 'REJECTED' ? 'rejected' : action === 'DISPATCHED' ? 'dispatched' : action.toLowerCase()} successfully!`);
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to update order. Please try again.';
+      setActionError(msg);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const confirmDelivery = () => {
-    if (!deliveryOrder || !wholesaler) return;
+  const confirmDelivery = async () => {
+    if (!deliveryOrder || !wholesaler || actionLoading) return;
+    setActionError(null);
+    setActionLoading(true);
 
-    if (paymentMode === 'PAID') {
-      updateOrderStatus(deliveryOrder.id, 'DELIVERED', wholesaler.id, {
-        amount: parseFloat(paymentAmount),
-        method: paymentMethod
-      });
-    } else {
-      updateOrderStatus(deliveryOrder.id, 'DELIVERED', wholesaler.id);
+    try {
+      if (paymentMode === 'PAID') {
+        await updateOrderStatus(deliveryOrder.id, 'DELIVERED', wholesaler.id, {
+          amount: parseFloat(paymentAmount),
+          method: paymentMethod
+        });
+      } else {
+        await updateOrderStatus(deliveryOrder.id, 'DELIVERED', wholesaler.id);
+      }
+      setShowDeliveryConfirm(false);
+      setDeliveryOrder(null);
+      setPaymentMode('CREDIT');
+      setSuccessMsg('Order delivered successfully!');
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to confirm delivery. Please try again.';
+      setActionError(msg);
+    } finally {
+      setActionLoading(false);
     }
-
-    setShowDeliveryConfirm(false);
-    setDeliveryOrder(null);
-    setPaymentMode('CREDIT');
   };
 
   const openInvoice = (order: Order) => {
@@ -163,7 +195,7 @@ export const OrdersPage = () => {
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Order #{order.id}</h2>
+              <h2 className="text-xl font-bold text-slate-900">Order #{order.invoice_no || order.id.slice(-8).toUpperCase()}</h2>
               <p className="text-slate-500 text-sm mt-1">Placed on {new Date(order.created_at).toLocaleString()}</p>
             </div>
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
@@ -191,75 +223,121 @@ export const OrdersPage = () => {
               <h3 className="font-bold text-slate-900 mb-3 text-sm">Order Items</h3>
               <div className="border border-slate-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                  <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase font-semibold">
                     <tr>
-                      <th className="px-4 py-3">Medicine</th>
-                      <th className="px-4 py-3 text-right">Qty</th>
-                      <th className="px-4 py-3 text-right">Price</th>
-                      <th className="px-4 py-3 text-right">Total</th>
+                      <th className="px-3 py-3">Medicine</th>
+                      <th className="px-3 py-3 text-right">MRP</th>
+                      <th className="px-3 py-3 text-right">Rate</th>
+                      <th className="px-3 py-3 text-right">Qty</th>
+                      <th className="px-3 py-3 text-right">GST</th>
+                      <th className="px-3 py-3 text-right">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {order.items.map((item) => (
                       <tr key={item.id}>
-                        <td className="px-4 py-3 font-medium text-slate-900">{item.medicine_name}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">{item.qty}</td>
-                        <td className="px-4 py-3 text-right text-slate-600">₹{item.unit_price}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900">₹{item.total_price}</td>
+                        <td className="px-3 py-3">
+                          <div className="font-medium text-slate-900">{item.medicine_name}</div>
+                          {item.hsn_code && <div className="text-[10px] text-slate-400 font-mono">HSN: {item.hsn_code}</div>}
+                        </td>
+                        <td className="px-3 py-3 text-right text-slate-500 text-xs">₹{(item.mrp ?? 0).toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right text-slate-600">₹{item.unit_price.toFixed(2)}</td>
+                        <td className="px-3 py-3 text-right font-bold text-slate-900">{item.qty}</td>
+                        <td className="px-3 py-3 text-right text-blue-600 text-xs font-bold">{item.gst_rate}%</td>
+                        <td className="px-3 py-3 text-right font-bold text-slate-900">₹{(item.total_price ?? 0).toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot className="bg-slate-50/50">
+                  <tfoot className="bg-slate-50/50 text-xs">
+                    <tr className="border-t border-slate-200">
+                      <td colSpan={5} className="px-3 py-2 text-right text-slate-500 font-medium">Subtotal (Taxable)</td>
+                      <td className="px-3 py-2 text-right font-bold text-slate-700">₹{order.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
                     <tr>
-                      <td colSpan={3} className="px-4 py-3 text-right font-bold text-slate-700">Total Amount</td>
-                      <td className="px-4 py-3 text-right font-bold text-slate-900 text-base">₹{order.total_amount.toLocaleString()}</td>
+                      <td colSpan={5} className="px-3 py-2 text-right text-slate-500 font-medium">Tax (GST)</td>
+                      <td className="px-3 py-2 text-right font-bold text-blue-600">₹{order.tax_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                    <tr className="border-t-2 border-slate-300">
+                      <td colSpan={5} className="px-3 py-3 text-right font-black text-slate-900">Total Amount</td>
+                      <td className="px-3 py-3 text-right font-black text-slate-900 text-base">₹{order.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
             </div>
+
+            {/* Invoice & Print Actions */}
+            {order.invoice_no && (
+              <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <FileText size={16} className="text-blue-600" />
+                <span className="text-sm font-bold text-blue-800">Invoice: {order.invoice_no}</span>
+                <div className="ml-auto flex gap-2">
+                  <button onClick={() => { onClose(); openInvoice(order); }} className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
+                    <Printer size={12} className="inline mr-1" />View Invoice
+                  </button>
+                  <button onClick={() => { onClose(); openCombinedPrint(order); }} className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors">
+                    <ClipboardList size={12} className="inline mr-1" />Print All
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-            <button onClick={onClose} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all text-sm">
-              Close
-            </button>
-
-            {order.status === 'PENDING' && (
-              <>
-                <button
-                  onClick={() => handleAction(order.id, 'REJECTED')}
-                  className="px-5 py-2.5 text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-all text-sm border border-rose-100"
-                >
-                  Reject
-                </button>
-                <button
-                  onClick={() => handleAction(order.id, 'ACCEPTED')}
-                  className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-bold hover:shadow-lg shadow-slate-900/20 rounded-xl transition-all text-sm flex items-center"
-                >
-                  <CheckCircle size={16} className="mr-2" /> Accept Order
-                </button>
-              </>
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
+            {actionError && (
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium animate-in slide-in-from-top-1">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{actionError}</span>
+              </div>
             )}
-
-            {order.status === 'ACCEPTED' && (
-              <button
-                onClick={() => handleAction(order.id, 'DISPATCHED')}
-                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:shadow-lg shadow-blue-500/20 rounded-xl transition-all text-sm flex items-center"
-              >
-                <Truck size={16} className="mr-2" /> Dispatch Package
+            <div className="flex justify-end gap-3">
+              <button onClick={onClose} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all text-sm">
+                Close
               </button>
-            )}
 
-            {order.status === 'DISPATCHED' && (
-              <button
-                onClick={() => handleAction(order.id, 'DELIVERED')}
-                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:shadow-lg shadow-emerald-500/20 rounded-xl transition-all text-sm flex items-center"
-              >
-                <Package size={16} className="mr-2" /> Mark Delivered
-              </button>
-            )}
+              {order.status === 'PENDING' && (
+                <>
+                  <button
+                    onClick={() => handleAction(order.id, 'REJECTED')}
+                    disabled={actionLoading}
+                    className="px-5 py-2.5 text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-all text-sm border border-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : 'Reject'}
+                  </button>
+                  <button
+                    onClick={() => handleAction(order.id, 'ACCEPTED')}
+                    disabled={actionLoading}
+                    className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-bold hover:shadow-lg shadow-slate-900/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <CheckCircle size={16} className="mr-2" />}
+                    Accept Order
+                  </button>
+                </>
+              )}
+
+              {order.status === 'ACCEPTED' && (
+                <button
+                  onClick={() => handleAction(order.id, 'DISPATCHED')}
+                  disabled={actionLoading}
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:shadow-lg shadow-blue-500/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Truck size={16} className="mr-2" />}
+                  Dispatch Package
+                </button>
+              )}
+
+              {order.status === 'DISPATCHED' && (
+                <button
+                  onClick={() => handleAction(order.id, 'DELIVERED')}
+                  disabled={actionLoading}
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:shadow-lg shadow-emerald-500/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Package size={16} className="mr-2" />}
+                  Mark Delivered
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -346,6 +424,24 @@ export const OrdersPage = () => {
         </div>
       </div>
 
+      {/* Toast notifications */}
+      {(actionError || successMsg) && (
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium animate-in slide-in-from-top-2 fade-in duration-200 ${
+          actionError
+            ? 'bg-rose-50 border-rose-200 text-rose-700'
+            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+        }`}>
+          {actionError ? <AlertCircle size={16} className="shrink-0" /> : <CheckCheck size={16} className="shrink-0" />}
+          <span className="flex-1">{actionError || successMsg}</span>
+          <button
+            onClick={() => { setActionError(null); setSuccessMsg(null); }}
+            className="text-current opacity-60 hover:opacity-100 ml-2"
+          >
+            &times;
+          </button>
+        </div>
+      )}
+
       {/* Filters & Search */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/80 backdrop-blur-sm p-2 rounded-2xl border border-slate-200/60 shadow-sm">
         <div className="flex gap-1 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
@@ -392,7 +488,7 @@ export const OrdersPage = () => {
               {filteredOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-bold text-slate-900">#{order.id}</div>
+                    <div className="font-bold text-slate-900 font-mono text-xs">#{order.invoice_no || order.id.slice(-8).toUpperCase()}</div>
                     <div className="text-slate-400 text-xs mt-0.5 font-medium">{new Date(order.created_at).toLocaleDateString()}</div>
                   </td>
                   <td className="px-6 py-4">
@@ -406,38 +502,85 @@ export const OrdersPage = () => {
                     <StatusBadge status={order.status} />
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => openDeliveryReceipt(order)}
-                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                        title="Delivery Challan"
-                      >
-                        <Truck size={18} />
-                      </button>
+                    <div className="flex justify-end items-center gap-1.5">
+                      {/* Quick status actions */}
+                      {order.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleAction(order.id, 'ACCEPTED')}
+                            disabled={actionLoading}
+                            className="px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
+                            title="Accept Order"
+                          >
+                            <CheckCircle size={13} className="inline mr-0.5 -mt-0.5" />Accept
+                          </button>
+                          <button
+                            onClick={() => handleAction(order.id, 'REJECTED')}
+                            disabled={actionLoading}
+                            className="px-2.5 py-1.5 text-[11px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors disabled:opacity-50"
+                            title="Reject Order"
+                          >
+                            <XCircle size={13} className="inline mr-0.5 -mt-0.5" />Reject
+                          </button>
+                        </>
+                      )}
+                      {order.status === 'ACCEPTED' && (
+                        <button
+                          onClick={() => handleAction(order.id, 'DISPATCHED')}
+                          disabled={actionLoading}
+                          className="px-2.5 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors disabled:opacity-50"
+                          title="Dispatch"
+                        >
+                          <Truck size={13} className="inline mr-0.5 -mt-0.5" />Dispatch
+                        </button>
+                      )}
+                      {order.status === 'DISPATCHED' && (
+                        <button
+                          onClick={() => handleAction(order.id, 'DELIVERED')}
+                          disabled={actionLoading}
+                          className="px-2.5 py-1.5 text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors disabled:opacity-50"
+                          title="Mark Delivered"
+                        >
+                          <Package size={13} className="inline mr-0.5 -mt-0.5" />Deliver
+                        </button>
+                      )}
+
+                      {(order.status === 'PENDING' || order.status === 'ACCEPTED' || order.status === 'DISPATCHED') && (
+                        <div className="w-px h-5 bg-slate-200 mx-0.5" />
+                      )}
+
+                      {/* Document actions */}
                       {order.invoice_no && (
                         <>
                           <button
                             onClick={() => openInvoice(order)}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Invoice"
                           >
-                            <Printer size={18} />
+                            <Printer size={16} />
                           </button>
                           <button
                             onClick={() => openCombinedPrint(order)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                             title="Print Both (Invoice + Challan)"
                           >
-                            <ClipboardList size={18} />
+                            <ClipboardList size={16} />
                           </button>
                         </>
                       )}
                       <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                        onClick={() => openDeliveryReceipt(order)}
+                        className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                        title="Delivery Challan"
+                      >
+                        <Truck size={16} />
+                      </button>
+                      <button
+                        onClick={() => { setActionError(null); setSelectedOrder(order); }}
+                        className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                         title="View Details"
                       >
-                        <Eye size={18} />
+                        <Eye size={16} />
                       </button>
                     </div>
                   </td>
@@ -589,18 +732,26 @@ export const OrdersPage = () => {
                 </div>
               )}
 
+              {actionError && (
+                <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium animate-in slide-in-from-top-1">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{actionError}</span>
+                </div>
+              )}
               <div className="flex gap-4">
                 <button
-                  onClick={() => setShowDeliveryConfirm(false)}
+                  onClick={() => { setShowDeliveryConfirm(false); setActionError(null); }}
                   className="flex-1 py-3.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDelivery}
-                  className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${paymentMode === 'PAID' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'}`}
+                  disabled={actionLoading}
+                  className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${paymentMode === 'PAID' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'}`}
                 >
-                  <CheckCircle size={18} /> Confirm {paymentMode === 'PAID' ? '& Pay' : 'Delivery'}
+                  {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                  {actionLoading ? 'Processing...' : `Confirm ${paymentMode === 'PAID' ? '& Pay' : 'Delivery'}`}
                 </button>
               </div>
             </div>

@@ -178,14 +178,36 @@ router.patch('/:id/status', requireRole('WHOLESALER'), async (req, res) => {
 
     let invoice_no = order.invoice_no;
     if (status === 'ACCEPTED' && !invoice_no) {
-      invoice_no = `INV/${new Date().getFullYear()}/${Math.floor(1000 + Math.random() * 9000)}`;
+      // Sequential invoice number per wholesaler per year
+      const year = new Date().getFullYear();
+      const count = await prisma.order.count({
+        where: {
+          wholesaler_id: req.user!.wholesaler_id!,
+          invoice_no: { startsWith: `INV/${year}/` },
+        },
+      });
+      invoice_no = `INV/${year}/${String(count + 1).padStart(4, '0')}`;
     }
 
     const updated = await prisma.order.update({
       where: { id: order.id },
       data: { status, invoice_no, updated_at: new Date() },
-      include: { items: true },
+      include: {
+        items: { include: { medicine: { select: { expiry_date: true } } } },
+        wholesaler: { select: { id: true, name: true, phone: true } },
+        retailer: { select: { id: true, name: true, shop_name: true } },
+      },
     });
+
+    // Flatten expiry_date into items like GET endpoint
+    const result: any = {
+      ...updated,
+      items: updated.items.map((item: any) => ({
+        ...item,
+        expiry_date: item.medicine?.expiry_date ?? null,
+        medicine: undefined,
+      })),
+    };
 
     // ── Stock management ────────────────────────────────────────────────
     // ACCEPTED (from PENDING): deduct stock for each ordered item
@@ -282,17 +304,141 @@ router.patch('/:id/status', requireRole('WHOLESALER'), async (req, res) => {
         retailer_id: order.retailer_id,
         type: 'ORDER_STATUS_CHANGED',
         title: `Order ${status.charAt(0) + status.toLowerCase().slice(1)}`,
-        body: `Your order #${updated.invoice_no || order.id} is now ${status.toLowerCase()}`,
+        body: `Your order #${result.invoice_no || order.id} is now ${status.toLowerCase()}`,
       },
     });
 
     // Real-time events
-    io.to(`wholesaler_${order.wholesaler_id}`).emit('order_updated', updated);
-    io.to(`retailer_${order.retailer_id}`).emit('order_updated', updated);
+    io.to(`wholesaler_${order.wholesaler_id}`).emit('order_updated', result);
+    io.to(`retailer_${order.retailer_id}`).emit('order_updated', result);
 
-    res.json(updated);
+    res.json(result);
   } catch (err: any) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/orders/quick-sale — Wholesaler creates a sale (auto-accepted with invoice)
+router.post('/quick-sale', requireRole('WHOLESALER'), async (req, res) => {
+  try {
+    const { retailer_id, items, notes } = req.body;
+    const wholesaler_id = req.user!.wholesaler_id!;
+
+    if (!retailer_id || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'retailer_id and items[] are required' });
+    }
+
+    const retailer = await prisma.retailer.findUnique({ where: { id: retailer_id } });
+    if (!retailer) return res.status(404).json({ error: 'Retailer not found' });
+
+    // Calculate totals
+    let subTotal = 0;
+    const orderItems = items.map((i: any) => {
+      const discountAmt = i.discount_percent ? (i.unit_price * i.qty * i.discount_percent / 100) : (i.discount_amount || 0);
+      const taxable = i.unit_price * i.qty - discountAmt;
+      const tax = taxable * ((i.gst_rate || 12) / 100);
+      subTotal += taxable;
+      return {
+        medicine_id: i.medicine_id,
+        medicine_name: i.medicine_name,
+        qty: i.qty,
+        mrp: i.mrp,
+        unit_price: i.unit_price,
+        discount_percent: i.discount_percent || 0,
+        discount_amount: discountAmt,
+        total_price: taxable + tax,
+        hsn_code: i.hsn_code || '3004',
+        gst_rate: i.gst_rate || 12,
+        taxable_value: taxable,
+        tax_amount: tax,
+      };
+    });
+    const taxTotal = orderItems.reduce((s: number, i: any) => s + i.tax_amount, 0);
+    const totalAmount = subTotal + taxTotal;
+
+    // Credit limit check
+    if (retailer.credit_limit > 0 && retailer.current_balance + totalAmount > retailer.credit_limit) {
+      return res.status(422).json({
+        error: 'Credit limit exceeded',
+        available: Math.max(0, retailer.credit_limit - retailer.current_balance),
+      });
+    }
+
+    // Stock check
+    const medicines = await prisma.medicine.findMany({
+      where: { id: { in: items.map((i: any) => i.medicine_id) }, wholesaler_id },
+      select: { id: true, name: true, stock_qty: true },
+    });
+    const stockMap = new Map(medicines.map(m => [m.id, m]));
+    const outOfStock = items.filter((i: any) => {
+      const med = stockMap.get(i.medicine_id);
+      return !med || med.stock_qty < i.qty;
+    });
+    if (outOfStock.length > 0) {
+      const names = outOfStock.map((i: any) => {
+        const med = stockMap.get(i.medicine_id);
+        return `${med?.name || i.medicine_name} (need ${i.qty}, have ${med?.stock_qty ?? 0})`;
+      });
+      return res.status(422).json({ error: `Insufficient stock: ${names.join('; ')}` });
+    }
+
+    // Generate sequential invoice number
+    const year = new Date().getFullYear();
+    const invoiceCount = await prisma.order.count({
+      where: {
+        wholesaler_id,
+        invoice_no: { startsWith: `INV/${year}/` },
+      },
+    });
+    const invoice_no = `INV/${year}/${String(invoiceCount + 1).padStart(4, '0')}`;
+
+    // Create order as ACCEPTED
+    const order = await prisma.order.create({
+      data: {
+        wholesaler_id,
+        retailer_id,
+        retailer_name: retailer.shop_name,
+        status: 'ACCEPTED',
+        invoice_no,
+        sub_total: subTotal,
+        tax_total: taxTotal,
+        total_amount: totalAmount,
+        payment_terms: 'NET 15',
+        notes: notes || 'Quick Sale by Wholesaler',
+        items: { create: orderItems },
+      },
+      include: { items: true, retailer: { select: { id: true, name: true, shop_name: true } } },
+    });
+
+    // Deduct stock
+    await Promise.all(
+      items.map((i: any) =>
+        prisma.medicine.updateMany({
+          where: { id: i.medicine_id, wholesaler_id, stock_qty: { gte: 0 } },
+          data: { stock_qty: { decrement: i.qty } },
+        })
+      )
+    );
+
+    // Notify retailer
+    const notification = await prisma.notification.create({
+      data: {
+        wholesaler_id,
+        retailer_id,
+        type: 'NEW_ORDER',
+        title: 'New Sale Created',
+        body: `Your wholesaler created a sale of ₹${totalAmount.toFixed(0)} (Invoice: ${invoice_no})`,
+      },
+    });
+
+    io.to(`wholesaler_${wholesaler_id}`).emit('new_order', order);
+    io.to(`retailer_${retailer_id}`).emit('new_order', order);
+    io.to(`retailer_${retailer_id}`).emit('notification', notification);
+
+    res.status(201).json(order);
+  } catch (err: any) {
+    console.error('quick-sale error:', err);
     res.status(500).json({ error: err.message });
   }
 });

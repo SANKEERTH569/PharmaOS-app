@@ -6,6 +6,7 @@ import { CartItem, Medicine } from '../types';
 interface CartState {
   items: CartItem[];
   addItem: (medicine: Medicine, qty: number) => void;
+  addMultipleItems: (items: { medicine: Medicine; qty: number }[]) => void;
   removeItem: (medicineId: string) => void;
   updateQty: (medicineId: string, qty: number) => void;
   clearCart: () => void;
@@ -27,6 +28,19 @@ export const useCartStore = create<CartState>()(persist((set, get) => ({
       };
     }
     return { items: [...state.items, { medicine, qty }] };
+  }),
+
+  addMultipleItems: (newItems) => set((state) => {
+    let items = [...state.items];
+    for (const { medicine, qty } of newItems) {
+      const existing = items.find(i => i.medicine.id === medicine.id);
+      if (existing) {
+        items = items.map(i => i.medicine.id === medicine.id ? { ...i, qty: i.qty + qty } : i);
+      } else {
+        items.push({ medicine, qty });
+      }
+    }
+    return { items };
   }),
 
   removeItem: (medicineId) => set((state) => ({

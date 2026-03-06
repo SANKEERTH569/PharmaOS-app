@@ -37,18 +37,22 @@ export const RetailerDetailPage = () => {
     .filter(p => p.retailer_id === retailer.id && p.wholesaler_id === wholesaler?.id)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  const handlePayment = (e: React.FormEvent) => {
+  const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (amount && wholesaler) {
-      if (paymentType === 'PAYMENT') {
-        recordPayment(retailer.id, parseFloat(amount), method, wholesaler.id, "Manual Entry from Profile");
-      } else {
-        useDataStore.getState().addOpeningBalance(retailer.id, parseFloat(amount), openingBalanceNotes || "Opening Balance added");
+      try {
+        if (paymentType === 'PAYMENT') {
+          await recordPayment(retailer.id, parseFloat(amount), method, wholesaler.id, "Manual Entry from Profile");
+        } else {
+          await useDataStore.getState().addOpeningBalance(retailer.id, parseFloat(amount), openingBalanceNotes || "Opening Balance added");
+        }
+        setShowPaymentModal(false);
+        setAmount('');
+        setMethod('CASH');
+        setOpeningBalanceNotes('');
+      } catch (err: any) {
+        alert(err?.response?.data?.error || 'Operation failed');
       }
-      setShowPaymentModal(false);
-      setAmount('');
-      setMethod('CASH');
-      setOpeningBalanceNotes('');
     }
   };
 

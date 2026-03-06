@@ -25,6 +25,8 @@ import { RetailerProfilePage } from './pages/retailer/RetailerProfilePage';
 import { AgencySetupPage } from './pages/retailer/AgencySetupPage';
 import { RetailerLedgerPage } from './pages/retailer/RetailerLedgerPage';
 import { RetailerReturnsPage } from './pages/retailer/RetailerReturnsPage';
+import { NotificationsPage } from './pages/retailer/NotificationsPage';
+import { RetailerPaymentsPage } from './pages/retailer/RetailerPaymentsPage';
 import { WholesalerReturnsPage } from './pages/WholesalerReturnsPage';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { WholesalerManagement } from './pages/admin/WholesalerManagement';
@@ -33,6 +35,8 @@ import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { PlanManagement } from './pages/admin/PlanManagement';
 import { ActivityLog } from './pages/admin/ActivityLog';
 import { CouponManagement } from './pages/admin/CouponManagement';
+import { GstDashboardPage } from './pages/GstDashboardPage';
+import { QuickSalePage } from './pages/QuickSalePage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { UserRole } from './types';
@@ -100,6 +104,11 @@ function App() {
             <DashboardHome />
           </ProtectedRoute>
         } />
+        <Route path="/quick-sale" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <QuickSalePage />
+          </ProtectedRoute>
+        } />
         <Route path="/orders" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <OrdersPage />
@@ -133,6 +142,11 @@ function App() {
         <Route path="/payments" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <PaymentsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/gst" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <GstDashboardPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={
@@ -185,6 +199,16 @@ function App() {
         <Route path="/shop/profile" element={
           <ProtectedRoute allowedRole="RETAILER">
             <RetailerProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/shop/notifications" element={
+          <ProtectedRoute allowedRole="RETAILER">
+            <NotificationsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/shop/payments" element={
+          <ProtectedRoute allowedRole="RETAILER">
+            <RetailerPaymentsPage />
           </ProtectedRoute>
         } />
 

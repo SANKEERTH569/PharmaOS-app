@@ -129,7 +129,13 @@ router.post('/opening-balance', async (req, res) => {
     // Using transaction to ensure atomic update of retailer balance and ledger entry
     const result = await prisma.$transaction(async (tx) => {
       const retailer = await tx.retailer.findFirst({
-        where: { id: retailer_id, wholesaler_id },
+        where: {
+          id: retailer_id,
+          OR: [
+            { wholesaler_id: wholesaler_id },
+            { agencies: { some: { wholesaler_id: wholesaler_id, status: 'ACTIVE' } } }
+          ]
+        },
       });
 
       if (!retailer) {

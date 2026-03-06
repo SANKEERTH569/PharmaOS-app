@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Order, Retailer, OrderItem } from '../types';
-import { Printer, X, CreditCard, Download, Calendar, FileText } from 'lucide-react';
+import { Printer, X, CreditCard, Download, Calendar, FileText, Loader2, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import html2pdf from 'html2pdf.js';
 
@@ -102,6 +102,16 @@ function fmtExp(d: string | null | undefined): string {
 export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, retailer, date, onClose }) => {
     const { wholesaler } = useAuthStore();
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
+
+    useEffect(() => {
+        requestAnimationFrame(() => setIsOpen(true));
+    }, []);
+
+    const handleClose = useCallback(() => {
+        setIsOpen(false);
+        setTimeout(onClose, 300);
+    }, [onClose]);
 
     const mergedItems = useMemo(() => mergeItems(orders), [orders]);
     const gstSummary = useMemo(() => buildGstSummary(mergedItems), [mergedItems]);
@@ -118,105 +128,81 @@ export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, re
     const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const dailyInvoiceNo = `DAILY-${date}-${retailer.id.slice(-4).toUpperCase()}`;
 
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = useCallback(() => {
         setIsDownloading(true);
         const element = document.getElementById('daily-invoice-print');
-        if (!element) {
-            setIsDownloading(false);
-            return;
-        }
-
-        const opt = {
+        if (!element) { setIsDownloading(false); return; }
+        html2pdf().set({
             margin: 0,
             filename: `Daily-Invoice-${date}-${retailer.name.replace(/\s+/g, '_')}.pdf`,
-            image: { type: 'jpeg' as const, quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-        };
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        }).from(element).save().then(() => setIsDownloading(false)).catch(() => setIsDownloading(false));
+    }, [date, retailer]);
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            setIsDownloading(false);
-        }).catch(() => {
-            setIsDownloading(false);
-        });
-    };
+    const handlePrint = useCallback(() => {
+        const el = document.getElementById('daily-invoice-print');
+        if (!el) return;
+        const win = window.open('', '_blank', 'width=800,height=1100');
+        if (!win) { window.print(); return; }
+        win.document.write(`<!DOCTYPE html><html><head><title>Daily Invoice ${date}</title>
+          <script src="https://cdn.tailwindcss.com"><\/script>
+          <style>@page{size:A4 portrait;margin:0}*{margin:0;padding:0;box-sizing:border-box}html,body{width:210mm;min-height:297mm;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}</style>
+        </head><body>${el.outerHTML}</body></html>`);
+        win.document.close();
+        setTimeout(() => { win.print(); win.close(); }, 600);
+    }, [date]);
 
     return (
-        <>
-            <style>{`
-        @media print {
-          @page {
-            size: A4 portrait;
-            margin: 0 !important;
-          }
-          html, body {
-            width: 210mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body * { visibility: hidden !important; }
-          #daily-invoice-print, #daily-invoice-print * { visibility: visible !important; }
-          #daily-invoice-print {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 210mm !important;
-            min-height: 297mm !important;
-            margin: 0 !important;
-            padding: 10mm !important;
-            background: white !important;
-            box-sizing: border-box !important;
-          }
-          #daily-invoice-print .print\\:hidden { display: none !important; }
-        }
-      `}</style>
-
+        <div className="fixed inset-0 z-[60]" style={{ pointerEvents: isOpen ? 'auto' : 'none' }}>
+            {/* Scrim */}
             <div
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200"
-                onClick={onClose}
+                className="absolute inset-0 bg-black/40 transition-opacity duration-300 ease-out"
+                style={{ opacity: isOpen ? 1 : 0 }}
+                onClick={handleClose}
+            />
+            {/* Drawer panel */}
+            <div
+                className="absolute top-0 right-0 h-full w-full sm:w-[580px] lg:w-[640px] bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out border-l border-slate-200"
+                style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
             >
-                <div
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[95vh] print:shadow-none print:bg-transparent"
-                    onClick={e => e.stopPropagation()}
-                >
                     {/* ── Toolbar ── */}
-                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl print:hidden shrink-0">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-inner">
-                                <Calendar className="text-white w-5 h-5" />
+                    <div className="px-5 py-3.5 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <button onClick={handleClose} className="p-1.5 -ml-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
+                                <ChevronRight size={18} />
+                            </button>
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+                                <Calendar className="text-white w-4 h-4" />
                             </div>
                             <div>
-                                <span className="block font-bold text-slate-900 text-lg">Daily Consolidated Invoice</span>
-                                <span className="block text-slate-500 text-xs">
-                                    {retailer.shop_name || retailer.name} • {new Date(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} • {orders.length} order{orders.length !== 1 ? 's' : ''} merged
+                                <span className="block font-bold text-slate-900 text-sm leading-tight">Daily Consolidated Invoice</span>
+                                <span className="block text-slate-400 text-xs">
+                                    {retailer.shop_name || retailer.name} • {orders.length} order{orders.length !== 1 ? 's' : ''}
                                 </span>
                             </div>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex items-center gap-2">
                             <button
                                 onClick={handleDownloadPdf}
                                 disabled={isDownloading}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                                className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
                             >
-                                <Download size={18} /> {isDownloading ? 'Generating...' : 'Download PDF'}
+                                {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                {isDownloading ? 'Saving...' : 'PDF'}
                             </button>
                             <button
-                                onClick={() => window.print()}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-[#0D2B5E] text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#0a2147] transition-all shadow-lg shadow-[#0D2B5E]/20"
+                                onClick={handlePrint}
+                                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0D2B5E] text-white rounded-lg text-xs font-bold hover:bg-[#0a2147] transition-colors shadow-sm"
                             >
-                                <Printer size={18} /> Print
-                            </button>
-                            <button onClick={onClose} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-xl transition-all">
-                                <X size={20} />
+                                <Printer size={14} /> Print
                             </button>
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto print:overflow-visible bg-slate-100 p-4 lg:p-8 print:p-0 flex justify-center w-full">
-                        <div id="daily-invoice-print" className="bg-white w-[210mm] shadow-xl print:shadow-none print:w-full flex flex-col relative shrink-0 overflow-hidden box-border p-[10mm]">
+                    <div className="overflow-y-auto bg-slate-50 flex-1 p-4 lg:p-6 flex justify-center w-full">
+                        <div id="daily-invoice-print" className="bg-white w-[210mm] max-w-full shadow-lg flex flex-col relative shrink-0 overflow-hidden box-border p-[10mm] rounded-lg border border-slate-200">
 
                             {/* ══ HEADER ══ */}
                             <div className="bg-gradient-to-r from-[#0D2B5E] to-[#1a4a99] px-5 py-3 flex justify-between items-start rounded-t-lg">
@@ -441,8 +427,7 @@ export const DailyInvoiceModal: React.FC<DailyInvoiceModalProps> = ({ orders, re
 
                         </div>
                     </div>
-                </div>
             </div>
-        </>
+        </div>
     );
 };

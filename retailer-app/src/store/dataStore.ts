@@ -152,7 +152,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ─── Mutations ─────────────────────────────────────────────────────────
   updateOrderStatus: async (orderId, status, _wholesalerId, paymentData) => {
     const body: any = { status };
-    if (paymentData) body.paymentData = paymentData;
+    if (paymentData) {
+      body.payment_amount = paymentData.amount;
+      body.payment_method = paymentData.method;
+    }
     const { data: updated } = await api.patch(`/orders/${orderId}/status`, body);
     set((s) => ({ orders: s.orders.map(o => o.id === orderId ? updated : o) }));
     // Refresh medicines stock after ACCEPTED (stock deducted) or REJECTED (stock restored)

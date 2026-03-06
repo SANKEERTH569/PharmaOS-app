@@ -203,7 +203,7 @@ export interface Payment {
   created_at: string;
 }
 
-export type ReturnReason = 'EXPIRED' | 'DAMAGED';
+export type ReturnReason = 'EXPIRED' | 'DAMAGED' | 'MISSING';
 export type ReturnStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface ReturnItemType {

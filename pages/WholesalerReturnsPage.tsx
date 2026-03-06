@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useDataStore } from '../store/dataStore';
 import {
     RotateCcw, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
-    Loader2, AlertTriangle, Calendar, Package, Store, Filter, User
+    Loader2, AlertTriangle, Calendar, Package, Store, Filter, User, AlertCircle
 } from 'lucide-react';
 import { ReturnRequest, ReturnReason, ReturnStatus } from '../types';
 
@@ -64,13 +64,24 @@ export const WholesalerReturnsPage = () => {
         );
     };
 
-    const ReasonBadge = ({ reason }: { reason: ReturnReason }) => (
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ${reason === 'EXPIRED' ? 'bg-orange-50 text-orange-600 border border-orange-200' : 'bg-red-50 text-red-600 border border-red-200'
-            }`}>
-            {reason === 'EXPIRED' ? <Calendar size={11} /> : <AlertTriangle size={11} />}
-            {reason}
-        </span>
-    );
+    const ReasonBadge = ({ reason }: { reason: ReturnReason }) => {
+        const colors: Record<string, string> = {
+            EXPIRED: 'bg-orange-50 text-orange-600 border-orange-200',
+            DAMAGED: 'bg-red-50 text-red-600 border-red-200',
+            MISSING: 'bg-indigo-50 text-indigo-600 border-indigo-200'
+        };
+        const icons: Record<string, any> = {
+            EXPIRED: <Calendar size={11} />,
+            DAMAGED: <AlertTriangle size={11} />,
+            MISSING: <AlertCircle size={11} />
+        };
+        return (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider border ${colors[reason] || colors.DAMAGED}`}>
+                {icons[reason] || icons.DAMAGED}
+                {reason}
+            </span>
+        );
+    };
 
     return (
         <div className="animate-in fade-in duration-500 space-y-6">

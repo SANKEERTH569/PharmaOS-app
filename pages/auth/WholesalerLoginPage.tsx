@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { useDataStore } from '../../store/dataStore';
 import {
     ArrowRight, Lock, Eye, EyeOff,
     User, Phone, Mail, MapPin, CheckCircle2, Briefcase,
@@ -23,6 +24,7 @@ export const WholesalerLoginPage = () => {
     });
 
     const { loginWholesaler, register, authError } = useAuthStore();
+    const { initData } = useDataStore();
     const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -30,6 +32,8 @@ export const WholesalerLoginPage = () => {
         setLoading(true);
         try {
             await loginWholesaler(loginId.trim(), loginPass);
+            const w = useAuthStore.getState().wholesaler;
+            initData(w?.id || '', 'WHOLESALER');
             navigate('/');
         } catch { } finally { setLoading(false); }
     };
@@ -47,6 +51,8 @@ export const WholesalerLoginPage = () => {
                 name: reg.name.trim(), phone: reg.phone.trim(),
                 email: reg.email.trim() || undefined, address: reg.address.trim() || undefined,
             });
+            const w = useAuthStore.getState().wholesaler;
+            initData(w?.id || '', 'WHOLESALER');
             navigate('/');
         } catch { } finally { setLoading(false); }
     };

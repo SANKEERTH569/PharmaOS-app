@@ -80,23 +80,34 @@ router.get('/summary', async (req, res) => {
             }
         });
 
-        // We can also compute global balance
-        let global_balance = 0;
+        // Compute per-agency balances from ledger entries
+        let ledger_based_total = 0;
         const summaries = Array.from(wholesalersMap.values()).map(w => {
             w.current_balance = Math.max(0, w.current_balance);
-            global_balance += w.current_balance;
+            ledger_based_total += w.current_balance;
             return {
                 wholesaler_id: w.wholesaler.id,
+                wholesaler_name: w.wholesaler.name,
                 name: w.wholesaler.name,
                 phone: w.wholesaler.phone,
                 is_primary: w.is_primary,
-                balance: w.current_balance
+                outstanding: w.current_balance,
+                balance: w.current_balance,
             };
         });
 
+        // Use the retailer's current_balance (maintained atomically in debit/credit ops) as source of truth.
+        // If ledger-based total is 0 but retailer has a balance, distribute it to the primary agency.
+        const actual_balance = Math.max(0, retailerUser.current_balance);
+        if (ledger_based_total === 0 && actual_balance > 0 && summaries.length > 0) {
+            const primary = summaries.find(s => s.is_primary) || summaries[0];
+            primary.outstanding = actual_balance;
+            primary.balance = actual_balance;
+        }
+
         res.json({
             global_credit_limit: retailerUser.credit_limit,
-            global_current_balance: Math.max(0, global_balance),
+            global_current_balance: actual_balance,
             agencies: summaries
         });
     } catch (err: any) {

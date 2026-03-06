@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Order, Retailer } from '../types';
-import { Printer, X, ShieldCheck, CreditCard, Truck, Package, MapPin, User, Hash, Download } from 'lucide-react';
+import { Printer, X, ShieldCheck, CreditCard, Truck, Package, MapPin, User, Hash, Download, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useState } from 'react';
 import html2pdf from 'html2pdf.js';
 
 interface CombinedPrintModalProps {
@@ -64,107 +63,39 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
     const dueDate = new Date(invoiceDate.getTime() + 15 * 24 * 60 * 60 * 1000);
     const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    const handleDownloadPdf = () => {
+    const handleDownloadPdf = useCallback(() => {
         setIsDownloading(true);
         const element = document.getElementById('combined-print');
-        if (!element) {
-            setIsDownloading(false);
-            return;
-        }
-
-        const opt = {
+        if (!element) { setIsDownloading(false); return; }
+        html2pdf().set({
             margin: 0,
             filename: `Invoice-Challan-${order.invoice_no || order.id.slice(-6)}.pdf`,
-            image: { type: 'jpeg' as const, quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const }
-        };
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        }).from(element).save().then(() => setIsDownloading(false)).catch(() => setIsDownloading(false));
+    }, [order]);
 
-        html2pdf().set(opt).from(element).save().then(() => {
-            setIsDownloading(false);
-        }).catch(() => {
-            setIsDownloading(false);
-        });
-    };
+    const handlePrint = useCallback(() => {
+        const el = document.getElementById('combined-print');
+        if (!el) return;
+        const win = window.open('', '_blank', 'width=800,height=1100');
+        if (!win) { window.print(); return; }
+        win.document.write(`<!DOCTYPE html><html><head><title>Invoice+Challan ${order.invoice_no || ''}</title>
+          <script src="https://cdn.tailwindcss.com"><\/script>
+          <style>@page{size:A4 portrait;margin:0}*{margin:0;padding:0;box-sizing:border-box}html,body{width:210mm;height:297mm;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.cut-line{border-top:1px dashed #ccc;position:relative}.cut-line::after{content:"✂ CUT HERE";position:absolute;top:-6px;left:50%;transform:translateX(-50%);background:white;padding:0 10px;font-size:8px;color:#999}</style>
+        </head><body>${el.outerHTML}</body></html>`);
+        win.document.close();
+        setTimeout(() => { win.print(); win.close(); }, 600);
+    }, [order]);
 
     return (
-        <>
-            <style>{`
-        @media print {
-          /* Force A4 portrait and remove browser margins completely */
-          @page {
-            size: A4 portrait;
-            margin: 0 !important;
-          }
-          html, body {
-            width: 210mm !important;
-            height: 297mm !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body * { visibility: hidden !important; }
-          #combined-print, #combined-print * { visibility: visible !important; }
-          #combined-print {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 210mm !important;
-            height: 297mm !important; /* Total A4 height */
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: flex-start !important;
-            align-items: stretch !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            page-break-after: avoid !important;
-            page-break-before: avoid !important;
-            page-break-inside: avoid !important;
-          }
-          /* Ensure each half strictly takes 50% height without overflowing */
-          .print-half {
-            height: 148.5mm !important; 
-            width: 210mm !important;
-            padding: 5mm 10mm !important; /* Added side padding to prevent cut off */
-            box-sizing: border-box !important;
-            overflow: hidden !important; /* hide overflow to strictly enforce 1 page */
-            margin: 0 auto !important;
-          }
-          .cut-line {
-            border-top: 1px dashed #ccc !important;
-            width: 100% !important;
-            margin: 0 !important;
-            position: absolute !important;
-            top: 148.5mm !important;
-            left: 0 !important;
-            z-index: 100;
-          }
-          .cut-line::after {
-            content: "✂ CUT HERE";
-            position: absolute;
-            top: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 0 10px;
-            font-size: 8px;
-            color: #ccc;
-          }
-          #combined-print .print\\:hidden { display: none !important; }
-        }
-      `}</style>
-
             <div
                 className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200"
                 onClick={onClose}
             >
                 <div
-                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[95vh] print:shadow-none print:bg-transparent"
+                    className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[95vh]"
                     onClick={e => e.stopPropagation()}
                 >
                     {/* ── Toolbar ── */}
@@ -182,15 +113,16 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                             <button
                                 onClick={handleDownloadPdf}
                                 disabled={isDownloading}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50"
+                                className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm disabled:opacity-50"
                             >
-                                <Download size={18} /> {isDownloading ? 'Generating...' : 'Download PDF'}
+                                {isDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                                {isDownloading ? 'Generating...' : 'Download PDF'}
                             </button>
                             <button
-                                onClick={() => window.print()}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-[#0D2B5E] text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-[#0a2147] transition-all shadow-lg shadow-[#0D2B5E]/20"
+                                onClick={handlePrint}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-[#0D2B5E] text-white rounded-xl text-sm font-bold hover:bg-[#0a2147] transition-all shadow-sm"
                             >
-                                <Printer size={18} /> Print
+                                <Printer size={16} /> Print
                             </button>
                             <button onClick={onClose} className="p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-xl transition-all">
                                 <X size={20} />
@@ -198,8 +130,8 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto print:overflow-hidden bg-slate-100 p-4 lg:p-8 print:p-0 flex justify-center w-full">
-                        <div id="combined-print" className="bg-white w-[210mm] shadow-xl print:shadow-none print:w-full flex flex-col relative shrink-0 overflow-hidden box-border">
+                    <div className="overflow-y-auto bg-slate-100 p-4 lg:p-8 flex justify-center w-full rounded-b-2xl">
+                        <div id="combined-print" className="bg-white w-[210mm] shadow-xl flex flex-col relative shrink-0 overflow-hidden box-border">
 
                             {/* ── TOP HALF: INVOICE ── */}
                             <div className="h-[148.5mm] w-full p-[8mm] print:p-0 relative flex flex-col box-border">
@@ -287,7 +219,7 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {order.items.slice(0, 8).map((item, idx) => { // hard limit items for layout safety in MVP
+                                                {order.items.map((item, idx) => {
                                                     const mrp = item.mrp ?? 0;
                                                     const rate = item.unit_price ?? 0;
                                                     const amount = item.taxable_value ?? (rate * item.qty);
@@ -309,7 +241,7 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                                             <tfoot>
                                                 <tr className="bg-slate-100 border-t border-slate-300">
                                                     <td colSpan={5} className="px-1.5 py-1 font-black text-right text-slate-500 uppercase text-[6px] tracking-wider">
-                                                        {order.items.length > 8 ? `+${order.items.length - 8} items clipped ` : ''} Total Items: {order.items.length} | Total Qty: {order.items.reduce((s, i) => s + i.qty, 0)}
+                                                        Total Items: {order.items.length} | Total Qty: {order.items.reduce((s, i) => s + i.qty, 0)}
                                                     </td>
                                                     <td></td>
                                                     <td></td>
@@ -319,7 +251,6 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                                             </tfoot>
                                         </table>
 
-                                        {order.items.length > 8 && <div className="text-[6px] text-center text-rose-500 mt-1 italic print:hidden">Warning: Large order truncated for combined preview view.</div>}
                                     </div>
 
                                     {/* ══ FOOTER: GST + TOTALS ══ */}
@@ -496,7 +427,7 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                                             <Hash size={8} /> Consignment Contents Checklist
                                         </p>
                                         <div className="grid grid-cols-2 gap-px bg-slate-200 text-xs overflow-auto">
-                                            {order.items.slice(0, 10).map((item, idx) => (
+                                            {order.items.map((item, idx) => (
                                                 <div key={item.id} className="bg-white flex items-center justify-between p-1.5">
                                                     <div className="flex items-center gap-1.5 overflow-hidden">
                                                         <span className="bg-slate-100 text-slate-400 text-[6px] font-bold px-1 rounded-sm w-4 text-center shrink-0">{idx + 1}</span>
@@ -514,7 +445,6 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                                                 </div>
                                             ))}
                                         </div>
-                                        {order.items.length > 10 && <div className="text-[7px] text-center font-bold text-slate-500 bg-slate-100 py-1 border-t border-slate-200">+{order.items.length - 10} additional items in package. Refer to main invoice above for full list.</div>}
                                     </div>
 
                                     {/* Confirmation Area */}
@@ -537,6 +467,5 @@ export const CombinedPrintModal: React.FC<CombinedPrintModalProps> = ({ order, r
                     </div>
                 </div>
             </div>
-        </>
     );
 };

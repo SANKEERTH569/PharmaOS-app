@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { Order, Retailer } from '../types';
-import { Printer, X, Truck, Package, MapPin, User, Hash } from 'lucide-react';
+import { Printer, X, Truck, Package, MapPin, User, Hash, Download, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import html2pdf from 'html2pdf.js';
 
 interface DeliveryReceiptModalProps {
   order: Order;
@@ -12,10 +13,33 @@ interface DeliveryReceiptModalProps {
 
 export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ order, retailer, onClose }) => {
   const { wholesaler } = useAuthStore();
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handleDownloadPdf = useCallback(() => {
+    setIsDownloading(true);
+    const element = document.getElementById('delivery-receipt-print');
+    if (!element) { setIsDownloading(false); return; }
+    html2pdf().set({
+      margin: [8, 8, 8, 8],
+      filename: `Challan-${order.id.slice(-6)}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    }).from(element).save().then(() => setIsDownloading(false)).catch(() => setIsDownloading(false));
+  }, [order]);
+
+  const handlePrint = useCallback(() => {
+    const el = document.getElementById('delivery-receipt-print');
+    if (!el) return;
+    const win = window.open('', '_blank', 'width=800,height=1100');
+    if (!win) { window.print(); return; }
+    win.document.write(`<!DOCTYPE html><html><head><title>Challan DC-${order.id.split('-').pop()}</title>
+      <script src="https://cdn.tailwindcss.com"><\/script>
+      <style>@page{size:A4 portrait;margin:8mm}*{margin:0;padding:0;box-sizing:border-box}html,body{width:210mm;min-height:297mm;background:white;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}</style>
+    </head><body>${el.outerHTML}</body></html>`);
+    win.document.close();
+    setTimeout(() => { win.print(); win.close(); }, 600);
+  }, [order]);
 
   return (
     <div 
@@ -23,38 +47,49 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ orde
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh] print:shadow-none print:max-h-none print:rounded-none print:h-auto print:absolute print:inset-0 print:z-[70]"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Controls - Fixed Header */}
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl print:hidden shrink-0">
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl shrink-0">
           <div className="flex items-center gap-2">
              <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
                 <Truck className="text-white w-5 h-5" />
              </div>
-             <span className="font-bold text-emerald-900">Delivery Challan Viewer</span>
+             <div>
+               <span className="font-bold text-emerald-900 block">Delivery Challan</span>
+               <span className="text-slate-500 text-xs">DC-{order.id.split('-').pop()}</span>
+             </div>
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors"
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50"
             >
-              <Printer size={16} /> Print Challan
+              {isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {isDownloading ? 'Generating...' : 'Download PDF'}
+            </button>
+            <button 
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+            >
+              <Printer size={14} /> Print
             </button>
             <button 
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full transition-all"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-xl transition-all"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
         </div>
 
         {/* Receipt Body - Scrollable */}
-        <div className="p-10 overflow-y-auto bg-white rounded-b-2xl print:p-0 print:overflow-visible">
-          <div className="border-4 border-emerald-100 p-8 print:border-none print:p-0">
+        <div className="p-6 overflow-y-auto bg-slate-50 rounded-b-2xl">
+          <div id="delivery-receipt-print" className="bg-white border border-emerald-100 p-6 rounded-xl">
             {/* Header */}
-            <div className="flex justify-between items-center mb-10 pb-6 border-b-2 border-emerald-500">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-emerald-500">
                <div className="flex items-center gap-4">
                   <div className="p-3 bg-emerald-50 rounded-2xl">
                     <Package size={32} className="text-emerald-600" />
@@ -71,7 +106,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ orde
             </div>
 
             {/* Shipping Info */}
-            <div className="grid grid-cols-2 gap-8 mb-10">
+            <div className="grid grid-cols-2 gap-6 mb-6">
                <div className="space-y-4">
                   <div className="flex items-start gap-3">
                      <div className="mt-1 p-1 bg-slate-100 rounded-md text-slate-400">
@@ -113,7 +148,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ orde
             </div>
 
             {/* Package Contents */}
-            <div className="mb-10">
+            <div className="mb-6">
                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                  <Hash size={12} /> Consignment Contents Checklist
                </h3>
@@ -147,7 +182,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ orde
             </div>
 
             {/* Confirmation Area */}
-            <div className="grid grid-cols-2 gap-10 mt-16 pt-10 border-t-2 border-emerald-500">
+            <div className="grid grid-cols-2 gap-8 mt-8 pt-6 border-t-2 border-emerald-500">
                <div>
                   <div className="p-4 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 h-32 flex flex-col justify-end">
                      <p className="text-[9px] text-slate-400 font-black uppercase text-center border-t border-slate-200 pt-2">Logistics Executive Signature</p>
@@ -161,7 +196,7 @@ export const DeliveryReceiptModal: React.FC<DeliveryReceiptModalProps> = ({ orde
                </div>
             </div>
 
-            <div className="mt-10 text-center">
+            <div className="mt-6 text-center">
                <p className="text-[9px] text-slate-400 font-medium italic">This is a system generated delivery document. No signature is required for dispatch verification.</p>
                <p className="text-[10px] font-black text-emerald-800 mt-2 uppercase tracking-widest">Efficient Pharma Supply Chain Solutions</p>
             </div>

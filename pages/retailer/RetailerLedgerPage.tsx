@@ -1,194 +1,178 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Wallet, CreditCard, ArrowUpRight, ArrowDownLeft, Building2,
+  ChevronDown, ChevronRight, TrendingUp, Calendar, Filter,
+} from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
-import { Store, ChevronDown, ChevronUp, Loader2, ArrowDownLeft, ArrowUpRight, CreditCard, Activity, Building2 } from 'lucide-react';
+import { cn } from '../../utils/cn';
 
-export const RetailerLedgerPage = () => {
-    const { retailerLedgerSummary, fetchRetailerLedgerSummary, retailerLedgerHistory, fetchRetailerLedgerHistory } = useDataStore();
-    const [expandedAgency, setExpandedAgency] = useState<string | null>(null);
-    const [loadingHistory, setLoadingHistory] = useState<Record<string, boolean>>({});
+export const RetailerLedgerPage: React.FC = () => {
+  const { retailerLedgerSummary, retailerLedgerHistory, fetchRetailerLedgerSummary, fetchRetailerLedgerHistory } = useDataStore();
+  const [selectedAgency, setSelectedAgency] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
 
-    useEffect(() => {
-        fetchRetailerLedgerSummary();
-    }, []);
+  useEffect(() => { fetchRetailerLedgerSummary().catch(() => {}); }, []);
 
-    const toggleExpand = async (wholesalerId: string) => {
-        if (expandedAgency === wholesalerId) {
-            setExpandedAgency(null);
-            return;
-        }
+  const summary = retailerLedgerSummary;
+  const agencies = summary?.agencies || [];
+  const totalOutstanding = summary?.global_current_balance || 0;
+  const totalLimit = summary?.global_credit_limit || 0;
+  const available = totalLimit - totalOutstanding;
+  const utilization = totalLimit > 0 ? (totalOutstanding / totalLimit) * 100 : 0;
 
-        setExpandedAgency(wholesalerId);
+  const handleAgencyClick = (wholesalerId: string) => {
+    if (selectedAgency === wholesalerId) { setSelectedAgency(null); return; }
+    setSelectedAgency(wholesalerId);
+    if (!retailerLedgerHistory[wholesalerId]) fetchRetailerLedgerHistory(wholesalerId).catch(() => {});
+  };
 
-        // Fetch history if not already loaded
-        if (!retailerLedgerHistory[wholesalerId]) {
-            setLoadingHistory(prev => ({ ...prev, [wholesalerId]: true }));
-            await fetchRetailerLedgerHistory(wholesalerId);
-            setLoadingHistory(prev => ({ ...prev, [wholesalerId]: false }));
-        }
-    };
+  const currentHistory = selectedAgency ? (retailerLedgerHistory[selectedAgency] || []) : [];
+  const filteredHistory = filter === 'ALL' ? currentHistory : currentHistory.filter(e => e.type === filter);
 
-    if (!retailerLedgerSummary) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-                <Loader2 size={40} className="text-emerald-500 animate-spin mb-4" />
-                <p className="text-slate-500 font-black tracking-widest uppercase text-sm">Loading Accounts...</p>
-            </div>
-        );
+  // Group by date
+  const groupByDate = (entries: typeof currentHistory) => {
+    const groups: Record<string, typeof currentHistory> = {};
+    for (const entry of entries) {
+      const date = new Date(entry.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      (groups[date] = groups[date] || []).push(entry);
     }
+    return groups;
+  };
 
-    return (
-        <div className="animate-in fade-in zoom-in-95 duration-500 space-y-6 pb-24">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm border border-emerald-100 shrink-0">
-                        <Activity size={24} strokeWidth={2} />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl lg:text-4xl font-black text-slate-800 tracking-tight leading-none mb-1">Ledger & Payments</h1>
-                        <p className="text-slate-500 font-medium text-sm">Manage outstanding balances and credit</p>
-                    </div>
-                </div>
+  const dateGroups = groupByDate(filteredHistory);
+
+  return (
+    <div className="space-y-5">
+      {/* Credit Overview Card */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white relative overflow-hidden shadow-xl shadow-blue-600/20">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard size={16} className="text-blue-200" />
+            <span className="text-xs font-medium text-blue-200 uppercase tracking-wider">Credit Overview</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <p className="text-[10px] text-blue-200 uppercase tracking-wider mb-1">Available Credit</p>
+              <p className="text-2xl font-bold">₹{available.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             </div>
-
-            {/* Outstanding Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 xl:gap-8 mb-10">
-                <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-[32px] p-8 relative overflow-hidden shadow-xl shadow-rose-600/20 text-white">
-                    <div className="relative z-10">
-                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-white/10">
-                            <ArrowUpRight size={24} className="text-rose-100" />
-                        </div>
-                        <p className="text-rose-100 font-extrabold uppercase tracking-widest text-xs mb-2">
-                            Total Outstanding Balance
-                        </p>
-                        <h2 className="text-4xl lg:text-5xl font-black tracking-tight">₹{retailerLedgerSummary.global_current_balance.toLocaleString()}</h2>
-                    </div>
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                    <div className="absolute bottom-0 right-0 w-32 h-32 bg-rose-400/20 rounded-full blur-2xl translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
-                </div>
-
-                <div className="bg-gradient-to-br from-[#042F2E] via-[#064E3B] to-[#0D9488] rounded-[32px] p-8 relative overflow-hidden shadow-xl shadow-emerald-900/20 text-white">
-                    <div className="relative z-10">
-                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-sm border border-white/10">
-                            <CreditCard size={24} className="text-emerald-300" />
-                        </div>
-                        <p className="text-emerald-100/80 font-extrabold uppercase tracking-widest text-xs mb-2">
-                            Total Approved Credit Limit
-                        </p>
-                        <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-white drop-shadow-sm">₹{retailerLedgerSummary.global_credit_limit.toLocaleString()}</h2>
-                    </div>
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-400/10 rounded-full blur-[60px] -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                </div>
+            <div className="text-right">
+              <p className="text-[10px] text-blue-200 uppercase tracking-wider mb-1">Outstanding</p>
+              <p className="text-2xl font-bold text-rose-300">₹{totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
             </div>
+          </div>
 
-            {/* Agencies List */}
-            <div className="space-y-6">
-                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 px-2">
-                    Agency Accounts
-                </h2>
-
-                <div className="space-y-5">
-                    {retailerLedgerSummary.agencies.map((agency, idx) => {
-                        const isExpanded = expandedAgency === agency.wholesaler_id;
-                        const history = retailerLedgerHistory[agency.wholesaler_id];
-                        const isLoading = loadingHistory[agency.wholesaler_id];
-
-                        return (
-                            <div key={agency.wholesaler_id} className="bg-white rounded-[32px] border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-slate-200/40 transition-all duration-300 overflow-hidden" style={{ animationDelay: `${idx * 100}ms` }}>
-                                <div
-                                    onClick={() => toggleExpand(agency.wholesaler_id)}
-                                    className="p-6 flex flex-col sm:flex-row justify-between sm:items-center gap-6 cursor-pointer group"
-                                >
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-                                        <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center border border-indigo-100/50 shadow-inner group-hover:scale-105 transition-transform shrink-0">
-                                            <Building2 size={24} strokeWidth={1.5} />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <div className="flex items-center gap-3">
-                                                <h3 className="font-extrabold text-slate-800 text-lg tracking-tight group-hover:text-emerald-700 transition-colors">{agency.name}</h3>
-                                                {agency.is_primary && (
-                                                    <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md border border-emerald-200/50 flex flex-row items-center gap-1 shadow-sm"><Store size={10} /> Primary</span>
-                                                )}
-                                            </div>
-                                            <p className="inline-flex items-center px-2 py-0.5 rounded bg-slate-50 text-[11px] text-slate-500 font-bold tracking-widest border border-slate-100">{agency.phone}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between sm:justify-end gap-6 sm:w-auto w-full pt-4 sm:pt-0 border-t sm:border-t-0 border-slate-100">
-                                        <div className="text-left sm:text-right">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Outstanding</p>
-                                            <p className={`text-2xl font-black leading-none tracking-tight ${agency.balance > 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                ₹{agency.balance.toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isExpanded ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-600'}`}>
-                                            {isLoading ? <Loader2 size={18} className="animate-spin" /> : (
-                                                isExpanded ? <ChevronUp size={20} strokeWidth={2.5} /> : <ChevronDown size={20} strokeWidth={2.5} />
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Expanded History */}
-                                {isExpanded && (
-                                    <div className="bg-slate-50/50 border-t border-slate-100 p-6 sm:p-8">
-                                        <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-5 flex items-center gap-2">
-                                            <Activity size={12} /> Recent Transactions
-                                        </h4>
-
-                                        {!history || isLoading ? (
-                                            <div className="flex justify-center py-10">
-                                                <Loader2 size={24} className="animate-spin text-emerald-500" />
-                                            </div>
-                                        ) : history.length === 0 ? (
-                                            <div className="text-center py-10 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                                                <p className="text-slate-500 text-sm font-bold tracking-wide">No transactions found with this agency.</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {history.map(entry => {
-                                                    const isDebit = entry.type === 'DEBIT';
-                                                    return (
-                                                        <div key={entry.id} className="flex flex-col sm:flex-row justify-between sm:items-center bg-white p-4 rounded-[20px] border border-slate-200/60 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
-                                                            <div className="flex items-start gap-4 mb-3 sm:mb-0">
-                                                                <div className={`mt-0.5 w-10 h-10 flex items-center justify-center rounded-xl shadow-inner shrink-0 ${isDebit ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-500 border border-emerald-100'}`}>
-                                                                    {isDebit ? <ArrowUpRight size={18} strokeWidth={2.5} /> : <ArrowDownLeft size={18} strokeWidth={2.5} />}
-                                                                </div>
-                                                                <div className="space-y-1">
-                                                                    <p className="text-[15px] font-extrabold text-slate-800 leading-tight">{entry.description}</p>
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{new Date(entry.created_at).toLocaleDateString()} {new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                                        {entry.reference_id && <span className="text-[10px] font-bold tracking-widest uppercase text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">Ref: {entry.reference_id}</span>}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right border-t sm:border-0 border-slate-100 pt-3 sm:pt-0">
-                                                                <p className={`text-lg font-black tracking-tight ${isDebit ? 'text-rose-500' : 'text-emerald-500'}`}>
-                                                                    {isDebit ? '+' : '-'}₹{entry.amount.toLocaleString()}
-                                                                </p>
-                                                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-0.5 inline-block bg-slate-50 px-2 py-0.5 rounded">Bal: ₹{entry.balance_after.toLocaleString()}</p>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {retailerLedgerSummary.agencies.length === 0 && (
-                    <div className="p-16 flex flex-col items-center justify-center text-center bg-white rounded-[40px] border-2 border-slate-200/60 border-dashed shadow-sm mt-8 relative overflow-hidden">
-                        <div className="w-24 h-24 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-6 shadow-sm border border-slate-100">
-                            <Building2 size={40} strokeWidth={1.5} />
-                        </div>
-                        <p className="text-2xl font-black text-slate-800 mb-2">No agencies linked</p>
-                        <p className="text-slate-500 font-medium max-w-sm">You haven't added any agencies yet. Connect with agencies to start ordering and track your balances here.</p>
-                    </div>
-                )}
+          {/* Progress Bar */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-[10px]">
+              <span className="text-blue-200">Utilization</span>
+              <span className="font-semibold">{utilization.toFixed(0)}%</span>
             </div>
+            <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(utilization, 100)}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className={cn("h-full rounded-full", utilization > 80 ? "bg-rose-400" : utilization > 50 ? "bg-amber-400" : "bg-emerald-400")}
+              />
+            </div>
+            <p className="text-[10px] text-blue-200">Total Limit: ₹{totalLimit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+          </div>
         </div>
-    );
+      </motion.div>
+
+      {/* Agency List */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">Agencies</h3>
+        <div className="space-y-2.5">
+          {agencies.length === 0 ? (
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-10 bg-white rounded-2xl border border-slate-100/80 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <Building2 size={24} className="text-slate-300" />
+              </div>
+              <p className="text-sm font-semibold text-slate-600">No agencies connected</p>
+              <p className="text-xs text-slate-400 mt-1">Connect agencies to see your ledger</p>
+            </motion.div>
+          ) : (
+            agencies.map((agency: any) => {
+              const isSelected = selectedAgency === agency.wholesaler_id;
+              return (
+                <motion.div key={agency.wholesaler_id} layout className="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden hover:shadow-md transition-all">
+                  <button onClick={() => handleAgencyClick(agency.wholesaler_id)} className="w-full flex items-center gap-3 p-4 text-left hover:bg-blue-50/20 transition-all">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shrink-0 border border-blue-100/50">
+                      <Building2 size={16} className="text-blue-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-800">{agency.wholesaler_name || agency.name || 'Agency'}</p>
+                      {agency.is_primary && <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg mt-0.5 inline-block border border-amber-200/50">Primary</span>}
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-sm font-bold", agency.outstanding > 0 ? "text-rose-600" : "text-emerald-600")}>
+                        ₹{(agency.outstanding || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">outstanding</p>
+                    </div>
+                    {isSelected ? <ChevronDown size={16} className="text-blue-500" /> : <ChevronRight size={16} className="text-slate-400" />}
+                  </button>
+
+                  {/* Transaction History */}
+                  {isSelected && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} className="border-t border-slate-100/60">
+                      {/* Filter */}
+                      <div className="flex items-center gap-2 px-4 py-3 bg-slate-50/80 border-b border-slate-100/60">
+                        <Filter size={12} className="text-slate-400" />
+                        {['ALL', 'CREDIT', 'DEBIT'].map(f => (
+                          <button key={f} onClick={() => setFilter(f as any)}
+                            className={cn("text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all",
+                              filter === f ? "bg-blue-600 border-blue-600 text-white shadow-sm" : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50")}>
+                            {f === 'ALL' ? 'All' : f === 'CREDIT' ? 'Credits' : 'Debits'}
+                          </button>
+                        ))}
+                      </div>
+
+                      {filteredHistory.length === 0 ? (
+                        <div className="text-center py-10 text-xs text-slate-400 font-medium">No transactions found</div>
+                      ) : (
+                        <div className="max-h-[400px] overflow-y-auto">
+                          {Object.entries(dateGroups).map(([date, entries]) => (
+                            <div key={date}>
+                              <div className="sticky top-0 px-4 py-2 bg-slate-50/90 backdrop-blur-sm border-b border-slate-100/60">
+                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1"><Calendar size={10} />{date}</span>
+                              </div>
+                              {entries.map((entry: any) => (
+                                <div key={entry.id} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
+                                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", entry.type === 'DEBIT' ? "bg-rose-50 border border-rose-100/50" : "bg-emerald-50 border border-emerald-100/50")}>
+                                    {entry.type === 'DEBIT' ? <ArrowUpRight size={14} className="text-rose-600" /> : <ArrowDownLeft size={14} className="text-emerald-600" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-slate-700 truncate">{entry.description}</p>
+                                    {entry.reference_id && <p className="text-[10px] text-slate-400 font-medium">Ref: {entry.reference_id}</p>}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={cn("text-sm font-bold", entry.type === 'DEBIT' ? "text-rose-600" : "text-emerald-600")}>
+                                      {entry.type === 'DEBIT' ? '+' : '-'}₹{entry.amount.toFixed(0)}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Bal: ₹{entry.balance_after?.toFixed(0) || '—'}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };

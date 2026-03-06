@@ -9,6 +9,8 @@ import { RetailerProfilePage } from './pages/retailer/RetailerProfilePage';
 import { AgencySetupPage } from './pages/retailer/AgencySetupPage';
 import { RetailerLedgerPage } from './pages/retailer/RetailerLedgerPage';
 import { RetailerReturnsPage } from './pages/retailer/RetailerReturnsPage';
+import { NotificationsPage } from './pages/retailer/NotificationsPage';
+import { RetailerPaymentsPage } from './pages/retailer/RetailerPaymentsPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 
@@ -66,6 +68,12 @@ function App() {
                 } />
                 <Route path="/shop/profile" element={
                     <ProtectedRoute><RetailerProfilePage /></ProtectedRoute>
+                } />
+                <Route path="/shop/notifications" element={
+                    <ProtectedRoute><NotificationsPage /></ProtectedRoute>
+                } />
+                <Route path="/shop/payments" element={
+                    <ProtectedRoute><RetailerPaymentsPage /></ProtectedRoute>
                 } />
 
                 {/* Default: redirect to shop or login */}

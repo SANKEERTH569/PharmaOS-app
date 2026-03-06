@@ -6,7 +6,7 @@ import {
   LogOut, Menu, Wallet, Activity, HandCoins,
   Settings, Bell, X, ChevronRight, RotateCcw,
   Check, CheckCheck, Package, CreditCard, AlertTriangle,
-  Clock, ArrowRight, MapPin,
+  Clock, ArrowRight, MapPin, FileText, Home
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
@@ -18,7 +18,8 @@ const navGroups = [
   {
     label: 'Main',
     items: [
-      { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+      { icon: Home, label: 'Home', path: '/' },
+      { icon: FileText, label: 'Quick Sale', path: '/quick-sale' },
       { icon: ShoppingCart, label: 'Orders', path: '/orders' },
       { icon: Users, label: 'Retailers', path: '/retailers' },
       { icon: RotateCcw, label: 'Returns', path: '/returns' },
@@ -30,6 +31,7 @@ const navGroups = [
       { icon: HandCoins, label: 'Collection', path: '/collection' },
       { icon: Activity, label: 'Ledger', path: '/ledger' },
       { icon: Wallet, label: 'Payments', path: '/payments' },
+      { icon: FileText, label: 'GST Returns', path: '/gst' },
     ],
   },
   {
@@ -44,6 +46,7 @@ const navGroups = [
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
+  '/quick-sale': 'Quick Sale',
   '/orders': 'Orders',
   '/retailers': 'Retailers',
   '/collection': 'Collection',
@@ -53,6 +56,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/rack-manager': 'Rack Manager',
   '/returns': 'Returns',
   '/settings': 'Settings',
+  '/gst': 'GST Returns',
 };
 
 /* ── Notification icon helper ────────────────────────────────────────────── */
@@ -107,7 +111,7 @@ const playNotificationSound = () => {
 };
 
 /* ── Toast Component ─────────────────────────────────────────────────────── */
-const Toast = ({ notification, onDismiss }: { notification: AppNotification; onDismiss: () => void }) => {
+const Toast = ({ notification, onDismiss }: { key?: React.Key; notification: AppNotification; onDismiss: () => void }) => {
   useEffect(() => {
     const t = setTimeout(onDismiss, 5000);
     return () => clearTimeout(t);
@@ -149,6 +153,8 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
   ).length;
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const isHome = location.pathname === '/';
 
   const pageTitle = Object.entries(PAGE_TITLES).find(
     ([p]) => location.pathname === p
@@ -196,6 +202,11 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
       navigate('/retailers');
     }
   };
+
+  // On the home dashboard, render children full-width (no sidebar)
+  if (isHome) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex h-screen">
