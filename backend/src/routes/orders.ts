@@ -2,7 +2,51 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole } from '../middleware/auth';
 import { debitRetailer, creditRetailer } from '../services/ledgerService';
+import { syncMedicineTotals } from './medicines';
 import { io } from '../index';
+
+async function deductStockFifo(medicine_id: string, qty: number, wholesaler_id: string) {
+  const batches = await prisma.medicineBatch.findMany({
+    where: { medicine_id, stock_qty: { gt: 0 } },
+    orderBy: { expiry_date: 'asc' },
+  });
+
+  let remaining = qty;
+  for (const batch of batches) {
+    if (remaining <= 0) break;
+    const deduct = Math.min(batch.stock_qty, remaining);
+    await prisma.medicineBatch.update({
+      where: { id: batch.id },
+      data: { stock_qty: { decrement: deduct } },
+    });
+    remaining -= deduct;
+  }
+  await syncMedicineTotals(medicine_id, wholesaler_id);
+}
+
+async function restoreStock(medicine_id: string, qty: number, wholesaler_id: string) {
+  const lastBatch = await prisma.medicineBatch.findFirst({
+    where: { medicine_id },
+    orderBy: { expiry_date: 'desc' },
+  });
+
+  if (lastBatch) {
+    await prisma.medicineBatch.update({
+      where: { id: lastBatch.id },
+      data: { stock_qty: { increment: qty } },
+    });
+  } else {
+    await prisma.medicineBatch.create({
+      data: {
+        medicine_id,
+        batch_no: `RESTORE-${Date.now().toString().slice(-6)}`,
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
+        stock_qty: qty,
+      }
+    });
+  }
+  await syncMedicineTotals(medicine_id, wholesaler_id);
+}
 
 const router = Router();
 router.use(authenticate);
@@ -210,32 +254,18 @@ router.patch('/:id/status', requireRole('WHOLESALER'), async (req, res) => {
     };
 
     // ── Stock management ────────────────────────────────────────────────
-    // ACCEPTED (from PENDING): deduct stock for each ordered item
+    // ACCEPTED (from PENDING): deduct stock for each ordered item using FIFO
     if (status === 'ACCEPTED' && order.status === 'PENDING') {
-      await Promise.all(
-        order.items.map((item) =>
-          prisma.medicine.updateMany({
-            where: {
-              id: item.medicine_id,
-              wholesaler_id: req.user!.wholesaler_id!,
-              stock_qty: { gte: 0 }, // allow going to 0 but not below enforced here
-            },
-            data: { stock_qty: { decrement: item.qty } },
-          })
-        )
-      );
+      for (const item of order.items) {
+        await deductStockFifo(item.medicine_id, item.qty, req.user!.wholesaler_id!);
+      }
     }
 
     // REJECTED (from ACCEPTED): restore stock
     if (status === 'REJECTED' && order.status === 'ACCEPTED') {
-      await Promise.all(
-        order.items.map((item) =>
-          prisma.medicine.updateMany({
-            where: { id: item.medicine_id, wholesaler_id: req.user!.wholesaler_id! },
-            data: { stock_qty: { increment: item.qty } },
-          })
-        )
-      );
+      for (const item of order.items) {
+        await restoreStock(item.medicine_id, item.qty, req.user!.wholesaler_id!);
+      }
     }
     // ────────────────────────────────────────────────────────────────────
 
@@ -404,22 +434,17 @@ router.post('/quick-sale', requireRole('WHOLESALER'), async (req, res) => {
         sub_total: subTotal,
         tax_total: taxTotal,
         total_amount: totalAmount,
-        payment_terms: 'NET 15',
+        payment_terms: req.body.payment_terms || 'NET 15',
         notes: notes || 'Quick Sale by Wholesaler',
         items: { create: orderItems },
       },
       include: { items: true, retailer: { select: { id: true, name: true, shop_name: true } } },
     });
 
-    // Deduct stock
-    await Promise.all(
-      items.map((i: any) =>
-        prisma.medicine.updateMany({
-          where: { id: i.medicine_id, wholesaler_id, stock_qty: { gte: 0 } },
-          data: { stock_qty: { decrement: i.qty } },
-        })
-      )
-    );
+    // Deduct stock via FIFO
+    for (const item of items) {
+      await deductStockFifo(item.medicine_id, item.qty, wholesaler_id);
+    }
 
     // Notify retailer
     const notification = await prisma.notification.create({
@@ -464,6 +489,139 @@ router.post('/:id/cancel', requireRole('RETAILER'), async (req, res) => {
     io.to(`wholesaler_${order.wholesaler_id}`).emit('order_updated', updated);
     res.json(updated);
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/orders/:id/remove-item — Wholesaler removes an item from an order
+router.post('/:id/remove-item', requireRole('WHOLESALER'), async (req, res) => {
+  try {
+    const { item_id } = req.body;
+    if (!item_id) return res.status(400).json({ error: 'item_id is required' });
+
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.id, wholesaler_id: req.user!.wholesaler_id! },
+      include: { items: true, retailer: true },
+    });
+
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (order.status !== 'PENDING' && order.status !== 'ACCEPTED') {
+      return res.status(422).json({ error: 'Can only remove items from PENDING or ACCEPTED orders' });
+    }
+
+    const itemToRemove = order.items.find(i => i.id === item_id);
+    if (!itemToRemove) return res.status(404).json({ error: 'Item not found in this order' });
+
+    // If order was ACCEPTED, we need to restore stock for this item
+    if (order.status === 'ACCEPTED') {
+      await restoreStock(itemToRemove.medicine_id, itemToRemove.qty, req.user!.wholesaler_id!);
+    }
+
+    // Delete the OrderItem
+    await prisma.orderItem.delete({
+      where: { id: item_id },
+    });
+
+    // Check if it was the last item
+    if (order.items.length === 1) {
+      // It was the last item, cancel the entire order
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          status: 'CANCELLED',
+          updated_at: new Date(),
+          sub_total: 0,
+          tax_total: 0,
+          total_amount: 0,
+          notes: order.notes ? `${order.notes}\n[System: Auto-cancelled as last item was removed]` : '[System: Auto-cancelled as last item was removed]'
+        },
+        include: {
+          items: { include: { medicine: { select: { expiry_date: true } } } },
+          wholesaler: { select: { id: true, name: true, phone: true } },
+          retailer: { select: { id: true, name: true, shop_name: true } },
+        },
+      });
+
+      // Flatten expiry_date
+      const result: any = {
+        ...updatedOrder,
+        items: updatedOrder.items.map((item: any) => ({
+          ...item,
+          expiry_date: item.medicine?.expiry_date ?? null,
+          medicine: undefined,
+        })),
+      };
+
+      await prisma.notification.create({
+        data: {
+          wholesaler_id: order.wholesaler_id,
+          retailer_id: order.retailer_id,
+          type: 'ORDER_STATUS_CHANGED',
+          title: 'Order Cancelled',
+          body: `Your order #${result.invoice_no || order.id} has been cancelled because all items were removed.`,
+        },
+      });
+
+      io.to(`wholesaler_${order.wholesaler_id}`).emit('order_updated', result);
+      io.to(`retailer_${order.retailer_id}`).emit('order_updated', result);
+
+      return res.json(result);
+    }
+
+    // Calculate new totals from remaining items
+    const remainingItems = order.items.filter(i => i.id !== item_id);
+    let newSubTotal = 0;
+    let newTaxTotal = 0;
+
+    remainingItems.forEach(i => {
+      newSubTotal += i.taxable_value;
+      newTaxTotal += i.tax_amount;
+    });
+
+    const newTotalAmount = newSubTotal + newTaxTotal;
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        sub_total: newSubTotal,
+        tax_total: newTaxTotal,
+        total_amount: newTotalAmount,
+        updated_at: new Date(),
+      },
+      include: {
+        items: { include: { medicine: { select: { expiry_date: true } } } },
+        wholesaler: { select: { id: true, name: true, phone: true } },
+        retailer: { select: { id: true, name: true, shop_name: true } },
+      },
+    });
+
+    // Flatten expiry_date
+    const result: any = {
+      ...updatedOrder,
+      items: updatedOrder.items.map((item: any) => ({
+        ...item,
+        expiry_date: item.medicine?.expiry_date ?? null,
+        medicine: undefined,
+      })),
+    };
+
+    // Notify retailer about item removal
+    await prisma.notification.create({
+      data: {
+        wholesaler_id: order.wholesaler_id,
+        retailer_id: order.retailer_id,
+        type: 'ORDER_STATUS_CHANGED',
+        title: 'Order Updated',
+        body: `An item (${itemToRemove.medicine_name}) was removed from your order #${result.invoice_no || order.id}. New total: ₹${newTotalAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`,
+      },
+    });
+
+    io.to(`wholesaler_${order.wholesaler_id}`).emit('order_updated', result);
+    io.to(`retailer_${order.retailer_id}`).emit('order_updated', result);
+
+    res.json(result);
+  } catch (err: any) {
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -10,6 +10,7 @@ import { RetailerLoginPage } from './pages/auth/RetailerLoginPage';
 import { AdminLoginPage } from './pages/auth/AdminLoginPage';
 import { DashboardHome } from './pages/DashboardHome';
 import { OrdersPage } from './pages/OrdersPage';
+import { OrderDetailPage } from './pages/OrderDetailPage';
 import { InvoicePage } from './pages/InvoicePage';
 import { DailyInvoicePage } from './pages/DailyInvoicePage';
 import { RetailersPage } from './pages/RetailersPage';
@@ -39,6 +40,7 @@ import { ActivityLog } from './pages/admin/ActivityLog';
 import { CouponManagement } from './pages/admin/CouponManagement';
 import { GstDashboardPage } from './pages/GstDashboardPage';
 import { QuickSalePage } from './pages/QuickSalePage';
+import { SchemesPage } from './pages/SchemesPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -120,6 +122,11 @@ function App() {
             <OrdersPage />
           </ProtectedRoute>
         } />
+        <Route path="/orders/:orderId" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <OrderDetailPage />
+          </ProtectedRoute>
+        } />
         <Route path="/orders/:orderId/invoice" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <InvoicePage />
@@ -178,6 +185,11 @@ function App() {
         <Route path="/returns" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <WholesalerReturnsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/schemes" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <SchemesPage />
           </ProtectedRoute>
         } />
 

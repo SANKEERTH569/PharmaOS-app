@@ -1,14 +1,16 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShoppingCart, Users, Pill, ArrowRight,
   HandCoins, Activity, Wallet, Settings,
   RotateCcw, MapPin, FileText, TrendingUp,
-  IndianRupee, LogOut, Bell, LayoutGrid, Package, ReceiptText,
+  IndianRupee, LogOut, Bell, LayoutGrid, Package, ReceiptText, AlertCircle, ShoppingBag,
+  Heart,
+  Tag, Clock, CreditCard, AlertTriangle, Check, ChevronRight
 } from 'lucide-react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
+import api from '../utils/api';
 
 function greeting() {
   const h = new Date().getHours();
@@ -21,6 +23,37 @@ function fmtCurrency(n: number) {
   if (n >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
   return `₹${n.toFixed(0)}`;
 }
+
+function timeAgo(dateStr: string) {
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+const dashNotifIcon = (type: string) => {
+  switch (type) {
+    case 'NEW_ORDER': return <Package size={14} className="text-blue-500" />;
+    case 'PAYMENT_RECEIVED': return <CreditCard size={14} className="text-emerald-500" />;
+    case 'CREDIT_LIMIT_ALERT': return <AlertTriangle size={14} className="text-amber-500" />;
+    case 'ORDER_DELIVERED': return <Check size={14} className="text-emerald-500" />;
+    case 'ORDER_STATUS_CHANGED': return <ArrowRight size={14} className="text-indigo-500" />;
+    default: return <Bell size={14} className="text-slate-400" />;
+  }
+};
+
+const dashNotifBg = (type: string) => {
+  switch (type) {
+    case 'NEW_ORDER': return 'bg-blue-50 border-blue-100';
+    case 'PAYMENT_RECEIVED': return 'bg-emerald-50 border-emerald-100';
+    case 'CREDIT_LIMIT_ALERT': return 'bg-amber-50 border-amber-100';
+    case 'ORDER_DELIVERED': return 'bg-emerald-50 border-emerald-100';
+    default: return 'bg-slate-50 border-slate-100';
+  }
+};
 
 const appSections = [
   {
@@ -109,6 +142,17 @@ const appSections = [
         ring: 'ring-indigo-500/20',
       },
       {
+        icon: Tag,
+        label: 'Schemes',
+        description: 'BOGO & Discounts',
+        path: '/schemes',
+        gradient: 'from-fuchsia-500 to-pink-600',
+        bg: 'bg-fuchsia-50',
+        iconBg: 'bg-fuchsia-100',
+        iconColor: 'text-fuchsia-600',
+        ring: 'ring-fuchsia-500/20',
+      },
+      {
         icon: FileText,
         label: 'GST Returns',
         description: 'GST filing & reports',
@@ -166,6 +210,15 @@ export const DashboardHome = () => {
   const { orders, retailers, payments, notifications } = useDataStore();
   const { wholesaler, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  const [expiringBatches, setExpiringBatches] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!wholesaler?.id) return;
+    api.get('/medicines/alerts/expiry')
+      .then(res => setExpiringBatches(res.data))
+      .catch(err => console.error(err));
+  }, [wholesaler]);
 
   const myOrders = orders.filter(o => o.wholesaler_id === wholesaler?.id);
   const pending = myOrders.filter(o => o.status === 'PENDING');
@@ -244,7 +297,7 @@ export const DashboardHome = () => {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-5 sm:px-8 py-8">
         {/* ── Greeting ── */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -254,7 +307,7 @@ export const DashboardHome = () => {
         </div>
 
         {/* ── Quick Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
           {stats.map(({ label, value, icon: Icon, color, bg }, idx) => (
             <div
               key={label}
@@ -271,6 +324,12 @@ export const DashboardHome = () => {
             </div>
           ))}
         </div>
+
+        {/* ── Two-column layout ── */}
+        <div className="flex gap-6 items-start">
+
+          {/* ── LEFT: main content ── */}
+          <div className="flex-1 min-w-0">
 
         {/* ── Pending banner ── */}
         {pending.length > 0 && (
@@ -292,7 +351,7 @@ export const DashboardHome = () => {
         )}
 
         {/* ── App Grid Sections ── */}
-        <div className="space-y-8">
+        <div className="space-y-8 mt-0">
           {appSections.map((section) => (
             <div key={section.category}>
               <div className="flex items-center gap-2.5 mb-4">
@@ -381,6 +440,133 @@ export const DashboardHome = () => {
             Powered by <span className="text-indigo-400 font-bold">PharmaOS</span> · A product of <span className="text-indigo-400 font-bold">leeep dev</span>
           </p>
         </div>
+
+          </div>{/* end LEFT column */}
+
+          {/* ── RIGHT: Notifications Panel ── */}
+          <div className="hidden lg:block w-72 xl:w-80 shrink-0">
+            <div className="sticky top-24 space-y-4">
+
+              {/* Expiry Alerts */}
+              {expiringBatches.length > 0 && (
+                <div className="bg-white border border-red-200 rounded-2xl shadow-sm overflow-hidden">
+                  <div className="bg-gradient-to-r from-red-50 to-orange-50 px-4 py-3 flex items-center gap-2.5 border-b border-red-100">
+                    <div className="p-1.5 bg-red-100 text-red-600 rounded-lg">
+                      <AlertCircle size={15} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-[11px] font-extrabold text-red-900 uppercase tracking-wide">Near Expiry</h3>
+                      <p className="text-[10px] font-semibold text-red-600">{expiringBatches.length} batches within 90 days</p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/medicines')}
+                      className="text-[10px] font-bold text-red-600 bg-white px-2.5 py-1 rounded-lg border border-red-200 hover:shadow-sm transition-all shrink-0"
+                    >
+                      Manage
+                    </button>
+                  </div>
+                  <div className="divide-y divide-slate-50 max-h-64 overflow-y-auto">
+                    {expiringBatches.map(batch => {
+                      const diffDays = Math.max(0, Math.floor((new Date(batch.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+                      const urgentColor = diffDays <= 30 ? 'bg-red-100 text-red-700 border-red-200' : diffDays <= 60 ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-amber-100 text-amber-700 border-amber-200';
+                      return (
+                        <div key={batch.id} className="px-4 py-3 flex items-start gap-2.5 hover:bg-red-50/30 transition-colors">
+                          <div className="w-8 h-8 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                            <Pill size={13} className="text-slate-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-slate-900 leading-tight truncate">{batch.medicine.name}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">Batch: <span className="font-semibold text-slate-700">{batch.batch_no}</span></p>
+                            <div className="flex items-center justify-between mt-1">
+                              <span className="text-[10px] text-slate-400">Stock: {batch.stock_qty}</span>
+                              <span className={`px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${urgentColor}`}>
+                                {diffDays}d left
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Notifications */}
+              <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bell size={14} className="text-indigo-500" />
+                    <h3 className="text-[12px] font-extrabold text-slate-800">Notifications</h3>
+                    {unreadNotifs > 0 && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-indigo-100 text-indigo-600 rounded-full">{unreadNotifs} new</span>
+                    )}
+                  </div>
+                  {unreadNotifs > 0 && (
+                    <button
+                      onClick={() => navigate('/orders')}
+                      className="text-[10px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors"
+                    >
+                      View all
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <div className="w-10 h-10 mx-auto mb-2 rounded-2xl bg-slate-100 flex items-center justify-center">
+                        <Bell size={16} className="text-slate-300" />
+                      </div>
+                      <p className="text-[11px] font-semibold text-slate-400">No notifications yet</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">They'll appear here</p>
+                    </div>
+                  ) : (
+                    notifications.slice(0, 15).map(n => (
+                      <button
+                        key={n.id}
+                        onClick={() => {
+                          if (n.type === 'NEW_ORDER' || n.type === 'ORDER_STATUS_CHANGED' || n.type === 'ORDER_DELIVERED') navigate('/orders');
+                          else if (n.type === 'PAYMENT_RECEIVED') navigate('/payments');
+                          else if (n.type === 'CREDIT_LIMIT_ALERT') navigate('/retailers');
+                        }}
+                        className={`w-full px-3 py-2.5 flex items-start gap-2.5 text-left hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-indigo-50/30' : ''}`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 border ${dashNotifBg(n.type)}`}>
+                          {dashNotifIcon(n.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[11px] leading-tight truncate ${!n.is_read ? 'font-bold text-slate-800' : 'font-medium text-slate-600'}`}>
+                            {n.title}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1 leading-snug">{n.body}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Clock size={9} className="text-slate-400" />
+                            <span className="text-[9px] text-slate-400">{timeAgo(n.created_at)}</span>
+                          </div>
+                        </div>
+                        {!n.is_read && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0 mt-2 ring-2 ring-indigo-200" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="px-4 py-2.5 bg-slate-50/80 border-t border-slate-100">
+                    <button
+                      onClick={() => navigate('/orders')}
+                      className="flex items-center justify-center gap-1 w-full py-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 transition-colors rounded-lg hover:bg-indigo-50"
+                    >
+                      View All Orders
+                      <ChevronRight size={11} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>{/* end RIGHT column */}
+
+        </div>{/* end two-column flex */}
       </div>
     </div>
   );

@@ -37,6 +37,7 @@ model Wholesaler {
   retailer_agencies RetailerAgency[]
   return_requests   ReturnRequest[]
   plan_requests     PlanRequest[]
+  schemes           Scheme[]
 }
 
 model Retailer {
@@ -103,6 +104,43 @@ model Medicine {
   created_at        DateTime   @default(now())
 
   order_items OrderItem[]
+  batches     MedicineBatch[]
+  schemes     Scheme[]
+}
+
+enum SchemeType {
+  BOGO
+  HALF_SCHEME
+  CASH_DISCOUNT
+}
+
+model Scheme {
+  id             String      @id @default(cuid())
+  wholesaler_id  String
+  wholesaler     Wholesaler  @relation(fields: [wholesaler_id], references: [id])
+  name           String
+  type           SchemeType
+  min_qty        Int?
+  free_qty       Float?
+  discount_pct   Float?
+  medicine_id    String?
+  medicine       Medicine?   @relation(fields: [medicine_id], references: [id])
+  is_active      Boolean     @default(true)
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+}
+
+model MedicineBatch {
+  id          String   @id @default(cuid())
+  medicine_id String
+  medicine    Medicine @relation(fields: [medicine_id], references: [id], onDelete: Cascade)
+  batch_no    String
+  expiry_date DateTime
+  stock_qty   Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@unique([medicine_id, batch_no])
 }
 
 model Order {

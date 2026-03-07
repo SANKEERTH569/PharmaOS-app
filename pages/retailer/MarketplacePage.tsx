@@ -109,24 +109,46 @@ const MedicineCard: React.FC<{
         )}
       </div>
 
-      {/* Alternatives */}
-      {med.alternatives && med.alternatives.length > 0 && (
-        <div className="border-t border-slate-100/60">
-          <button onClick={() => setShowAlts(!showAlts)} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50/30 transition-all">
-            <Zap size={10} /> {med.alternatives.length} more supplier{med.alternatives.length > 1 ? 's' : ''}
-            {showAlts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          </button>
+      {/* Alternatives / Substitutes */}
+      {med.alternatives && med.alternatives.filter(alt => alt.id !== med.id).length > 0 && (
+        <div className="border-t border-slate-100/60 bg-slate-50/50">
+          {isOutOfStock ? (
+            <div className="p-3">
+              <div className="flex items-start gap-2 mb-2 bg-amber-50 rounded-xl p-2.5 border border-amber-200/50">
+                <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[10px] sm:text-xs text-amber-800 font-medium">Out of stock! Would you like to buy a generic substitute with the same composition?</p>
+              </div>
+              <button onClick={() => setShowAlts(!showAlts)} className="w-full py-2.5 text-xs font-bold text-amber-600 bg-amber-100 hover:bg-amber-200 rounded-xl transition-all shadow-sm">
+                {showAlts ? 'Hide Substitutes' : `View ${med.alternatives.filter(alt => alt.id !== med.id).length} Substitutes`}
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowAlts(!showAlts)} className="w-full flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-50/30 transition-all">
+              <Zap size={10} /> {med.alternatives.filter(alt => alt.id !== med.id).length} more supplier{med.alternatives.filter(alt => alt.id !== med.id).length > 1 ? 's' : ''} / brands
+              {showAlts ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+          )}
+
           <AnimatePresence>
             {showAlts && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="px-4 pb-3 space-y-2">
-                  {med.alternatives.map(alt => (
-                    <div key={alt.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-100/50">
-                      <div>
-                        <p className="text-[10px] text-slate-500 font-medium">{alt.wholesaler?.name}</p>
-                        <p className="text-xs font-bold text-slate-700">₹{alt.price.toFixed(2)}</p>
+                <div className="px-4 pb-4 space-y-2 mt-1">
+                  {med.alternatives.filter(alt => alt.id !== med.id).map(alt => (
+                    <div key={alt.id} className={cn("flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all", alt.stock_qty > 0 ? "bg-white border-blue-100 hover:border-blue-300 shadow-sm" : "bg-slate-50 border-slate-100 opacity-60")}>
+                      <div className="flex-1 pr-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-xs font-bold text-slate-800 line-clamp-1">{alt.brand || alt.name}</p>
+                          {alt.stock_qty <= 0 && <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded">Out</span>}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
+                            <Building2 size={10} className="text-slate-400" />
+                            {alt.wholesaler?.name}
+                          </p>
+                          <p className="text-[11px] font-extrabold text-blue-700">₹{alt.price.toFixed(2)}</p>
+                        </div>
                       </div>
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => addItem(alt, 1)} disabled={alt.stock_qty <= 0} className="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => addItem(alt, 1)} disabled={alt.stock_qty <= 0} className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:bg-slate-300 ml-2 shrink-0 shadow-sm">
                         Add
                       </motion.button>
                     </div>
@@ -160,7 +182,7 @@ export const MarketplacePage: React.FC = () => {
     api.get('/retailer/agencies').then(r => {
       const active = (r.data || []).filter((a: RetailerAgency) => a.status === 'ACTIVE');
       setAgencies(active);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // Fetch medicines
@@ -243,7 +265,7 @@ export const MarketplacePage: React.FC = () => {
           <div className="flex gap-3 mt-4">
             <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 border border-white/10">
               <p className="text-[10px] text-blue-200 uppercase font-semibold">Active Orders</p>
-              <p className="text-lg font-bold">{orders.filter(o => ['PENDING','ACCEPTED','DISPATCHED'].includes(o.status)).length}</p>
+              <p className="text-lg font-bold">{orders.filter(o => ['PENDING', 'ACCEPTED', 'DISPATCHED'].includes(o.status)).length}</p>
             </div>
             <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 border border-white/10">
               <p className="text-[10px] text-blue-200 uppercase font-semibold">In Cart</p>

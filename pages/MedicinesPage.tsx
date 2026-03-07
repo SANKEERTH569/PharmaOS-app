@@ -6,10 +6,11 @@ import {
   Search, Plus, AlertTriangle, AlertCircle, Pill, Edit, BookOpen,
   ChevronLeft, ChevronRight, X, Download, CheckCircle,
   Loader2, Info, PackageSearch, MapPin, Crown,
-  FlaskConical, Syringe, Droplets, Wind, Package2,
+  FlaskConical, Syringe, Droplets, Wind, Package2, Layers
 } from 'lucide-react';
 import { Medicine, CatalogMedicine, CatalogPage } from '../types';
 import api from '../utils/api';
+import { MedicineBatchesModal } from '../components/MedicineBatchesModal';
 
 // ── Medicine type helpers ────────────────────────────────────────────────────
 type MedType = 'tablet' | 'syrup' | 'injection' | 'cream' | 'inhaler' | 'powder';
@@ -87,6 +88,7 @@ export const MedicinesPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
+  const [batchModalMed, setBatchModalMed] = useState<Medicine | null>(null);
   const [formData, setFormData] = useState(emptyForm());
   const [activeAlertFilter, setActiveAlertFilter] = useState<'all' | 'low_stock' | 'expiring'>('all');
 
@@ -432,12 +434,22 @@ export const MedicinesPage = () => {
                     </button>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => handleEdit(med)}
-                      className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                      <Edit size={16} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setBatchModalMed(med)}
+                        title="Manage Batches"
+                        className="p-2 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
+                        <Layers size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(med)}
+                        title="Edit Details"
+                        className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -830,34 +842,36 @@ export const MedicinesPage = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Expiry Date</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <select
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-medium"
-                      value={formData.expiry_date ? formData.expiry_date.split('-')[1] : ''}
-                      onChange={e => {
-                        const yr = formData.expiry_date ? formData.expiry_date.split('-')[0] : String(new Date().getFullYear());
-                        setFormData({ ...formData, expiry_date: e.target.value ? `${yr}-${e.target.value}` : '' });
-                      }}
-                    >
-                      <option value="">Month</option>
-                      {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                    </select>
-                    <select
-                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-medium"
-                      value={formData.expiry_date ? formData.expiry_date.split('-')[0] : ''}
-                      onChange={e => {
-                        const mo = formData.expiry_date ? formData.expiry_date.split('-')[1] : '01';
-                        setFormData({ ...formData, expiry_date: e.target.value ? `${e.target.value}-${mo}` : '' });
-                      }}
-                    >
-                      <option value="">Year</option>
-                      {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
+                {!editingMed && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Expiry Date</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-medium"
+                        value={formData.expiry_date ? formData.expiry_date.split('-')[1] : ''}
+                        onChange={e => {
+                          const yr = formData.expiry_date ? formData.expiry_date.split('-')[0] : String(new Date().getFullYear());
+                          setFormData({ ...formData, expiry_date: e.target.value ? `${yr}-${e.target.value}` : '' });
+                        }}
+                      >
+                        <option value="">Month</option>
+                        {MONTHS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                      <select
+                        className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm font-medium"
+                        value={formData.expiry_date ? formData.expiry_date.split('-')[0] : ''}
+                        onChange={e => {
+                          const mo = formData.expiry_date ? formData.expiry_date.split('-')[1] : '01';
+                          setFormData({ ...formData, expiry_date: e.target.value ? `${e.target.value}-${mo}` : '' });
+                        }}
+                      >
+                        <option value="">Year</option>
+                        {EXP_YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
                   </div>
-                </div>
-                <div>
+                )}
+                <div className={editingMed ? "col-span-2" : ""}>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">HSN Code</label>
                   <input type="text" required
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-mono"
@@ -865,14 +879,21 @@ export const MedicinesPage = () => {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Stock</label>
-                  <input type="number" required
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-medium"
-                    value={formData.stock_qty} onChange={e => setFormData({ ...formData, stock_qty: parseInt(e.target.value) })}
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                {!editingMed ? (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Initial Stock</label>
+                    <input type="number" required min="0"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-medium"
+                      value={formData.stock_qty} onChange={e => setFormData({ ...formData, stock_qty: parseInt(e.target.value) || 0 })}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 flex items-start gap-2 h-full">
+                    <Info size={14} className="text-indigo-500 mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-indigo-700 font-medium leading-tight">Stock and Expiry are managed via the <span className="font-bold">Batches</span> button in the table.</p>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Unit Type</label>
                   <select className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white text-sm font-medium"
@@ -910,6 +931,13 @@ export const MedicinesPage = () => {
           </div>
         </div>
         , document.body)}
+      {/* Medicine Batches Modal */}
+      <MedicineBatchesModal
+        isOpen={!!batchModalMed}
+        onClose={() => setBatchModalMed(null)}
+        medicine={batchModalMed}
+      />
+
     </div>
   );
 };

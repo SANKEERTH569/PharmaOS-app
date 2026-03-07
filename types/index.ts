@@ -65,8 +65,9 @@ export interface Order {
   created_at: string;
   updated_at: string;
   payment_terms?: string;
+  notes?: string;
   wholesaler?: { id: string; name: string; phone: string };
-  retailer?:   { id: string; name: string; shop_name: string };
+  retailer?: { id: string; name: string; shop_name: string };
 }
 
 export type LedgerType = 'DEBIT' | 'CREDIT';
@@ -143,4 +144,20 @@ export interface CatalogPage {
   page: number;
   pages: number;
   limit: number;
+}
+
+export type SchemeType = 'BOGO' | 'HALF_SCHEME' | 'CASH_DISCOUNT';
+
+export interface Scheme {
+  id: string;
+  wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  medicine?: { name: string; brand: string; mrp: number; price: number };
+  is_active: boolean;
+  created_at: string;
 }

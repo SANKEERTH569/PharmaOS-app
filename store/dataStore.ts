@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme } from '../types';
 
 
 interface DataState {
@@ -15,6 +15,7 @@ interface DataState {
   retailerLedgerSummary: { global_credit_limit: number, global_current_balance: number, agencies: any[] } | null;
   retailerLedgerHistory: Record<string, LedgerEntry[]>;
   returns: ReturnRequest[];
+  schemes: Scheme[];
   isLoading: boolean;
 
   // Init
@@ -30,6 +31,7 @@ interface DataState {
   fetchRetailerLedgerSummary: () => Promise<void>;
   fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
   fetchReturns: () => Promise<void>;
+  fetchSchemes: () => Promise<void>;
 
   // Mutations
   updateOrderStatus: (orderId: string, status: OrderStatus, wholesalerId: string, paymentData?: { amount: number; method: PaymentMethod } | null) => Promise<void>;
@@ -42,12 +44,15 @@ interface DataState {
   updateMedicine: (id: string, updates: Partial<Medicine>) => Promise<void>;
   toggleMedicineStatus: (id: string) => Promise<void>;
   placeOrder: (order: Omit<Order, 'id' | 'invoice_no' | 'created_at' | 'updated_at'>) => Promise<void>;
-  createQuickSale: (data: { retailer_id: string; items: any[]; notes?: string }) => Promise<any>;
+  createQuickSale: (data: { retailer_id: string; items: any[]; notes?: string; payment_terms?: string }) => Promise<any>;
   cancelOrder: (orderId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
   submitReturn: (data: { wholesaler_id: string; reason: ReturnReason; notes?: string; items: any[] }) => Promise<void>;
   updateReturnStatus: (returnId: string, status: 'APPROVED' | 'REJECTED', rejection_note?: string) => Promise<void>;
+  removeOrderItem: (orderId: string, itemId: string) => Promise<void>;
+  createScheme: (data: Omit<Scheme, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  deleteScheme: (id: string) => Promise<void>;
 
   // Getters
   getRetailer: (id: string) => Retailer | undefined;
@@ -64,6 +69,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   retailerLedgerSummary: null,
   retailerLedgerHistory: {},
   returns: [],
+  schemes: [],
   isLoading: false,
 
   // ─── Init ──────────────────────────────────────────────────────────────
@@ -78,13 +84,14 @@ export const useDataStore = create<DataState>()((set, get) => ({
         set({ orders: o.data, notifications: n.data, isLoading: false });
       } else {
         // Wholesaler — fetch all relevant data; each call catches independently
-        const [r, m, o, l, p, n] = await Promise.all([
+        const [r, m, o, l, p, n, s] = await Promise.all([
           api.get('/retailers').catch(() => ({ data: [] })),
           api.get('/medicines').catch(() => ({ data: [] })),
           api.get('/orders').catch(() => ({ data: [] })),
           api.get('/ledger').catch(() => ({ data: [] })),
           api.get('/payments').catch(() => ({ data: [] })),
           api.get('/notifications').catch(() => ({ data: [] })),
+          api.get('/schemes').catch(() => ({ data: [] })),
         ]);
         set({
           retailers: r.data,
@@ -93,6 +100,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
           ledgerEntries: l.data,
           payments: p.data,
           notifications: n.data,
+          schemes: s.data,
           isLoading: false,
         });
       }
@@ -149,6 +157,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
   fetchReturns: async () => {
     const { data } = await api.get('/returns');
     set({ returns: data });
+  },
+  fetchSchemes: async () => {
+    const { data } = await api.get('/schemes');
+    set({ schemes: data });
   },
 
   // ─── Mutations ─────────────────────────────────────────────────────────
@@ -263,6 +275,31 @@ export const useDataStore = create<DataState>()((set, get) => ({
       get().fetchLedger();
       get().fetchRetailers();
     }
+  },
+
+  removeOrderItem: async (orderId, itemId) => {
+    const { data: updatedOrder } = await api.post(`/orders/${orderId}/remove-item`, { item_id: itemId });
+
+    set((s) => {
+      // If the order was cancelled because it was the last item, data returned might reflect that
+      // Just update the order in the list
+      return { orders: s.orders.map(o => o.id === orderId ? updatedOrder : o) };
+    });
+
+    // If order was ACCEPTED, fetch medicines to reflect restored stock
+    if (updatedOrder.status === 'ACCEPTED' || updatedOrder.status === 'CANCELLED') {
+      get().fetchMedicines();
+    }
+  },
+
+  createScheme: async (data) => {
+    const { data: created } = await api.post('/schemes', data);
+    set((s) => ({ schemes: [created, ...s.schemes] }));
+  },
+
+  deleteScheme: async (id) => {
+    await api.delete(`/schemes/${id}`);
+    set((s) => ({ schemes: s.schemes.filter(sc => sc.id !== id) }));
   },
 
   // ─── Getters ───────────────────────────────────────────────────────────

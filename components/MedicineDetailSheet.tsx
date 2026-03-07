@@ -183,21 +183,46 @@ export const MedicineDetailSheet: React.FC<Props> = ({ medicine, onClose }) => {
                 </div>
               )}
 
-              {/* Alternatives */}
-              {medicine.alternatives && medicine.alternatives.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">Other Suppliers</p>
-                  <div className="space-y-2">
-                    {medicine.alternatives.map(alt => (
-                      <div key={alt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+              {/* Alternatives / Substitutes */}
+              {medicine.alternatives && medicine.alternatives.filter(alt => alt.id !== medicine.id).length > 0 && (
+                <div className="mt-6">
+                  {isOutOfStock ? (
+                    <div className="mb-3 bg-amber-50 rounded-xl p-3 border border-amber-200/50">
+                      <div className="flex items-start gap-2 mb-2">
+                        <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-xs font-medium text-slate-700">{alt.wholesaler?.name || 'Unknown'}</p>
-                          <p className="text-sm font-bold text-blue-700">₹{alt.price.toFixed(2)}</p>
+                          <p className="text-sm font-bold text-amber-800">Smart Substitutes Available</p>
+                          <p className="text-xs text-amber-700 mt-0.5">This item is out of stock, but the following generic substitutes with the same composition are available.</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Other Suppliers & Brands</p>
+                      <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{medicine.alternatives.filter(alt => alt.id !== medicine.id).length}</span>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {medicine.alternatives.filter(alt => alt.id !== medicine.id).map(alt => (
+                      <div key={alt.id} className={cn("flex items-center justify-between p-3 rounded-xl border transition-all", alt.stock_qty > 0 ? "bg-white border-blue-100 shadow-sm" : "bg-slate-50 border-slate-100 opacity-60")}>
+                        <div className="flex-1 pr-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-bold text-slate-800">{alt.brand || alt.name}</p>
+                            {alt.stock_qty <= 0 && <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded">Out of Stock</span>}
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                              <Building2 size={12} className="text-slate-400" />
+                              {alt.wholesaler?.name}
+                            </p>
+                            <p className="text-sm font-extrabold text-blue-700">₹{alt.price.toFixed(2)}</p>
+                          </div>
                         </div>
                         <button
                           onClick={() => addItem(alt, 1)}
                           disabled={alt.stock_qty <= 0}
-                          className="text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+                          className="text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:bg-slate-300 shadow-sm shrink-0"
                         >
                           Add
                         </button>

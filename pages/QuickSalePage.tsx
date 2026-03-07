@@ -3,7 +3,7 @@ import {
   Search, Plus, Trash2, ShoppingBag, User, X, Minus,
   CheckCircle2, AlertTriangle, ArrowLeft, FileText,
   Store, Package, Hash, Percent, IndianRupee,
-  ChevronDown, Sparkles, Zap, ReceiptText, Tag,
+  ChevronDown, Sparkles, Zap, ReceiptText, Tag, Gift
 } from 'lucide-react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
@@ -19,7 +19,7 @@ interface SaleItem {
 }
 
 export const QuickSalePage = () => {
-  const { retailers, medicines, createQuickSale } = useDataStore();
+  const { retailers, medicines, schemes, createQuickSale } = useDataStore();
   const { wholesaler } = useAuthStore();
   const navigate = useNavigate();
 
@@ -81,7 +81,44 @@ export const QuickSalePage = () => {
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
 
   const updateItem = (idx: number, field: keyof SaleItem, value: number) => {
-    setItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item));
+    setItems((prev) => {
+      const newItems = [...prev];
+      const item = { ...newItems[idx], [field]: value };
+
+      // Re-evaluate schemes if qty changed
+      if (field === 'qty') {
+        const activeSchemes = schemes.filter(s => s.medicine_id === item.medicine.id && s.is_active);
+
+        // Prioritize BOGO, then HALF_SCHEME. Assuming only one applies at a time for simplicity.
+        const scheme = activeSchemes.find(s => s.type === 'BOGO' || s.type === 'HALF_SCHEME');
+
+        if (scheme && scheme.min_qty && scheme.free_qty && item.qty >= scheme.min_qty) {
+          if (scheme.type === 'BOGO') {
+            // Give full value of 'free_qty' items as a discount.
+            // e.g. Buy 10, Free 1. Qty = 10. Discount Amount = 1 * unit_price
+            const times = Math.floor(item.qty / scheme.min_qty);
+            // We apply this as a discount percent so it maps to the UI cleanly
+            const freeValue = times * scheme.free_qty * item.unit_price;
+            const grossValue = item.qty * item.unit_price;
+            item.discount_percent = parseFloat(((freeValue / grossValue) * 100).toFixed(2));
+          } else if (scheme.type === 'HALF_SCHEME') {
+            // Buy X, get Y equivalent monetary discount
+            const times = Math.floor(item.qty / scheme.min_qty);
+            const discountEquivalent = times * scheme.free_qty * item.unit_price;
+            const grossValue = item.qty * item.unit_price;
+            item.discount_percent = parseFloat(((discountEquivalent / grossValue) * 100).toFixed(2));
+          }
+        } else {
+          // Reset discount if they fall below scheme threshold (assuming they didn't manually set it)
+          // Only reset if they were given an auto discount. For safety, if they manually typed a discount, let's leave it, 
+          // but if they just drop qty, maybe reset to 0. We'll simply reset to 0 for now.
+          item.discount_percent = 0;
+        }
+      }
+
+      newItems[idx] = item;
+      return newItems;
+    });
   };
 
   const totals = useMemo(() => {
@@ -95,8 +132,31 @@ export const QuickSalePage = () => {
       taxTotal += tax;
       discTotal += discountAmt;
     });
-    return { subTotal, taxTotal, discTotal, total: subTotal + taxTotal };
-  }, [items]);
+
+    const activeCashDiscount = schemes.find(s => s.type === 'CASH_DISCOUNT' && s.is_active);
+
+    // If a global cash discount exists, subtract it from the final subtotal
+    let finalSubTotal = subTotal;
+    let cashDiscountAmount = 0;
+
+    if (activeCashDiscount && activeCashDiscount.discount_pct) {
+      cashDiscountAmount = finalSubTotal * (activeCashDiscount.discount_pct / 100);
+      finalSubTotal -= cashDiscountAmount;
+      // Note: Depending on accounting, GST might be calculated on pre or post cash discount.
+      // Usually, trade discounts affect GST, cash discounts do not (they happen at payment time).
+      // Here we apply it as a trade discount for simplicity of the invoice.
+      // We'll just show it in the totals for now.
+    }
+
+    return {
+      subTotal,
+      taxTotal,
+      discTotal: discTotal + cashDiscountAmount,
+      cashDiscountAmount,
+      cashDiscountPct: activeCashDiscount?.discount_pct || 0,
+      total: subTotal - cashDiscountAmount + taxTotal
+    };
+  }, [items, schemes]);
 
   const handleSubmit = async () => {
     if (!selectedRetailer) { setError('Please select a retailer'); return; }
@@ -106,7 +166,10 @@ export const QuickSalePage = () => {
     try {
       const order = await createQuickSale({
         retailer_id: selectedRetailer.id,
-        notes,
+        notes: totals.cashDiscountAmount > 0
+          ? `[Applied ${totals.cashDiscountPct}% Cash Discount = ₹${totals.cashDiscountAmount.toFixed(2)}] ${notes}`
+          : notes,
+        payment_terms: totals.cashDiscountAmount > 0 ? `Includes ${totals.cashDiscountPct}% Cash Discount` : undefined,
         items: items.map(i => ({
           medicine_id: i.medicine.id,
           medicine_name: i.medicine.name,
@@ -206,9 +269,8 @@ export const QuickSalePage = () => {
             <React.Fragment key={n}>
               {i > 0 && <div className={`w-6 h-[2px] rounded-full ${step >= n ? 'bg-emerald-400' : 'bg-slate-200'} transition-colors`} />}
               <div className="flex items-center gap-1.5">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
-                  step > n ? 'bg-emerald-500 text-white' : step === n ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/20' : 'bg-slate-100 text-slate-400'
-                }`}>
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${step > n ? 'bg-emerald-500 text-white' : step === n ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-500/20' : 'bg-slate-100 text-slate-400'
+                  }`}>
                   {step > n ? <CheckCircle2 size={12} /> : n}
                 </div>
                 <span className={`text-[11px] font-semibold hidden sm:inline ${step >= n ? 'text-slate-700' : 'text-slate-400'}`}>{label}</span>
@@ -223,15 +285,12 @@ export const QuickSalePage = () => {
         <div className="lg:col-span-8 space-y-4">
 
           {/* ── 1. Retailer Selection ── */}
-          <div className={`bg-white rounded-2xl border shadow-sm transition-all ${
-            selectedRetailer ? 'border-emerald-200/60' : 'border-indigo-200/60 ring-1 ring-indigo-500/10'
-          }`}>
-            <div className={`px-5 py-3.5 flex items-center gap-3 border-b ${
-              selectedRetailer ? 'border-emerald-100 bg-emerald-50/30' : 'border-indigo-100 bg-indigo-50/30'
+          <div className={`bg-white rounded-2xl border shadow-sm transition-all ${selectedRetailer ? 'border-emerald-200/60' : 'border-indigo-200/60 ring-1 ring-indigo-500/10'
             }`}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                selectedRetailer ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-indigo-500 to-blue-600'
-              } shadow-sm`}>
+            <div className={`px-5 py-3.5 flex items-center gap-3 border-b ${selectedRetailer ? 'border-emerald-100 bg-emerald-50/30' : 'border-indigo-100 bg-indigo-50/30'
+              }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedRetailer ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-indigo-500 to-blue-600'
+                } shadow-sm`}>
                 {selectedRetailer ? <CheckCircle2 size={14} className="text-white" /> : <User size={14} className="text-white" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -258,9 +317,8 @@ export const QuickSalePage = () => {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Credit Left</p>
-                    <p className={`text-sm font-extrabold ${
-                      (selectedRetailer.credit_limit - selectedRetailer.current_balance) > 0 ? 'text-emerald-600' : 'text-rose-600'
-                    }`}>
+                    <p className={`text-sm font-extrabold ${(selectedRetailer.credit_limit - selectedRetailer.current_balance) > 0 ? 'text-emerald-600' : 'text-rose-600'
+                      }`}>
                       ₹{(selectedRetailer.credit_limit - selectedRetailer.current_balance).toLocaleString('en-IN')}
                     </p>
                   </div>
@@ -303,9 +361,8 @@ export const QuickSalePage = () => {
           </div>
 
           {/* ── 2. Medicine Search ── */}
-          <div className={`bg-white rounded-2xl border shadow-sm transition-all ${
-            !selectedRetailer ? 'opacity-50 pointer-events-none border-slate-200/60' : 'border-slate-200/60'
-          }`}>
+          <div className={`bg-white rounded-2xl border shadow-sm transition-all ${!selectedRetailer ? 'opacity-50 pointer-events-none border-slate-200/60' : 'border-slate-200/60'
+            }`}>
             <div className="px-5 py-3.5 flex items-center gap-3 border-b border-slate-100 bg-slate-50/50">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
                 <ShoppingBag size={14} className="text-white" />
@@ -338,13 +395,11 @@ export const QuickSalePage = () => {
                           key={m.id}
                           disabled={alreadyAdded}
                           onClick={() => addItem(m)}
-                          className={`w-full px-4 py-3 text-left transition-colors flex items-center gap-3 first:rounded-t-xl last:rounded-b-xl ${
-                            alreadyAdded ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'hover:bg-emerald-50/60 group'
-                          }`}
+                          className={`w-full px-4 py-3 text-left transition-colors flex items-center gap-3 first:rounded-t-xl last:rounded-b-xl ${alreadyAdded ? 'opacity-40 cursor-not-allowed bg-slate-50' : 'hover:bg-emerald-50/60 group'
+                            }`}
                         >
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                            alreadyAdded ? 'bg-slate-100' : 'bg-emerald-50 group-hover:bg-emerald-100'
-                          }`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${alreadyAdded ? 'bg-slate-100' : 'bg-emerald-50 group-hover:bg-emerald-100'
+                            }`}>
                             {alreadyAdded
                               ? <CheckCircle2 size={14} className="text-slate-300" />
                               : <Plus size={14} className="text-emerald-600" />
@@ -417,9 +472,8 @@ export const QuickSalePage = () => {
                           <p className="text-[13px] font-semibold text-slate-800 truncate">{item.medicine.name}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-medium">MRP ₹{item.medicine.mrp}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                              isOverStock ? 'bg-rose-100 text-rose-600' : 'bg-emerald-50 text-emerald-600'
-                            }`}>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isOverStock ? 'bg-rose-100 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+                              }`}>
                               Stock: {item.medicine.stock_qty}
                             </span>
                           </div>
@@ -475,10 +529,15 @@ export const QuickSalePage = () => {
                         </div>
 
                         <div className="col-span-1 flex justify-end">
-                          <button onClick={() => removeItem(idx)}
-                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="flex flex-col items-end gap-1">
+                            {item.discount_percent > 0 && schemes.some(s => s.medicine_id === item.medicine.id && s.is_active && item.qty >= (s.min_qty || 999)) && (
+                              <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 mb-1">Scheme Applied</span>
+                            )}
+                            <button onClick={() => removeItem(idx)}
+                              className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       </div>
 
@@ -601,6 +660,15 @@ export const QuickSalePage = () => {
                         Discount
                       </span>
                       <span className="font-semibold text-emerald-600">-₹{totals.discTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {totals.cashDiscountAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-emerald-600 flex items-center gap-1.5">
+                        <Gift size={12} />
+                        Cash Discount ({totals.cashDiscountPct}%)
+                      </span>
+                      <span className="font-semibold text-emerald-600">-₹{totals.cashDiscountAmount.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm">

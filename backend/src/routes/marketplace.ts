@@ -54,9 +54,9 @@ router.get('/medicines', async (req, res) => {
 
     if (search) {
       whereClause.OR = [
-        { name:  { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
         { brand: { contains: search, mode: 'insensitive' } },
-        { salt:  { contains: search, mode: 'insensitive' } },
+        { salt: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -74,17 +74,17 @@ router.get('/medicines', async (req, res) => {
 
     const alternativeMeds = saltSet.length
       ? await prisma.medicine.findMany({
-          where: {
-            salt: { in: saltSet as string[] },
-            is_active: true,
-            is_discontinued: false,
-            wholesaler_id: { in: linkedWholesalerIds, notIn: targetIds },
-          },
-          include: {
-            wholesaler: { select: { id: true, name: true, phone: true } },
-          },
-          orderBy: { price: 'asc' },
-        })
+        where: {
+          salt: { in: saltSet as string[] },
+          is_active: true,
+          is_discontinued: false,
+          wholesaler_id: { in: linkedWholesalerIds },
+        },
+        include: {
+          wholesaler: { select: { id: true, name: true, phone: true } },
+        },
+        orderBy: { price: 'asc' },
+      })
       : [];
 
     // 5. Group alternatives by salt

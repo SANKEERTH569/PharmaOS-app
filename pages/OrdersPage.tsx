@@ -9,12 +9,11 @@ import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
 import { CombinedPrintModal } from '../components/CombinedPrintModal';
 
 export const OrdersPage = () => {
-  const { orders, updateOrderStatus, retailers, fetchOrders } = useDataStore();
+  const { orders, updateOrderStatus, retailers, fetchOrders, removeOrderItem } = useDataStore();
   const { wholesaler } = useAuthStore();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderToDelivery, setOrderToDelivery] = useState<Order | null>(null);
   const [orderToCombinedPrint, setOrderToCombinedPrint] = useState<Order | null>(null);
 
@@ -128,7 +127,6 @@ export const OrdersPage = () => {
         setDeliveryOrder(order);
         setPaymentAmount(order.total_amount.toString());
         setShowDeliveryConfirm(true);
-        setSelectedOrder(null);
       }
       return;
     }
@@ -136,7 +134,6 @@ export const OrdersPage = () => {
     setActionLoading(true);
     try {
       await updateOrderStatus(id, action, wholesaler.id);
-      setSelectedOrder(null);
       setSuccessMsg(`Order ${action === 'ACCEPTED' ? 'accepted' : action === 'REJECTED' ? 'rejected' : action === 'DISPATCHED' ? 'dispatched' : action.toLowerCase()} successfully!`);
     } catch (error: any) {
       const msg = error.response?.data?.error || error.message || 'Failed to update order. Please try again.';
@@ -182,164 +179,6 @@ export const OrdersPage = () => {
 
   const openCombinedPrint = (order: Order) => {
     setOrderToCombinedPrint(order);
-  };
-
-  const OrderDetailModal = ({ order, onClose }: { order: Order, onClose: () => void }) => {
-    const retailer = retailers.find(r => r.id === order.retailer_id);
-
-    return (
-      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-          {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Order #{order.invoice_no || order.id.slice(-8).toUpperCase()}</h2>
-              <p className="text-slate-500 text-sm mt-1">Placed on {new Date(order.created_at).toLocaleString()}</p>
-            </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
-              <span className="text-2xl leading-none">&times;</span>
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="p-6 overflow-y-auto flex-1 space-y-6">
-            {/* Status & Retailer */}
-            <div className="flex justify-between items-start bg-slate-50 p-4 rounded-xl border border-slate-100">
-              <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Retailer</p>
-                <p className="font-bold text-slate-900">{order.retailer_name}</p>
-                <p className="text-sm text-slate-500">{retailer?.phone}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</p>
-                <StatusBadge status={order.status} />
-              </div>
-            </div>
-
-            {/* Items Table */}
-            <div>
-              <h3 className="font-bold text-slate-900 mb-3 text-sm">Order Items</h3>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase font-semibold">
-                    <tr>
-                      <th className="px-3 py-3">Medicine</th>
-                      <th className="px-3 py-3 text-right">MRP</th>
-                      <th className="px-3 py-3 text-right">Rate</th>
-                      <th className="px-3 py-3 text-right">Qty</th>
-                      <th className="px-3 py-3 text-right">GST</th>
-                      <th className="px-3 py-3 text-right">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {order.items.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-3 py-3">
-                          <div className="font-medium text-slate-900">{item.medicine_name}</div>
-                          {item.hsn_code && <div className="text-[10px] text-slate-400 font-mono">HSN: {item.hsn_code}</div>}
-                        </td>
-                        <td className="px-3 py-3 text-right text-slate-500 text-xs">₹{(item.mrp ?? 0).toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right text-slate-600">₹{item.unit_price.toFixed(2)}</td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-900">{item.qty}</td>
-                        <td className="px-3 py-3 text-right text-blue-600 text-xs font-bold">{item.gst_rate}%</td>
-                        <td className="px-3 py-3 text-right font-bold text-slate-900">₹{(item.total_price ?? 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-slate-50/50 text-xs">
-                    <tr className="border-t border-slate-200">
-                      <td colSpan={5} className="px-3 py-2 text-right text-slate-500 font-medium">Subtotal (Taxable)</td>
-                      <td className="px-3 py-2 text-right font-bold text-slate-700">₹{order.sub_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    <tr>
-                      <td colSpan={5} className="px-3 py-2 text-right text-slate-500 font-medium">Tax (GST)</td>
-                      <td className="px-3 py-2 text-right font-bold text-blue-600">₹{order.tax_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    <tr className="border-t-2 border-slate-300">
-                      <td colSpan={5} className="px-3 py-3 text-right font-black text-slate-900">Total Amount</td>
-                      <td className="px-3 py-3 text-right font-black text-slate-900 text-base">₹{order.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-
-            {/* Invoice & Print Actions */}
-            {order.invoice_no && (
-              <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-                <FileText size={16} className="text-blue-600" />
-                <span className="text-sm font-bold text-blue-800">Invoice: {order.invoice_no}</span>
-                <div className="ml-auto flex gap-2">
-                  <button onClick={() => { onClose(); openInvoice(order); }} className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-white hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors">
-                    <Printer size={12} className="inline mr-1" />View Invoice
-                  </button>
-                  <button onClick={() => { onClose(); openCombinedPrint(order); }} className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors">
-                    <ClipboardList size={12} className="inline mr-1" />Print All
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Footer Actions */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
-            {actionError && (
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium animate-in slide-in-from-top-1">
-                <AlertCircle size={16} className="shrink-0" />
-                <span>{actionError}</span>
-              </div>
-            )}
-            <div className="flex justify-end gap-3">
-              <button onClick={onClose} className="px-5 py-2.5 text-slate-600 font-bold hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 rounded-xl transition-all text-sm">
-                Close
-              </button>
-
-              {order.status === 'PENDING' && (
-                <>
-                  <button
-                    onClick={() => handleAction(order.id, 'REJECTED')}
-                    disabled={actionLoading}
-                    className="px-5 py-2.5 text-rose-600 font-bold hover:bg-rose-50 rounded-xl transition-all text-sm border border-rose-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {actionLoading ? <Loader2 size={16} className="animate-spin" /> : 'Reject'}
-                  </button>
-                  <button
-                    onClick={() => handleAction(order.id, 'ACCEPTED')}
-                    disabled={actionLoading}
-                    className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-bold hover:shadow-lg shadow-slate-900/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <CheckCircle size={16} className="mr-2" />}
-                    Accept Order
-                  </button>
-                </>
-              )}
-
-              {order.status === 'ACCEPTED' && (
-                <button
-                  onClick={() => handleAction(order.id, 'DISPATCHED')}
-                  disabled={actionLoading}
-                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold hover:shadow-lg shadow-blue-500/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Truck size={16} className="mr-2" />}
-                  Dispatch Package
-                </button>
-              )}
-
-              {order.status === 'DISPATCHED' && (
-                <button
-                  onClick={() => handleAction(order.id, 'DELIVERED')}
-                  disabled={actionLoading}
-                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold hover:shadow-lg shadow-emerald-500/20 rounded-xl transition-all text-sm flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {actionLoading ? <Loader2 size={16} className="animate-spin mr-2" /> : <Package size={16} className="mr-2" />}
-                  Mark Delivered
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -573,7 +412,7 @@ export const OrdersPage = () => {
                         <Truck size={16} />
                       </button>
                       <button
-                        onClick={() => { setActionError(null); setSelectedOrder(order); }}
+                        onClick={() => { setActionError(null); navigate(`/orders/${order.id}`); }}
                         className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                         title="View Details"
                       >
@@ -592,10 +431,6 @@ export const OrdersPage = () => {
           )}
         </div>
       </div>
-
-      {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
-
-
 
       {orderToDelivery && (
         <DeliveryReceiptModal

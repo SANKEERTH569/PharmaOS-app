@@ -19,6 +19,7 @@ import marketplaceRouter from './routes/marketplace';
 import retailerLedgerRouter from './routes/retailerLedger';
 import returnsRouter from './routes/returns';
 import adminRouter from './routes/admin';
+import schemesRouter from './routes/schemes';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -91,6 +92,7 @@ app.use('/api/wholesaler/agencies', wholesalerAgenciesRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/returns', returnsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/schemes', schemesRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

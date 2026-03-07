@@ -12,14 +12,14 @@ import { cn } from '../../utils/cn';
 
 export const CartPage: React.FC = () => {
   const { items, updateQty, removeItem, clearCart, totalAmount } = useCartStore();
-  const { placeOrder, fetchRetailerLedgerSummary, retailerLedgerSummary } = useDataStore();
+  const { placeOrder, fetchRetailerLedgerSummary, retailerLedgerSummary, schemes } = useDataStore();
   const { retailer } = useAuthStore();
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  React.useEffect(() => { fetchRetailerLedgerSummary().catch(() => {}); }, []);
+  React.useEffect(() => { fetchRetailerLedgerSummary().catch(() => { }); }, []);
 
   // Group items by wholesaler
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
@@ -28,9 +28,46 @@ export const CartPage: React.FC = () => {
     return acc;
   }, {});
 
-  const subtotal = totalAmount();
-  const gstAmount = subtotal * 0.12;
-  const total = subtotal + gstAmount;
+  // Calculate totals and schemes
+  let subtotal = 0;
+  let totalSchemeDiscount = 0;
+  let invoiceCashDiscount = 0;
+
+  // Calculate item-level schemes
+  const calculatedItems = Object.entries(grouped).map(([wid, groupItems]) => {
+    const wholesalerSchemes = schemes.filter(s => s.wholesaler_id === wid && s.is_active);
+    const updatedItems = groupItems.map(ci => {
+      let schemeDiscount = 0;
+      let appliedScheme = null;
+      const itemSchemes = wholesalerSchemes.filter(s => s.medicine_id === ci.medicine.id);
+      const scheme = itemSchemes.find(s => s.type === 'BOGO' || s.type === 'HALF_SCHEME');
+
+      if (scheme && scheme.min_qty && scheme.free_qty && ci.qty >= scheme.min_qty) {
+        const times = Math.floor(ci.qty / scheme.min_qty);
+        schemeDiscount = times * scheme.free_qty * ci.medicine.price;
+        appliedScheme = scheme;
+      }
+
+      const gross = ci.medicine.price * ci.qty;
+      subtotal += (gross - schemeDiscount);
+      totalSchemeDiscount += schemeDiscount;
+
+      return { ...ci, schemeDiscount, appliedScheme };
+    });
+
+    // Check for cash discount for this wholesaler
+    const cashSchema = wholesalerSchemes.find(s => s.type === 'CASH_DISCOUNT');
+    if (cashSchema && cashSchema.discount_pct) {
+      // Assuming subtotal for this wholesaler
+      const widSubtotal = updatedItems.reduce((acc, item) => acc + (item.medicine.price * item.qty - item.schemeDiscount), 0);
+      invoiceCashDiscount += widSubtotal * (cashSchema.discount_pct / 100);
+    }
+
+    return { wid, items: updatedItems, cashSchema };
+  });
+
+  const gstAmount = (subtotal - invoiceCashDiscount) * 0.12;
+  const total = (subtotal - invoiceCashDiscount) + gstAmount;
 
   const creditLimit = retailer?.credit_limit || retailerLedgerSummary?.global_credit_limit || 0;
   const currentBalance = retailer?.current_balance || retailerLedgerSummary?.global_current_balance || 0;
@@ -42,24 +79,46 @@ export const CartPage: React.FC = () => {
     if (!retailer || placing) return;
     setPlacing(true);
     try {
-      for (const [wholesalerId, groupItems] of Object.entries(grouped)) {
-        const orderItems = groupItems.map(ci => ({
-          id: crypto.randomUUID(),
-          medicine_id: ci.medicine.id,
-          medicine_name: ci.medicine.name,
-          qty: ci.qty,
-          mrp: ci.medicine.mrp,
-          unit_price: ci.medicine.price,
-          discount_percent: ci.medicine.mrp > 0 ? ((ci.medicine.mrp - ci.medicine.price) / ci.medicine.mrp * 100) : 0,
-          discount_amount: (ci.medicine.mrp - ci.medicine.price) * ci.qty,
-          total_price: ci.medicine.price * ci.qty,
-          hsn_code: ci.medicine.hsn_code || '',
-          gst_rate: ci.medicine.gst_rate || 12,
-          taxable_value: ci.medicine.price * ci.qty,
-          tax_amount: ci.medicine.price * ci.qty * (ci.medicine.gst_rate || 12) / 100,
-        }));
-        const sub_total = orderItems.reduce((s, i) => s + i.taxable_value, 0);
-        const tax_total = orderItems.reduce((s, i) => s + i.tax_amount, 0);
+      for (const group of calculatedItems) {
+        const wholesalerId = group.wid;
+        const groupItems = group.items;
+
+        let cashDiscountAmount = 0;
+        let widSubtotal = 0;
+
+        const orderItems = groupItems.map((ci) => {
+          const baseDiscountPerUnit = ci.medicine.mrp > 0 ? (ci.medicine.mrp - ci.medicine.price) : 0;
+          const tradeDiscount = baseDiscountPerUnit * ci.qty;
+          const totalDiscount = tradeDiscount + ci.schemeDiscount;
+
+          const taxable = (ci.medicine.price * ci.qty) - ci.schemeDiscount;
+          widSubtotal += taxable;
+          const tax = taxable * ((ci.medicine.gst_rate || 12) / 100);
+
+          return {
+            id: crypto.randomUUID(),
+            medicine_id: ci.medicine.id,
+            medicine_name: ci.medicine.name,
+            qty: ci.qty,
+            mrp: ci.medicine.mrp,
+            unit_price: ci.medicine.price,
+            discount_percent: ci.medicine.mrp > 0 ? (totalDiscount / (ci.medicine.mrp * ci.qty) * 100) : 0,
+            discount_amount: totalDiscount,
+            total_price: taxable + tax,
+            hsn_code: ci.medicine.hsn_code || '',
+            gst_rate: ci.medicine.gst_rate || 12,
+            taxable_value: taxable,
+            tax_amount: tax,
+          };
+        });
+
+        if (group.cashSchema && group.cashSchema.discount_pct) {
+          cashDiscountAmount = widSubtotal * (group.cashSchema.discount_pct / 100);
+        }
+
+        const sub_total = widSubtotal - cashDiscountAmount;
+        const tax_total = orderItems.reduce((s, i) => s + i.tax_amount, 0); // simplified tax
+
         await placeOrder({
           wholesaler_id: wholesalerId,
           retailer_id: retailer.id,
@@ -68,6 +127,8 @@ export const CartPage: React.FC = () => {
           items: orderItems,
           sub_total, tax_total,
           total_amount: sub_total + tax_total,
+          notes: notes[wholesalerId],
+          payment_terms: cashDiscountAmount > 0 ? `Includes ${group.cashSchema?.discount_pct}% Cash Discount` : undefined
         });
       }
       clearCart();
@@ -125,7 +186,9 @@ export const CartPage: React.FC = () => {
           <button onClick={clearCart} className="text-xs text-rose-500 hover:text-rose-600 font-bold bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-all">Clear All</button>
         </div>
 
-        {Object.entries(grouped).map(([wid, groupItems]) => {
+        {calculatedItems.map((group) => {
+          const wid = group.wid;
+          const groupItems = group.items;
           const supplierName = groupItems[0]?.medicine?.wholesaler?.name || 'Supplier';
           return (
             <motion.div key={wid} layout className="bg-white rounded-2xl border border-slate-100/80 overflow-hidden shadow-sm hover:shadow-md transition-all">
@@ -158,7 +221,10 @@ export const CartPage: React.FC = () => {
                           className="p-2 hover:bg-slate-100 rounded-r-xl transition-colors"><Plus size={12} className="text-slate-500" /></motion.button>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="text-sm font-bold text-slate-800">₹{(ci.medicine.price * ci.qty).toFixed(2)}</p>
+                        <p className="text-sm font-bold text-slate-800">₹{((ci.medicine.price * ci.qty) - ci.schemeDiscount).toFixed(2)}</p>
+                        {ci.schemeDiscount > 0 && (
+                          <p className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 mt-1 inline-block">Scheme Applied</p>
+                        )}
                       </div>
                       <motion.button whileTap={{ scale: 0.9 }} onClick={() => removeItem(ci.medicine.id)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all ml-1">
                         <Trash2 size={14} />
@@ -194,7 +260,13 @@ export const CartPage: React.FC = () => {
 
           <div className="space-y-2.5 text-sm">
             <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="text-slate-700 font-semibold">₹{subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span className="text-slate-500">GST (12%)</span><span className="text-slate-700 font-semibold">₹{gstAmount.toFixed(2)}</span></div>
+            {totalSchemeDiscount > 0 && (
+              <div className="flex justify-between"><span className="text-emerald-500 flex items-center gap-1"><Sparkles size={12} /> Item Schemes</span><span className="text-emerald-600 font-bold">-₹{totalSchemeDiscount.toFixed(2)}</span></div>
+            )}
+            {invoiceCashDiscount > 0 && (
+              <div className="flex justify-between"><span className="text-indigo-500 flex items-center gap-1"><Sparkles size={12} /> Cash Discount</span><span className="text-indigo-600 font-bold">-₹{invoiceCashDiscount.toFixed(2)}</span></div>
+            )}
+            <div className="flex justify-between"><span className="text-slate-500">GST (12% approx)</span><span className="text-slate-700 font-semibold">₹{gstAmount.toFixed(2)}</span></div>
             <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-3" />
             <div className="flex justify-between items-end"><span className="text-slate-800 font-bold">Total</span><span className="text-xl font-extrabold text-blue-700">₹{total.toFixed(2)}</span></div>
           </div>
