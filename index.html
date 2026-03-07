@@ -246,6 +246,32 @@
           .catch(err => console.log('SW registration failed:', err));
       });
     }
+
+    // Auto-fullscreen when running as installed PWA
+    (function () {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: fullscreen)').matches
+        || window.navigator.standalone === true;
+
+      if (isStandalone) {
+        function goFullscreen() {
+          const el = document.documentElement;
+          const rfs = el.requestFullscreen
+            || el.webkitRequestFullscreen
+            || el.mozRequestFullScreen
+            || el.msRequestFullscreen;
+          if (rfs && !document.fullscreenElement && !document.webkitFullscreenElement) {
+            rfs.call(el).catch(() => { });
+          }
+          // Remove listeners after first successful attempt
+          document.removeEventListener('click', goFullscreen);
+          document.removeEventListener('touchstart', goFullscreen);
+        }
+        // Fullscreen API requires a user gesture, so trigger on first interaction
+        document.addEventListener('click', goFullscreen, { once: true });
+        document.addEventListener('touchstart', goFullscreen, { once: true });
+      }
+    })();
   </script>
 </body>
 
