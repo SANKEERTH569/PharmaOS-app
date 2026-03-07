@@ -34,13 +34,37 @@ export const MOCK_WHOLESALERS: Wholesaler[] = [
   { id: 'ws-5', name: 'Venkateshwara Agencies', phone: '9876543214', address: 'Plot 45, Auto Nagar, Hyderabad', plan: 'growth', gstin: '36AABCV7890E5Z9', dl_number: 'HYD-DL-56789/2022', bank_name: 'Kotak Bank', bank_account: '7812345678', ifsc: 'KKBK0001234', email: 'venkatesh@agencies.com' }
 ];
 
+// Read auth from localStorage synchronously at store creation time
+// so the very first render already has the correct isAuthenticated state.
+function getInitialAuthState() {
+  const token = localStorage.getItem('pharma_token');
+  const raw = localStorage.getItem('pharma_auth');
+  if (!token || !raw) return {};
+  try {
+    const { role, user } = JSON.parse(raw) as { role: UserRole; user: any };
+    return {
+      token,
+      userRole: role,
+      wholesaler: role === 'WHOLESALER' ? user : null,
+      retailer: role === 'RETAILER' ? user : null,
+      admin: role === 'ADMIN' ? user : null,
+      isAuthenticated: true,
+    };
+  } catch {
+    localStorage.removeItem('pharma_token');
+    localStorage.removeItem('pharma_auth');
+    return {};
+  }
+}
+const initialAuth = getInitialAuthState();
+
 export const useAuthStore = create<AuthState>()((set, get) => ({
-  token: null,
-  userRole: null,
-  wholesaler: null,
-  retailer: null,
-  admin: null,
-  isAuthenticated: false,
+  token: initialAuth.token ?? null,
+  userRole: (initialAuth.userRole as UserRole) ?? null,
+  wholesaler: initialAuth.wholesaler ?? null,
+  retailer: initialAuth.retailer ?? null,
+  admin: initialAuth.admin ?? null,
+  isAuthenticated: initialAuth.isAuthenticated ?? false,
   isLoading: false,
   authError: null,
 

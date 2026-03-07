@@ -1,21 +1,20 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown, RefreshCw, Loader2, AlertCircle, CheckCheck } from 'lucide-react';
 import { OrderStatus, Order, PaymentMethod } from '../types';
-import { InvoiceModal } from '../components/InvoiceModal';
 import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
 import { CombinedPrintModal } from '../components/CombinedPrintModal';
-import { DailyInvoiceModal } from '../components/DailyInvoiceModal';
 
 export const OrdersPage = () => {
   const { orders, updateOrderStatus, retailers, fetchOrders } = useDataStore();
   const { wholesaler } = useAuthStore();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [orderToInvoice, setOrderToInvoice] = useState<Order | null>(null);
   const [orderToDelivery, setOrderToDelivery] = useState<Order | null>(null);
   const [orderToCombinedPrint, setOrderToCombinedPrint] = useState<Order | null>(null);
 
@@ -88,8 +87,7 @@ export const OrdersPage = () => {
 
   const handleGenerateDailyInvoice = () => {
     if (dailyInvoiceOrders.length > 0 && dailyInvoiceRetailer) {
-      setShowDailyInvoice(true);
-      setShowDailyPicker(false);
+      navigate(`/orders/daily-invoice?retailerId=${dailyRetailerId}&date=${dailyDate}`);
     }
   };
 
@@ -175,7 +173,7 @@ export const OrdersPage = () => {
   };
 
   const openInvoice = (order: Order) => {
-    setOrderToInvoice(order);
+    navigate(`/orders/${order.id}/invoice`);
   };
 
   const openDeliveryReceipt = (order: Order) => {
@@ -426,11 +424,10 @@ export const OrdersPage = () => {
 
       {/* Toast notifications */}
       {(actionError || successMsg) && (
-        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium animate-in slide-in-from-top-2 fade-in duration-200 ${
-          actionError
-            ? 'bg-rose-50 border-rose-200 text-rose-700'
-            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-        }`}>
+        <div className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium animate-in slide-in-from-top-2 fade-in duration-200 ${actionError
+          ? 'bg-rose-50 border-rose-200 text-rose-700'
+          : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          }`}>
           {actionError ? <AlertCircle size={16} className="shrink-0" /> : <CheckCheck size={16} className="shrink-0" />}
           <span className="flex-1">{actionError || successMsg}</span>
           <button
@@ -598,25 +595,7 @@ export const OrdersPage = () => {
 
       {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
 
-      {orderToInvoice && (
-        <InvoiceModal
-          order={orderToInvoice}
-          retailer={
-            retailers.find(r => r.id === orderToInvoice.retailer_id) ?? {
-              id: orderToInvoice.retailer_id,
-              name: orderToInvoice.retailer?.name ?? orderToInvoice.retailer_name,
-              shop_name: orderToInvoice.retailer?.shop_name ?? orderToInvoice.retailer_name,
-              phone: '',
-              address: '',
-              gstin: '',
-              credit_limit: 0,
-              current_balance: 0,
-              is_active: true,
-            }
-          }
-          onClose={() => setOrderToInvoice(null)}
-        />
-      )}
+
 
       {orderToDelivery && (
         <DeliveryReceiptModal
@@ -658,14 +637,7 @@ export const OrdersPage = () => {
         />
       )}
 
-      {showDailyInvoice && dailyInvoiceRetailer && dailyInvoiceOrders.length > 0 && (
-        <DailyInvoiceModal
-          orders={dailyInvoiceOrders}
-          retailer={dailyInvoiceRetailer}
-          date={dailyDate}
-          onClose={() => setShowDailyInvoice(false)}
-        />
-      )}
+
 
       {/* Delivery Confirmation Modal */}
       {showDeliveryConfirm && deliveryOrder && (

@@ -10,6 +10,8 @@ import { RetailerLoginPage } from './pages/auth/RetailerLoginPage';
 import { AdminLoginPage } from './pages/auth/AdminLoginPage';
 import { DashboardHome } from './pages/DashboardHome';
 import { OrdersPage } from './pages/OrdersPage';
+import { InvoicePage } from './pages/InvoicePage';
+import { DailyInvoicePage } from './pages/DailyInvoicePage';
 import { RetailersPage } from './pages/RetailersPage';
 import { RetailerDetailPage } from './pages/RetailerDetailPage';
 import { MedicinesPage } from './pages/MedicinesPage';
@@ -39,6 +41,7 @@ import { GstDashboardPage } from './pages/GstDashboardPage';
 import { QuickSalePage } from './pages/QuickSalePage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
+import { connectSocket } from './utils/socket';
 import { UserRole } from './types';
 
 const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, allowedRole: UserRole }) => {
@@ -74,12 +77,15 @@ const RetailerAuthOnly = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { initFromStorage, isAuthenticated, wholesaler, retailer, userRole } = useAuthStore();
+  const { isAuthenticated, wholesaler, retailer, userRole } = useAuthStore();
   const { initData } = useDataStore();
 
-  // Restore auth from localStorage on app load
+  // Connect socket for sessions restored from localStorage
   useEffect(() => {
-    initFromStorage();
+    if (isAuthenticated && userRole && userRole !== 'ADMIN') {
+      const user = wholesaler || retailer;
+      if (user) connectSocket(`${userRole.toLowerCase()}_${user.id}`);
+    }
   }, []);
 
   useEffect(() => {
@@ -112,6 +118,16 @@ function App() {
         <Route path="/orders" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <OrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/orders/:orderId/invoice" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <InvoicePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/orders/daily-invoice" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <DailyInvoicePage />
           </ProtectedRoute>
         } />
         <Route path="/retailers" element={
