@@ -5,7 +5,6 @@ import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import { Search, Filter, CheckCircle, XCircle, Truck, Package, Eye, ArrowRight, Download, FileText, Printer, ClipboardList, IndianRupee, Calendar, ChevronDown, RefreshCw, Loader2, AlertCircle, CheckCheck } from 'lucide-react';
 import { OrderStatus, Order, PaymentMethod } from '../types';
-import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
 import { CombinedPrintModal } from '../components/CombinedPrintModal';
 
 export const OrdersPage = () => {
@@ -14,8 +13,6 @@ export const OrdersPage = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<OrderStatus | 'ALL'>('ALL');
   const [search, setSearch] = useState('');
-  const [orderToDelivery, setOrderToDelivery] = useState<Order | null>(null);
-  const [orderToCombinedPrint, setOrderToCombinedPrint] = useState<Order | null>(null);
 
   // Daily Invoice state
   const [showDailyPicker, setShowDailyPicker] = useState(false);
@@ -174,11 +171,11 @@ export const OrdersPage = () => {
   };
 
   const openDeliveryReceipt = (order: Order) => {
-    setOrderToDelivery(order);
+    navigate(`/orders/${order.id}/delivery-challan`);
   };
 
   const openCombinedPrint = (order: Order) => {
-    setOrderToCombinedPrint(order);
+    navigate(`/orders/${order.id}/combined-print`);
   };
 
   return (
@@ -431,46 +428,6 @@ export const OrdersPage = () => {
           )}
         </div>
       </div>
-
-      {orderToDelivery && (
-        <DeliveryReceiptModal
-          order={orderToDelivery}
-          retailer={
-            retailers.find(r => r.id === orderToDelivery.retailer_id) ?? {
-              id: orderToDelivery.retailer_id,
-              name: orderToDelivery.retailer?.name ?? orderToDelivery.retailer_name,
-              shop_name: orderToDelivery.retailer?.shop_name ?? orderToDelivery.retailer_name,
-              phone: '',
-              address: '',
-              gstin: '',
-              credit_limit: 0,
-              current_balance: 0,
-              is_active: true,
-            }
-          }
-          onClose={() => setOrderToDelivery(null)}
-        />
-      )}
-
-      {orderToCombinedPrint && (
-        <CombinedPrintModal
-          order={orderToCombinedPrint}
-          retailer={
-            retailers.find(r => r.id === orderToCombinedPrint.retailer_id) ?? {
-              id: orderToCombinedPrint.retailer_id,
-              name: orderToCombinedPrint.retailer?.name ?? orderToCombinedPrint.retailer_name,
-              shop_name: orderToCombinedPrint.retailer?.shop_name ?? orderToCombinedPrint.retailer_name,
-              phone: '',
-              address: '',
-              gstin: '',
-              credit_limit: 0,
-              current_balance: 0,
-              is_active: true,
-            }
-          }
-          onClose={() => setOrderToCombinedPrint(null)}
-        />
-      )}
 
 
 

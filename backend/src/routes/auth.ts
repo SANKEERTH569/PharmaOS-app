@@ -155,7 +155,81 @@ router.post('/login', async (req, res) => {
       return res.json({ token, user: safeAdmin, role: 'ADMIN' });
     }
 
+    if (role === 'MAIN_WHOLESALER') {
+      if (!username) return res.status(400).json({ error: 'username is required for wholesaler login' });
+
+      const mw = await prisma.mainWholesaler.findUnique({ where: { username } });
+      if (!mw) return res.status(401).json({ error: 'Invalid username or password' });
+      if (!mw.is_active) return res.status(403).json({ error: 'Account deactivated' });
+
+      const valid = await bcrypt.compare(password, mw.password_hash);
+      if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
+
+      const token = jwt.sign(
+        { id: mw.id, role: 'MAIN_WHOLESALER', main_wholesaler_id: mw.id, wholesaler_id: null },
+        process.env.JWT_SECRET!,
+        { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+      );
+
+      const { password_hash: _pw, ...safeMW } = mw;
+      return res.json({ token, user: safeMW, role: 'MAIN_WHOLESALER' });
+    }
+
     return res.status(400).json({ error: 'Invalid role' });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/auth/register/main-wholesaler
+ * Wholesaler (tier above sub-wholesaler) self-registration.
+ * Body: { username, password, name, phone, address?, gstin? }
+ */
+router.post('/register/main-wholesaler', async (req, res) => {
+  try {
+    const { username, password, name, phone, address, gstin } = req.body as {
+      username: string;
+      password: string;
+      name: string;
+      phone: string;
+      address?: string;
+      gstin?: string;
+    };
+
+    if (!username || !password || !name || !phone) {
+      return res.status(400).json({ error: 'username, password, name and phone are required' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const existing = await prisma.mainWholesaler.findUnique({ where: { username } });
+    if (existing) {
+      return res.status(409).json({ error: 'Username already taken. Please choose another.' });
+    }
+
+    const existingPhone = await prisma.mainWholesaler.findUnique({ where: { phone } });
+    if (existingPhone) {
+      return res.status(409).json({ error: 'Phone number already registered.' });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+
+    const mainWholesaler = await prisma.mainWholesaler.create({
+      data: { username, password_hash, name, phone, address, gstin },
+    });
+
+    const token = jwt.sign(
+      { id: mainWholesaler.id, role: 'MAIN_WHOLESALER', main_wholesaler_id: mainWholesaler.id },
+      process.env.JWT_SECRET!,
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+    );
+
+    const { password_hash: _pw, ...safe } = mainWholesaler;
+    return res.status(201).json({ token, user: safe, role: 'MAIN_WHOLESALER' });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message });

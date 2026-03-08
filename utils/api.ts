@@ -19,9 +19,12 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('pharma_token');
-      localStorage.removeItem('pharma_auth');
-      window.location.href = '/#/login';
+      const isAuthEndpoint = err.config?.url?.includes('/auth/login') || err.config?.url?.includes('/auth/admin/login');
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('pharma_token');
+        localStorage.removeItem('pharma_auth');
+        window.location.href = '/#/login';
+      }
     }
     return Promise.reject(err);
   }

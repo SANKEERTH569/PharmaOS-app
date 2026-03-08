@@ -10,6 +10,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model MainWholesaler {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  password_hash String
+  name          String
+  phone         String   @unique
+  address       String?
+  gstin         String?
+  dl_number     String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+
+  supply_orders SupplyOrder[]
+}
+
 model Wholesaler {
   id            String   @id @default(cuid())
   username      String?  @unique
@@ -38,6 +53,9 @@ model Wholesaler {
   return_requests   ReturnRequest[]
   plan_requests     PlanRequest[]
   schemes           Scheme[]
+  purchase_orders   PurchaseOrder[]
+  grns              GoodsReceiptNote[]
+  supply_orders     SupplyOrder[]
 }
 
 model Retailer {
@@ -106,6 +124,7 @@ model Medicine {
   order_items OrderItem[]
   batches     MedicineBatch[]
   schemes     Scheme[]
+  grn_items   GRNItem[]
 }
 
 enum SchemeType {
@@ -342,4 +361,123 @@ model Coupon {
   valid_plans     String?                            // comma-separated: "growth,pro" or null = all
   expires_at      DateTime?
   created_at      DateTime @default(now())
+}
+
+// ── Purchase Orders & GRN ──────────────────────────────────────────────────
+
+enum POStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id                 String    @id @default(cuid())
+  po_number          String
+  wholesaler_id      String
+  wholesaler         Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  main_wholesaler_id String?   // optional link to a registered MainWholesaler
+  supplier_name      String
+  supplier_phone     String?
+  supplier_gstin     String?
+  status             POStatus  @default(DRAFT)
+  notes              String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  items        POItem[]
+  grns         GoodsReceiptNote[]
+  supply_order SupplyOrder?
+
+  @@unique([wholesaler_id, po_number])
+}
+
+model POItem {
+  id            String        @id @default(cuid())
+  po_id         String
+  po            PurchaseOrder @relation(fields: [po_id], references: [id], onDelete: Cascade)
+  medicine_id   String?
+  medicine_name String
+  qty_ordered   Int
+  qty_received  Int           @default(0)
+  unit_cost     Float
+
+  @@index([po_id])
+}
+
+model GoodsReceiptNote {
+  id            String         @id @default(cuid())
+  grn_number    String
+  wholesaler_id String
+  wholesaler    Wholesaler     @relation(fields: [wholesaler_id], references: [id])
+  po_id         String?
+  po            PurchaseOrder? @relation(fields: [po_id], references: [id])
+  supplier_name String
+  notes         String?
+  created_at    DateTime       @default(now())
+
+  items GRNItem[]
+
+  @@unique([wholesaler_id, grn_number])
+}
+
+model GRNItem {
+  id            String           @id @default(cuid())
+  grn_id        String
+  grn           GoodsReceiptNote @relation(fields: [grn_id], references: [id], onDelete: Cascade)
+  medicine_id   String
+  medicine      Medicine         @relation(fields: [medicine_id], references: [id])
+  medicine_name String
+  batch_no      String
+  expiry_date   DateTime
+  qty_received  Int
+  unit_cost     Float
+
+  @@index([grn_id])
+}
+
+// ── Supply Orders (Sub-Wholesaler → Main Wholesaler) ──────────────────────
+
+enum SupplyOrderStatus {
+  PENDING
+  ACCEPTED
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+model SupplyOrder {
+  id                 String            @id @default(cuid())
+  so_number          String
+  wholesaler_id      String
+  wholesaler         Wholesaler        @relation(fields: [wholesaler_id], references: [id])
+  main_wholesaler_id String
+  main_wholesaler    MainWholesaler    @relation(fields: [main_wholesaler_id], references: [id])
+  purchase_order_id  String?           @unique
+  purchase_order     PurchaseOrder?    @relation(fields: [purchase_order_id], references: [id])
+  status             SupplyOrderStatus @default(PENDING)
+  notes              String?
+  total_amount       Float             @default(0)
+  dispatch_date      DateTime?
+  delivered_date     DateTime?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+
+  items SupplyOrderItem[]
+
+  @@unique([main_wholesaler_id, so_number])
+}
+
+model SupplyOrderItem {
+  id            String      @id @default(cuid())
+  so_id         String
+  supply_order  SupplyOrder @relation(fields: [so_id], references: [id], onDelete: Cascade)
+  medicine_name String
+  qty_ordered   Int
+  unit_cost     Float
+  total_price   Float
+
+  @@index([so_id])
 }

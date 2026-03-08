@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight, Lock, Eye, EyeOff, Store, User, Phone,
-  MapPin, ShoppingBag, Truck, CreditCard, Shield, FileText, ArrowLeft,
+  MapPin, ShoppingBag, Truck, CreditCard, Shield, FileText, CheckCircle2,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useDataStore } from '../../store/dataStore';
@@ -15,6 +14,7 @@ export const RetailerLoginPage = () => {
   const [mode, setMode] = useState<Mode>('LOGIN');
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const [loginPhone, setLoginPhone] = useState('');
   const [loginPass, setLoginPass] = useState('');
@@ -55,170 +55,270 @@ export const RetailerLoginPage = () => {
     } catch {} finally { setLoading(false); }
   };
 
-  const features = [
-    { icon: ShoppingBag, label: 'Browse 2.5L+ medicines', desc: 'Largest pharmaceutical catalog' },
-    { icon: Truck, label: 'Real-time tracking', desc: 'Know exactly where your order is' },
-    { icon: CreditCard, label: 'Credit management', desc: 'Track balances & payments' },
-    { icon: Shield, label: 'Secure platform', desc: 'Your data is always safe' },
-  ];
+  const inputBase =
+    'w-full px-4 py-3.5 bg-white border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 outline-none transition-all text-slate-800 placeholder-slate-300 text-sm font-medium shadow-sm';
+  const labelBase = 'text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2 block';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Left Panel — Features (hidden on mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-12 flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+    <div className="min-h-screen flex">
 
-        <div className="relative">
+      {/* ─── Left: Branding Panel ─── */}
+      <div
+        className="hidden lg:flex lg:w-[45%] relative overflow-hidden flex-col justify-between p-12"
+        style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 40%, #312E81 70%, #1E293B 100%)' }}
+      >
+        {/* Decorative orbs */}
+        <div className="absolute -top-[15%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/[0.10] blur-[100px]" />
+        <div className="absolute bottom-[5%] right-[-5%] w-[45%] h-[45%] rounded-full bg-blue-500/[0.08] blur-[100px]" />
+        <div className="absolute top-[40%] left-[20%] w-[25%] h-[25%] rounded-full bg-violet-500/[0.06] blur-[80px]" />
+
+        <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <Store size={20} className="text-white" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+              <span className="text-white font-black text-xl leading-none">P</span>
             </div>
-            <span className="text-lg font-bold text-white">PharmaBridge</span>
+            <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
           </div>
-          <p className="text-blue-200 text-sm mt-1">Retailer Portal</p>
+          <p className="text-indigo-300/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">
+            Retailer Portal
+          </p>
         </div>
 
-        <div className="relative space-y-6 my-auto">
-          <h2 className="text-3xl font-bold text-white leading-tight">Order medicines<br />with confidence</h2>
-          <div className="space-y-4">
-            {features.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.1 }}
-                  className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                    <Icon size={18} className="text-blue-200" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{f.label}</p>
-                    <p className="text-xs text-blue-200">{f.desc}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+        <div className="relative z-10 max-w-md">
+          <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
+            Order medicines<br />with{' '}
+            <span className="text-indigo-400">confidence.</span>
+          </h2>
+          <p className="text-slate-400 text-base leading-relaxed font-medium">
+            Browse thousands of medicines, place orders with your wholesaler, and track every delivery in real time.
+          </p>
+
+          <div className="mt-10 grid grid-cols-2 gap-4">
+            {[
+              { icon: ShoppingBag, label: '2.5L+ Medicines',    desc: 'Largest catalog' },
+              { icon: Truck,       label: 'Live Tracking',      desc: 'Every order' },
+              { icon: CreditCard,  label: 'Credit Ledger',      desc: 'Track balances' },
+              { icon: Shield,      label: 'Secure Platform',    desc: 'Always safe' },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center mb-2">
+                  <Icon size={15} className="text-indigo-300" />
+                </div>
+                <p className="text-white font-extrabold text-sm">{label}</p>
+                <p className="text-slate-500 text-xs font-semibold mt-0.5">{desc}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <p className="relative text-xs text-blue-300">&copy; {new Date().getFullYear()} PharmaBridge. All rights reserved.</p>
+        <div className="relative z-10">
+          <p className="text-slate-600 text-[10px] font-medium tracking-[0.2em]">
+            A product of <span className="text-indigo-400 font-bold">leeep dev</span>
+          </p>
+        </div>
       </div>
 
-      {/* Right Panel — Form */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-          {/* Mobile Logo */}
+      {/* ─── Right: Form Panel ─── */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-[#FAFBFC]">
+        <div className="w-full max-w-md">
+
+          {/* Mobile brand */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-              <Store size={20} className="text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md">
+              <span className="text-white font-black text-lg leading-none">P</span>
             </div>
-            <span className="text-lg font-bold text-slate-800">PharmaBridge</span>
+            <span className="text-slate-900 font-extrabold text-xl tracking-tight">PharmaOS</span>
           </div>
 
-          {/* Back to selector */}
-          <button onClick={() => navigate('/login')} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 mb-6 transition-colors">
-            <ArrowLeft size={14} /> Back
-          </button>
+          <div className="mb-8">
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              {mode === 'LOGIN' ? 'Welcome back' : 'Create your account'}
+            </h1>
+            <p className="text-slate-400 text-sm font-medium mt-1.5">
+              {mode === 'LOGIN'
+                ? 'Sign in to your retailer account'
+                : 'Register your pharmacy on PharmaOS'
+              }
+            </p>
+          </div>
 
-          <AnimatePresence mode="wait">
-            {mode === 'LOGIN' ? (
-              <motion.div key="login" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-                <h1 className="text-2xl font-bold text-slate-800">Welcome back</h1>
-                <p className="text-sm text-slate-500 mt-1 mb-6">Sign in to your retailer account</p>
+          {/* ──── LOGIN ──── */}
+          {mode === 'LOGIN' && (
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label className={labelBase}>Phone Number</label>
+                <div className="relative">
+                  <Phone size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input
+                    type="tel" value={loginPhone}
+                    onChange={e => setLoginPhone(e.target.value)}
+                    className={cn(inputBase, 'pl-11')}
+                    placeholder="9999999999" required autoFocus
+                  />
+                </div>
+              </div>
 
-                {authError && <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs px-3 py-2 rounded-xl mb-4">{authError}</div>}
-
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Phone size={10} /> Phone</label>
-                    <input value={loginPhone} onChange={e => setLoginPhone(e.target.value)} placeholder="Enter phone number" required
-                      className="w-full text-sm border border-slate-200 rounded-xl px-3 py-3 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Lock size={10} /> Password</label>
-                    <div className="relative">
-                      <input value={loginPass} onChange={e => setLoginPass(e.target.value)} type={showPass ? 'text' : 'password'} placeholder="Enter password" required
-                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-3 pr-10 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                      <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                        {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button type="submit" disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm">
-                    {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Sign In <ArrowRight size={16} /></>}
+              <div>
+                <label className={labelBase}>Password</label>
+                <div className="relative">
+                  <Lock size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input
+                    type={showPass ? 'text' : 'password'} value={loginPass}
+                    onChange={e => setLoginPass(e.target.value)}
+                    className={cn(inputBase, 'pl-11 pr-12')}
+                    placeholder="••••••••" required
+                  />
+                  <button type="button" onClick={() => setShowPass(v => !v)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500 transition-colors">
+                    {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                   </button>
-                </form>
+                </div>
+              </div>
 
-                <p className="text-center text-sm text-slate-500 mt-6">
-                  Don't have an account?{' '}
-                  <button onClick={() => { setMode('REGISTER'); useAuthStore.setState({ authError: null }); }}
-                    className="text-blue-600 font-semibold hover:text-blue-800 transition-colors">Create Account</button>
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div key="register" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h1 className="text-2xl font-bold text-slate-800">Create Account</h1>
-                <p className="text-sm text-slate-500 mt-1 mb-6">Register your pharmacy to start ordering</p>
+              {authError && (
+                <p className="text-rose-600 text-xs font-semibold text-center bg-rose-50 border border-rose-100 rounded-xl py-2.5 px-4">{authError}</p>
+              )}
 
-                {authError && <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs px-3 py-2 rounded-xl mb-4">{authError}</div>}
+              <button type="submit" disabled={loading}
+                className={cn(
+                  'w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 group mt-2',
+                  loading
+                    ? 'bg-slate-100 text-slate-400'
+                    : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:shadow-xl hover:shadow-indigo-600/20 hover:scale-[1.01]',
+                )}
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+                {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />}
+              </button>
 
-                <form onSubmit={handleRegister} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><User size={10} /> Name</label>
-                      <input value={reg.name} onChange={e => setReg(p => ({ ...p, name: e.target.value }))} placeholder="Full name" required
-                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Store size={10} /> Shop Name</label>
-                      <input value={reg.shop_name} onChange={e => setReg(p => ({ ...p, shop_name: e.target.value }))} placeholder="Shop name" required
-                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Phone size={10} /> Phone</label>
-                    <input value={reg.phone} onChange={e => setReg(p => ({ ...p, phone: e.target.value }))} placeholder="Phone number" required
-                      className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin size={10} /> Address</label>
-                    <input value={reg.address} onChange={e => setReg(p => ({ ...p, address: e.target.value }))} placeholder="Business address (optional)"
-                      className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><FileText size={10} /> GSTIN</label>
-                    <input value={reg.gstin} onChange={e => setReg(p => ({ ...p, gstin: e.target.value }))} placeholder="GST number (optional)"
-                      className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Lock size={10} /> Password</label>
-                      <input value={reg.password} onChange={e => setReg(p => ({ ...p, password: e.target.value }))} type="password" placeholder="Password" required
-                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Lock size={10} /> Confirm</label>
-                      <input value={reg.confirm} onChange={e => setReg(p => ({ ...p, confirm: e.target.value }))} type="password" placeholder="Confirm" required
-                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none" />
-                    </div>
-                  </div>
+              <div className="flex items-center gap-4 my-4">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Or</span>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
 
-                  <button type="submit" disabled={loading}
-                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-xl text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm mt-2">
-                    {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>Create Account <ArrowRight size={16} /></>}
-                  </button>
-                </form>
+              <p className="text-center text-slate-400 text-xs">
+                New here?{' '}
+                <button type="button"
+                  onClick={() => { setMode('REGISTER'); useAuthStore.setState({ authError: null }); }}
+                  className="text-indigo-600 font-bold hover:text-indigo-700 hover:underline transition-colors">
+                  Create Account →
+                </button>
+              </p>
+            </form>
+          )}
 
-                <p className="text-center text-sm text-slate-500 mt-4">
-                  Already have an account?{' '}
-                  <button onClick={() => { setMode('LOGIN'); useAuthStore.setState({ authError: null }); }}
-                    className="text-blue-600 font-semibold hover:text-blue-800 transition-colors">Sign In</button>
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+          {/* ──── REGISTER ──── */}
+          {mode === 'REGISTER' && (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelBase}>Your Name</label>
+                  <div className="relative">
+                    <User size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <input type="text" value={reg.name}
+                      onChange={e => setReg(p => ({ ...p, name: e.target.value }))}
+                      className={cn(inputBase, 'pl-10 text-xs')} placeholder="Full name" required />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelBase}>Shop Name</label>
+                  <div className="relative">
+                    <Store size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <input type="text" value={reg.shop_name}
+                      onChange={e => setReg(p => ({ ...p, shop_name: e.target.value }))}
+                      className={cn(inputBase, 'pl-10 text-xs')} placeholder="Ravi Medical" required />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelBase}>Phone Number</label>
+                  <div className="relative">
+                    <Phone size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <input type="tel" value={reg.phone}
+                      onChange={e => setReg(p => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))}
+                      className={cn(inputBase, 'pl-10 text-xs')} placeholder="9999999999" maxLength={10} required />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelBase}>GSTIN (optional)</label>
+                  <div className="relative">
+                    <FileText size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <input type="text" value={reg.gstin}
+                      onChange={e => setReg(p => ({ ...p, gstin: e.target.value.toUpperCase() }))}
+                      className={cn(inputBase, 'pl-10 text-xs')} placeholder="27AAAAA0000A1Z5" />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelBase}>Address (optional)</label>
+                <div className="relative">
+                  <MapPin size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input type="text" value={reg.address}
+                    onChange={e => setReg(p => ({ ...p, address: e.target.value }))}
+                    className={cn(inputBase, 'pl-10 text-xs')} placeholder="Shop address" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelBase}>Password</label>
+                  <div className="relative">
+                    <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                    <input type={showPass ? 'text' : 'password'} value={reg.password}
+                      onChange={e => setReg(p => ({ ...p, password: e.target.value }))}
+                      className={cn(inputBase, 'pl-10 pr-9 text-xs')} placeholder="Min 6 chars" minLength={6} required />
+                    <button type="button" onClick={() => setShowPass(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                      {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className={labelBase}>Confirm Password</label>
+                  <div className="relative">
+                    <CheckCircle2 size={14} className={cn(
+                      'absolute left-3.5 top-1/2 -translate-y-1/2',
+                      reg.confirm && reg.confirm === reg.password ? 'text-emerald-500' : 'text-slate-300',
+                    )} />
+                    <input type={showConfirm ? 'text' : 'password'} value={reg.confirm}
+                      onChange={e => setReg(p => ({ ...p, confirm: e.target.value }))}
+                      className={cn(inputBase, 'pl-10 pr-9 text-xs')} placeholder="Repeat" required />
+                    <button type="button" onClick={() => setShowConfirm(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                      {showConfirm ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {authError && (
+                <p className="text-rose-600 text-xs font-semibold text-center bg-rose-50 border border-rose-100 rounded-xl py-2 px-4">{authError}</p>
+              )}
+
+              <button type="submit" disabled={loading}
+                className={cn(
+                  'w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 group',
+                  loading ? 'bg-slate-100 text-slate-400' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:shadow-xl hover:shadow-indigo-600/20 hover:scale-[1.01]',
+                )}
+              >
+                {loading ? 'Creating account...' : 'Create Account'}
+                {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />}
+              </button>
+
+              <p className="text-center text-slate-400 text-xs">
+                Already have an account?{' '}
+                <button type="button"
+                  onClick={() => { setMode('LOGIN'); useAuthStore.setState({ authError: null }); }}
+                  className="text-indigo-600 font-bold hover:underline transition-colors">Sign in</button>
+              </p>
+            </form>
+          )}
+
+        </div>
       </div>
     </div>
   );

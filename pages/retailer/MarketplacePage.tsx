@@ -10,7 +10,7 @@ import { useCartStore } from '../../store/cartStore';
 import { useDataStore } from '../../store/dataStore';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../utils/cn';
-import { Medicine, MedicineWithAlternatives, RetailerAgency } from '../../types';
+import { Medicine, MedicineWithAlternatives, RetailerAgency, Scheme } from '../../types';
 import { MedicineDetailSheet } from '../../components/MedicineDetailSheet';
 import { SearchCommand } from '../../components/SearchCommand';
 
@@ -30,17 +30,23 @@ const getMedicineType = (name: string) => {
 const MedicineCard: React.FC<{
   med: MedicineWithAlternatives;
   cartQty: number;
+  schemes: Scheme[];
   onAdd: () => void;
   onInc: () => void;
   onDec: () => void;
   onDetail: () => void;
-}> = ({ med, cartQty, onAdd, onInc, onDec, onDetail }) => {
+}> = ({ med, cartQty, schemes, onAdd, onInc, onDec, onDetail }) => {
   const [showAlts, setShowAlts] = useState(false);
   const margin = med.mrp > 0 ? ((med.mrp - med.price) / med.mrp * 100) : 0;
   const typeInfo = getMedicineType(med.name);
   const isOutOfStock = med.stock_qty <= 0;
   const isLow = med.stock_qty > 0 && med.stock_qty <= 10;
   const { addItem } = useCartStore();
+
+  const applicableSchemes = schemes.filter(s =>
+    (s.type === 'CASH_DISCOUNT' && s.wholesaler_id === med.wholesaler_id) ||
+    (s.medicine_id === med.id && s.wholesaler_id === med.wholesaler_id)
+  );
 
   return (
     <motion.div
@@ -74,11 +80,18 @@ const MedicineCard: React.FC<{
             <span className="text-[11px] text-slate-400 line-through mr-2">₹{med.mrp.toFixed(0)}</span>
             <span className="text-lg font-extrabold text-blue-700">₹{med.price.toFixed(2)}</span>
           </div>
-          {margin > 15 && (
-            <span className="text-[10px] font-bold text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 px-2 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1">
-              <TrendingUp size={10} />{margin.toFixed(0)}%
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1.5">
+            {margin > 15 && (
+              <span className="text-[10px] font-bold text-emerald-700 bg-gradient-to-r from-emerald-50 to-green-50 px-2 py-1 rounded-lg border border-emerald-200/60 flex items-center gap-1">
+                <TrendingUp size={10} />{margin.toFixed(0)}% Margin
+              </span>
+            )}
+            {applicableSchemes.length > 0 && (
+              <span className="text-[10px] font-bold text-indigo-700 bg-gradient-to-r from-indigo-50 to-blue-50 px-2 py-1 rounded-lg border border-indigo-200/60 flex items-center gap-1">
+                <Sparkles size={10} />Offer Applied
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Supplier */}
@@ -88,6 +101,25 @@ const MedicineCard: React.FC<{
               <Building2 size={9} className="text-blue-500" />
             </div>
             <span className="text-[10px] text-slate-500 truncate font-medium">{med.wholesaler.name}</span>
+          </div>
+        )}
+
+        {/* Active Offers Details */}
+        {applicableSchemes.length > 0 && (
+          <div className="mt-3 space-y-1.5">
+            {applicableSchemes.map(s => (
+              <div key={s.id} className="flex items-start gap-1.5 bg-indigo-50/60 p-2 rounded-lg border border-indigo-100/60">
+                <Sparkles size={12} className="text-indigo-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-[10px] font-bold text-indigo-900 leading-none mb-0.5">{s.name}</p>
+                  <p className="text-[9px] text-indigo-700 leading-snug font-medium">
+                    {s.type === 'BOGO' ? `Buy ${s.min_qty} get ${s.free_qty} free!` :
+                      s.type === 'HALF_SCHEME' ? `Buy ${s.min_qty} get ${s.free_qty} at half price!` :
+                        s.type === 'CASH_DISCOUNT' ? `Extra ${s.discount_pct}% Cash Discount.` : ''}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -174,7 +206,7 @@ export const MarketplacePage: React.FC = () => {
   const [selectedMedicine, setSelectedMedicine] = useState<MedicineWithAlternatives | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const { items, addItem, updateQty, removeItem } = useCartStore();
-  const { orders } = useDataStore();
+  const { orders, schemes, setSchemes } = useDataStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Fetch agencies
@@ -194,7 +226,13 @@ export const MarketplacePage: React.FC = () => {
       if (selectedAgency) params.set('agency_id', selectedAgency);
       const { data } = await api.get(`/marketplace/medicines?${params.toString()}`);
       setMedicines(Array.isArray(data) ? data : data?.medicines || []);
-    } catch { setMedicines([]); }
+      if (data?.schemes) {
+        setSchemes(data.schemes);
+      }
+    } catch {
+      setMedicines([]);
+      if (schemes.length === 0) setSchemes([]);
+    }
     setLoading(false);
   }, [selectedAgency]);
 
@@ -403,6 +441,7 @@ export const MarketplacePage: React.FC = () => {
                 key={med.id}
                 med={med}
                 cartQty={cartItem?.qty || 0}
+                schemes={schemes}
                 onAdd={() => addItem(med, 1)}
                 onInc={() => updateQty(med.id, (cartItem?.qty || 0) + 1)}
                 onDec={() => { const q = (cartItem?.qty || 0); q <= 1 ? removeItem(med.id) : updateQty(med.id, q - 1); }}

@@ -3,10 +3,11 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Pill, ShoppingCart, Plus, Minus, Package, Building2,
-  AlertTriangle, Activity, BookOpen, Stethoscope, Heart,
+  AlertTriangle, Activity, BookOpen, Stethoscope, Heart, Sparkles, Tag
 } from 'lucide-react';
 import { Medicine } from '../types';
 import { useCartStore } from '../store/cartStore';
+import { useDataStore } from '../store/dataStore';
 import { cn } from '../utils/cn';
 
 interface Props {
@@ -27,6 +28,7 @@ const getMedicineTypeInfo = (name: string) => {
 
 export const MedicineDetailSheet: React.FC<Props> = ({ medicine, onClose }) => {
   const { items, addItem, updateQty, removeItem } = useCartStore();
+  const { schemes } = useDataStore();
 
   if (!medicine) return null;
 
@@ -36,6 +38,11 @@ export const MedicineDetailSheet: React.FC<Props> = ({ medicine, onClose }) => {
   const typeInfo = getMedicineTypeInfo(medicine.name);
   const isOutOfStock = medicine.stock_qty <= 0;
   const isLowStock = medicine.stock_qty > 0 && medicine.stock_qty <= 10;
+
+  const applicableSchemes = schemes.filter(s =>
+    (s.type === 'CASH_DISCOUNT' && s.wholesaler_id === medicine.wholesaler_id) ||
+    (s.medicine_id === medicine.id && s.wholesaler_id === medicine.wholesaler_id)
+  );
 
   return (
     <AnimatePresence>
@@ -108,6 +115,41 @@ export const MedicineDetailSheet: React.FC<Props> = ({ medicine, onClose }) => {
                   {medicine.hsn_code && <p className="text-xs text-slate-500">HSN: {medicine.hsn_code}</p>}
                 </div>
               </div>
+
+              {/* Offers / Schemes */}
+              {applicableSchemes.length > 0 && (
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={16} className="text-indigo-600" />
+                    <h4 className="text-sm font-bold text-indigo-900">Available Offers</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {applicableSchemes.map(scheme => (
+                      <div key={scheme.id} className="flex gap-3 bg-white/60 p-3 rounded-lg border border-indigo-50">
+                        <Tag size={16} className="text-indigo-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">{scheme.name}</p>
+                          {scheme.type === 'BOGO' && scheme.min_qty && scheme.free_qty && (
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              Buy <span className="font-bold text-indigo-600">{scheme.min_qty}</span> Get <span className="font-bold text-indigo-600">{scheme.free_qty}</span> Free!
+                            </p>
+                          )}
+                          {scheme.type === 'HALF_SCHEME' && scheme.min_qty && scheme.free_qty && (
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              Buy <span className="font-bold text-indigo-600">{scheme.min_qty}</span> Get <span className="font-bold text-indigo-600">{scheme.free_qty}</span> at half price!
+                            </p>
+                          )}
+                          {scheme.type === 'CASH_DISCOUNT' && scheme.discount_pct && (
+                            <p className="text-xs text-slate-600 mt-0.5">
+                              Extra <span className="font-bold text-indigo-600">{scheme.discount_pct}%</span> Cash Discount applied at checkout.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Stock Status */}
               <div className="flex items-center gap-2">

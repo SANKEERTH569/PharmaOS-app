@@ -240,3 +240,19 @@ export interface StatCardProps {
   icon: React.ReactNode;
   color: 'blue' | 'green' | 'red' | 'orange';
 }
+
+export type SchemeType = 'BOGO' | 'HALF_SCHEME' | 'CASH_DISCOUNT';
+
+export interface Scheme {
+  id: string;
+  wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  medicine?: { id: string; name: string; brand: string; mrp: number; price: number };
+  is_active: boolean;
+  created_at: string;
+}

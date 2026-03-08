@@ -28,7 +28,7 @@ export const LoginSelectorPage = () => {
             accent: 'text-blue-400',
             hoverBorder: 'hover:border-blue-500/30',
             hoverShadow: 'hover:shadow-blue-500/10',
-            comingSoon: true,
+            path: '/login/main-wholesaler',
         },
         {
             key: 'sub-wholesaler',

@@ -3,9 +3,10 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthPayload {
   id: string;
-  role: 'WHOLESALER' | 'RETAILER';
+  role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER';
   wholesaler_id: string | null;
   retailer_id?: string;
+  main_wholesaler_id?: string;
 }
 
 declare global {
@@ -30,7 +31,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const requireRole = (role: 'WHOLESALER' | 'RETAILER') => {
+export const requireRole = (role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER') => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.user?.role !== role) {
       return res.status(403).json({ error: `Forbidden: ${role} role required` });

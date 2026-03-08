@@ -161,3 +161,55 @@ export interface Scheme {
   is_active: boolean;
   created_at: string;
 }
+
+// ── Purchase Orders & GRN ──────────────────────────────────────────────────
+
+export type POStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface POItem {
+  id: string;
+  po_id: string;
+  medicine_id: string | null;
+  medicine_name: string;
+  qty_ordered: number;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  wholesaler_id: string;
+  supplier_name: string;
+  supplier_phone?: string | null;
+  supplier_gstin?: string | null;
+  status: POStatus;
+  notes?: string | null;
+  items: POItem[];
+  grns?: { id: string; grn_number: string; created_at: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GRNItem {
+  id: string;
+  grn_id: string;
+  medicine_id: string;
+  medicine_name: string;
+  batch_no: string;
+  expiry_date: string;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface GoodsReceiptNote {
+  id: string;
+  grn_number: string;
+  wholesaler_id: string;
+  po_id?: string | null;
+  po?: { id: string; po_number: string; supplier_name: string } | null;
+  supplier_name: string;
+  notes?: string | null;
+  items: GRNItem[];
+  created_at: string;
+}

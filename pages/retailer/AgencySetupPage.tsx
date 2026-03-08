@@ -165,7 +165,7 @@ export const AgencySetupPage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{agency.wholesaler_name || 'Agency'}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">{agency.wholesaler?.name || 'Agency'}</p>
                         {agency.is_primary && (
                           <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg flex items-center gap-0.5 border border-amber-200/50">
                             <Star size={8} fill="currentColor" /> Primary

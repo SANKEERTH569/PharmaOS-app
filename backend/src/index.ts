@@ -20,6 +20,8 @@ import retailerLedgerRouter from './routes/retailerLedger';
 import returnsRouter from './routes/returns';
 import adminRouter from './routes/admin';
 import schemesRouter from './routes/schemes';
+import purchaseOrdersRouter from './routes/purchaseOrders';
+import mainWholesalerRouter from './routes/mainWholesaler';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -93,6 +95,8 @@ app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/returns', returnsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/schemes', schemesRouter);
+app.use('/api/purchase-orders', purchaseOrdersRouter);
+app.use('/api/main-wholesalers', mainWholesalerRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

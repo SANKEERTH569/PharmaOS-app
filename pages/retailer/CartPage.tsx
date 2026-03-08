@@ -129,7 +129,7 @@ export const CartPage: React.FC = () => {
           total_amount: sub_total + tax_total,
           notes: notes[wholesalerId],
           payment_terms: cashDiscountAmount > 0 ? `Includes ${group.cashSchema?.discount_pct}% Cash Discount` : undefined
-        });
+        } as any);
       }
       clearCart();
       setSuccess(true);

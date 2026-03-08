@@ -22,8 +22,8 @@ export const RackManagerPage = () => {
 
     // ── Data ─────────────────────────────────────────────────────────────────
     const myMeds = useMemo(() => medicines.filter(m => m.wholesaler_id === wholesaler?.id), [medicines, wholesaler?.id]);
-    const mapped = useMemo(() => myMeds.filter(m => m.rack_location), [myMeds]);
-    const unmapped = useMemo(() => myMeds.filter(m => !m.rack_location), [myMeds]);
+    const mapped = useMemo(() => myMeds.filter((m: any) => m.rack_location), [myMeds]);
+    const unmapped = useMemo(() => myMeds.filter((m: any) => !m.rack_location), [myMeds]);
 
     // Unique racks with medicines
     const racks = useMemo(() => {
@@ -64,7 +64,7 @@ export const RackManagerPage = () => {
         if (!batchRack.trim() || selectedIds.size === 0) return;
         setSaving(true);
         try {
-            await Promise.all(Array.from(selectedIds).map(id => updateMedicine(id, { rack_location: batchRack.trim() })));
+            await Promise.all(Array.from(selectedIds).map(id => updateMedicine(id as string, { rack_location: batchRack.trim() })));
             setSelectedIds(new Set()); setBatchRack('');
         } catch { alert('Failed'); }
         setSaving(false);

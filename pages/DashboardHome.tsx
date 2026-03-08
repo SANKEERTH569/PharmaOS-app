@@ -5,7 +5,7 @@ import {
   RotateCcw, MapPin, FileText, TrendingUp,
   IndianRupee, LogOut, Bell, LayoutGrid, Package, ReceiptText, AlertCircle, ShoppingBag,
   Heart,
-  Tag, Clock, CreditCard, AlertTriangle, Check, ChevronRight
+  Tag, Clock, CreditCard, AlertTriangle, Check, ChevronRight, Truck
 } from 'lucide-react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
@@ -180,6 +180,17 @@ const appSections = [
         ring: 'ring-teal-500/20',
       },
       {
+        icon: Truck,
+        label: 'Purchase Orders',
+        description: 'Order from stockists & receive goods',
+        path: '/purchase-orders',
+        gradient: 'from-sky-500 to-cyan-600',
+        bg: 'bg-sky-50',
+        iconBg: 'bg-sky-100',
+        iconColor: 'text-sky-600',
+        ring: 'ring-sky-500/20',
+      },
+      {
         icon: MapPin,
         label: 'Rack Manager',
         description: 'Organize shelf positions',
@@ -207,7 +218,7 @@ const appSections = [
 ];
 
 export const DashboardHome = () => {
-  const { orders, retailers, payments, notifications } = useDataStore();
+  const { orders, retailers, payments, notifications, purchaseOrders } = useDataStore();
   const { wholesaler, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -229,6 +240,9 @@ export const DashboardHome = () => {
   const totalDue = retailers.reduce((s, r) => s + r.current_balance, 0);
   const unreadNotifs = notifications.filter(n => !n.is_read).length;
 
+  // Purchase order stats
+  const openPOs = purchaseOrders.filter(po => po.status === 'DRAFT' || po.status === 'SENT' || po.status === 'PARTIALLY_RECEIVED');
+
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const today = new Date().toLocaleDateString('en-IN', {
@@ -237,6 +251,7 @@ export const DashboardHome = () => {
 
   const getBadge = (path: string): string | null => {
     if (path === '/orders' && pending.length > 0) return String(pending.length);
+    if (path === '/purchase-orders' && openPOs.length > 0) return String(openPOs.length);
     return null;
   };
 
@@ -245,6 +260,7 @@ export const DashboardHome = () => {
     { label: 'Revenue', value: fmtCurrency(totalRevenue), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: 'Retailers', value: retailers.filter(r => r.is_active).length, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
     { label: 'Collected', value: fmtCurrency(totalCollected), icon: IndianRupee, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Open POs', value: openPOs.length, icon: Truck, color: 'text-sky-600', bg: 'bg-sky-50' },
   ];
 
   return (
@@ -307,7 +323,7 @@ export const DashboardHome = () => {
         </div>
 
         {/* ── Quick Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mb-8">
           {stats.map(({ label, value, icon: Icon, color, bg }, idx) => (
             <div
               key={label}
@@ -335,7 +351,7 @@ export const DashboardHome = () => {
         {pending.length > 0 && (
           <button
             onClick={() => navigate('/orders')}
-            className="w-full mb-8 flex items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
+            className="w-full mb-4 flex items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl shadow-lg shadow-blue-600/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
@@ -344,6 +360,25 @@ export const DashboardHome = () => {
               <div className="text-left">
                 <p className="text-sm font-bold">{pending.length} order{pending.length > 1 ? 's' : ''} need your review</p>
                 <p className="text-xs text-white/70 mt-0.5">Tap to manage pending orders</p>
+              </div>
+            </div>
+            <ArrowRight size={18} className="text-white/60 group-hover:translate-x-1 group-hover:text-white transition-all" />
+          </button>
+        )}
+
+        {/* ── Open PO banner ── */}
+        {openPOs.length > 0 && (
+          <button
+            onClick={() => navigate('/purchase-orders')}
+            className="w-full mb-8 flex items-center justify-between gap-4 px-5 py-4 bg-gradient-to-r from-sky-500 to-cyan-600 text-white rounded-2xl shadow-lg shadow-sky-500/20 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Truck size={18} className="text-white" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-bold">{openPOs.length} purchase order{openPOs.length > 1 ? 's' : ''} awaiting goods receipt</p>
+                <p className="text-xs text-white/70 mt-0.5">Tap to receive stock &amp; update inventory</p>
               </div>
             </div>
             <ArrowRight size={18} className="text-white/60 group-hover:translate-x-1 group-hover:text-white transition-all" />

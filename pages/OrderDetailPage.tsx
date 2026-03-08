@@ -4,7 +4,6 @@ import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import { OrderStatus, PaymentMethod } from '../types';
 import { ArrowLeft, CheckCircle, XCircle, Truck, Package, Printer, ClipboardList, Loader2, AlertCircle, IndianRupee } from 'lucide-react';
-import { DeliveryReceiptModal } from '../components/DeliveryReceiptModal';
 import { CombinedPrintModal } from '../components/CombinedPrintModal';
 
 export const OrderDetailPage = () => {
@@ -24,9 +23,7 @@ export const OrderDetailPage = () => {
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
     const [paymentAmount, setPaymentAmount] = useState<string>('');
 
-    // Modals for print/delivery
-    const [showDeliveryReceipt, setShowDeliveryReceipt] = useState(false);
-    const [showCombinedPrint, setShowCombinedPrint] = useState(false);
+    // Delivery State (similar to modal)
 
     // Removing items
     const [removingItemId, setRemovingItemId] = useState<string | null>(null);
@@ -198,7 +195,7 @@ export const OrderDetailPage = () => {
                                             <Printer size={14} /> View Invoice
                                         </button>
                                         <button
-                                            onClick={() => setShowCombinedPrint(true)}
+                                            onClick={() => navigate(`/orders/${order.id}/combined-print`)}
                                             className="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-transparent rounded-lg transition-colors flex items-center gap-1.5"
                                         >
                                             <ClipboardList size={14} /> Print All
@@ -339,114 +336,100 @@ export const OrderDetailPage = () => {
                 </div>
             </div>
 
-                    {/* Delivery Confirmation Modal */}
-        {showDeliveryConfirm && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-                    <div className="bg-white px-6 py-5 border-b border-slate-100 flex justify-between items-center">
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900">Confirm Delivery</h3>
-                            <p className="text-xs text-slate-500 mt-1">Order #{order.id} • {order.retailer_name}</p>
-                        </div>
-                        <button onClick={() => setShowDeliveryConfirm(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
-                            <span className="text-2xl leading-none">&times;</span>
-                        </button>
-                    </div>
-
-                    <div className="p-6">
-                        <div className="flex bg-slate-50 p-1.5 rounded-xl mb-6">
-                            <button
-                                onClick={() => setPaymentMode('CREDIT')}
-                                className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentMode === 'CREDIT' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                Add to Credit
-                            </button>
-                            <button
-                                onClick={() => setPaymentMode('PAID')}
-                                className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentMode === 'PAID' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                            >
-                                Payment Received
+            {/* Delivery Confirmation Modal */}
+            {showDeliveryConfirm && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="bg-white px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-900">Confirm Delivery</h3>
+                                <p className="text-xs text-slate-500 mt-1">Order #{order.id} • {order.retailer_name}</p>
+                            </div>
+                            <button onClick={() => setShowDeliveryConfirm(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-full hover:bg-slate-100 transition-colors">
+                                <span className="text-2xl leading-none">&times;</span>
                             </button>
                         </div>
 
-                        <div className="text-center mb-6">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">Invoice Amount</p>
-                            <p className="text-3xl font-black text-slate-900">₹{order.total_amount.toLocaleString()}</p>
-                        </div>
+                        <div className="p-6">
+                            <div className="flex bg-slate-50 p-1.5 rounded-xl mb-6">
+                                <button
+                                    onClick={() => setPaymentMode('CREDIT')}
+                                    className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentMode === 'CREDIT' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Add to Credit
+                                </button>
+                                <button
+                                    onClick={() => setPaymentMode('PAID')}
+                                    className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-lg transition-all ${paymentMode === 'PAID' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Payment Received
+                                </button>
+                            </div>
 
-                        {paymentMode === 'PAID' && (
-                            <div className="space-y-4 mb-6 animate-in slide-in-from-top-2 fade-in">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Received Amount</label>
-                                    <div className="relative">
-                                        <IndianRupee className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
-                                        <input
-                                            type="number"
-                                            value={paymentAmount}
-                                            onChange={(e) => setPaymentAmount(e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-lg font-bold text-slate-900"
-                                        />
+                            <div className="text-center mb-6">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">Invoice Amount</p>
+                                <p className="text-3xl font-black text-slate-900">₹{order.total_amount.toLocaleString()}</p>
+                            </div>
+
+                            {paymentMode === 'PAID' && (
+                                <div className="space-y-4 mb-6 animate-in slide-in-from-top-2 fade-in">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Received Amount</label>
+                                        <div className="relative">
+                                            <IndianRupee className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+                                            <input
+                                                type="number"
+                                                value={paymentAmount}
+                                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                                className="w-full pl-12 pr-4 py-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-lg font-bold text-slate-900"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment Mode</label>
+                                        <select
+                                            value={paymentMethod}
+                                            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                                            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-medium"
+                                        >
+                                            <option value="CASH">Cash</option>
+                                            <option value="UPI">UPI</option>
+                                            <option value="CHEQUE">Cheque</option>
+                                            <option value="BANK_TRANSFER">Bank Transfer</option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Payment Mode</label>
-                                    <select
-                                        value={paymentMethod}
-                                        onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-medium"
-                                    >
-                                        <option value="CASH">Cash</option>
-                                        <option value="UPI">UPI</option>
-                                        <option value="CHEQUE">Cheque</option>
-                                        <option value="BANK_TRANSFER">Bank Transfer</option>
-                                    </select>
+                            )}
+
+                            {actionError && (
+                                <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium animate-in slide-in-from-top-1">
+                                    <AlertCircle size={16} className="shrink-0" />
+                                    <span>{actionError}</span>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {actionError && (
-                            <div className="flex items-center gap-2 px-4 py-2.5 mb-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm font-medium animate-in slide-in-from-top-1">
-                                <AlertCircle size={16} className="shrink-0" />
-                                <span>{actionError}</span>
+                            <div className="flex gap-4">
+                                <button
+                                    onClick={() => { setShowDeliveryConfirm(false); setActionError(null); }}
+                                    className="flex-1 py-3.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmDelivery}
+                                    disabled={actionLoading}
+                                    className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${paymentMode === 'PAID' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'}`}
+                                >
+                                    {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                                    {actionLoading ? 'Processing...' : `Confirm ${paymentMode === 'PAID' ? '& Pay' : 'Delivery'}`}
+                                </button>
                             </div>
-                        )}
-
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => { setShowDeliveryConfirm(false); setActionError(null); }}
-                                className="flex-1 py-3.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDelivery}
-                                disabled={actionLoading}
-                                className={`flex-1 py-3.5 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${paymentMode === 'PAID' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'}`}
-                            >
-                                {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                                {actionLoading ? 'Processing...' : `Confirm ${paymentMode === 'PAID' ? '& Pay' : 'Delivery'}`}
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
-        )}
+            )}
 
-        {showDeliveryReceipt && (
-            <DeliveryReceiptModal
-                order={order}
-                retailer={retailer ?? { id: order.retailer_id, name: order.retailer_name, shop_name: order.retailer_name, phone: '', address: '', gstin: '', credit_limit: 0, current_balance: 0, is_active: true }}
-                onClose={() => setShowDeliveryReceipt(false)}
-            />
-        )}
 
-        {showCombinedPrint && (
-            <CombinedPrintModal
-                order={order}
-                retailer={retailer ?? { id: order.retailer_id, name: order.retailer_name, shop_name: order.retailer_name, phone: '', address: '', gstin: '', credit_limit: 0, current_balance: 0, is_active: true }}
-                onClose={() => setShowCombinedPrint(false)}
-            />
-        )}
-    </div>
+        </div>
     );
 };

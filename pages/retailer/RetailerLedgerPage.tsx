@@ -18,8 +18,9 @@ export const RetailerLedgerPage: React.FC = () => {
   const agencies = summary?.agencies || [];
   const totalOutstanding = summary?.global_current_balance || 0;
   const totalLimit = summary?.global_credit_limit || 0;
-  const available = totalLimit - totalOutstanding;
-  const utilization = totalLimit > 0 ? (totalOutstanding / totalLimit) * 100 : 0;
+  const hasLimit = totalLimit > 0;
+  const available = hasLimit ? Math.max(0, totalLimit - totalOutstanding) : null;
+  const utilization = hasLimit ? Math.min((totalOutstanding / totalLimit) * 100, 100) : 0;
 
   const handleAgencyClick = (wholesalerId: string) => {
     if (selectedAgency === wholesalerId) { setSelectedAgency(null); return; }
@@ -58,8 +59,12 @@ export const RetailerLedgerPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <p className="text-[10px] text-blue-200 uppercase tracking-wider mb-1">Available Credit</p>
-              <p className="text-2xl font-bold">₹{available.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+              <p className="text-[10px] text-blue-200 uppercase tracking-wider mb-1">
+                {hasLimit ? 'Available Credit' : 'Credit Limit'}
+              </p>
+              <p className="text-2xl font-bold">
+                {hasLimit ? `₹${available!.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'No Limit'}
+              </p>
             </div>
             <div className="text-right">
               <p className="text-[10px] text-blue-200 uppercase tracking-wider mb-1">Outstanding</p>
@@ -71,17 +76,19 @@ export const RetailerLedgerPage: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex justify-between text-[10px]">
               <span className="text-blue-200">Utilization</span>
-              <span className="font-semibold">{utilization.toFixed(0)}%</span>
+              <span className="font-semibold">{hasLimit ? `${utilization.toFixed(0)}%` : '—'}</span>
             </div>
             <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${Math.min(utilization, 100)}%` }}
+                animate={{ width: `${utilization}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
                 className={cn("h-full rounded-full", utilization > 80 ? "bg-rose-400" : utilization > 50 ? "bg-amber-400" : "bg-emerald-400")}
               />
             </div>
-            <p className="text-[10px] text-blue-200">Total Limit: ₹{totalLimit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+            <p className="text-[10px] text-blue-200">
+              Total Limit: {hasLimit ? `₹${totalLimit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}` : 'No limit set'}
+            </p>
           </div>
         </div>
       </motion.div>

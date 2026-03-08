@@ -32,7 +32,7 @@ export const SearchCommand: React.FC<{ isOpen: boolean; onClose: () => void }> =
   const [recent, setRecent] = useState<string[]>(getRecent());
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isOpen) {

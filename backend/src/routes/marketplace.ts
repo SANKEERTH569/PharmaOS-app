@@ -101,7 +101,18 @@ router.get('/medicines', async (req, res) => {
       alternatives: altBySalt[med.salt || ''] || [],
     }));
 
-    // 7. Agencies for sidebar
+    // 7. Fetch active schemes for linked wholesalers
+    const schemes = await prisma.scheme.findMany({
+      where: {
+        wholesaler_id: { in: targetIds },
+        is_active: true,
+      },
+      include: {
+        medicine: { select: { id: true, name: true, brand: true, mrp: true, price: true } },
+      },
+    });
+
+    // 8. Agencies for sidebar
     const agenciesInfo = linkedAgencies.map((a) => ({
       wholesaler_id: a.wholesaler_id,
       is_primary: a.is_primary,
@@ -109,7 +120,7 @@ router.get('/medicines', async (req, res) => {
       phone: a.wholesaler.phone,
     }));
 
-    res.json({ medicines: medicinesWithAlts, agencies: agenciesInfo });
+    res.json({ medicines: medicinesWithAlts, schemes, agencies: agenciesInfo });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message });

@@ -9,7 +9,7 @@ import { useCartStore } from '../../store/cartStore';
 import { useDataStore } from '../../store/dataStore';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../utils/cn';
-import { Medicine, MedicineWithAlternatives, RetailerAgency } from '../../types';
+import { Medicine, MedicineWithAlternatives, RetailerAgency, Scheme } from '../../types';
 import { MedicineDetailSheet } from '../../components/MedicineDetailSheet';
 import { SearchCommand } from '../../components/SearchCommand';
 
@@ -29,17 +29,31 @@ const getMedicineType = (name: string) => {
 const MedicineCard: React.FC<{
   med: MedicineWithAlternatives;
   cartQty: number;
+  schemes: Scheme[];
   onAdd: () => void;
   onInc: () => void;
   onDec: () => void;
   onDetail: () => void;
-}> = ({ med, cartQty, onAdd, onInc, onDec, onDetail }) => {
+}> = ({ med, cartQty, schemes, onAdd, onInc, onDec, onDetail }) => {
   const [showAlts, setShowAlts] = useState(false);
   const margin = med.mrp > 0 ? ((med.mrp - med.price) / med.mrp * 100) : 0;
   const typeInfo = getMedicineType(med.name);
   const isOutOfStock = med.stock_qty <= 0;
   const isLow = med.stock_qty > 0 && med.stock_qty <= 10;
   const { addItem } = useCartStore();
+
+  const applicableSchemes = schemes.filter(s => {
+    const match = (s.type === 'CASH_DISCOUNT' && s.wholesaler_id === med.wholesaler_id) ||
+      (s.medicine_id === med.id && s.wholesaler_id === med.wholesaler_id);
+    if (match) {
+      console.log('Matched scheme', s, 'for med', med.name);
+    }
+    return match;
+  });
+
+  if (med.name === 'Zincold Tablet') {
+    console.log('Zincold Tablet card -> schemes:', schemes, 'med.id:', med.id, 'wholesaler_id:', med.wholesaler_id);
+  }
 
   return (
     <motion.div
@@ -67,17 +81,24 @@ const MedicineCard: React.FC<{
         {med.pack_size && <p className="text-[11px] text-slate-500 mt-1">{med.pack_size}</p>}
         {med.salt && <p className="text-[10px] text-slate-400 mt-1 line-clamp-1">{med.salt}</p>}
 
-        {/* Pricing */}
+        {/* Pricing & Schemes */}
         <div className="flex items-end justify-between mt-3 pt-3 border-t border-slate-50">
           <div>
             <span className="text-xs text-slate-400 line-through mr-1.5">₹{med.mrp.toFixed(0)}</span>
             <span className="text-base font-bold text-blue-700">₹{med.price.toFixed(2)}</span>
           </div>
-          {margin > 15 && (
-            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
-              {margin.toFixed(0)}% Margin
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {margin > 15 && (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                {margin.toFixed(0)}% Margin
+              </span>
+            )}
+            {applicableSchemes.length > 0 && (
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full border border-indigo-200 flex items-center gap-1">
+                <Sparkles size={10} /> {applicableSchemes.length} Offer{applicableSchemes.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Supplier */}
@@ -149,31 +170,38 @@ export const MarketplacePage: React.FC = () => {
   const [selectedMedicine, setSelectedMedicine] = useState<MedicineWithAlternatives | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const { items, addItem, updateQty, removeItem } = useCartStore();
-  const { orders } = useDataStore();
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const { orders, schemes, setSchemes } = useDataStore();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch agencies
   useEffect(() => {
     api.get('/retailer/agencies').then(r => {
       const active = (r.data || []).filter((a: RetailerAgency) => a.status === 'ACTIVE');
       setAgencies(active);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   // Fetch medicines
-  const fetchMedicines = useCallback(async (q?: string) => {
+  const fetchMedicines = useCallback(async (q: string = '') => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (q) params.set('search', q);
       if (selectedAgency) params.set('agency_id', selectedAgency);
       const { data } = await api.get(`/marketplace/medicines?${params.toString()}`);
+
       setMedicines(Array.isArray(data) ? data : data?.medicines || []);
-    } catch { setMedicines([]); }
+      if (data?.schemes) {
+        setSchemes(data.schemes);
+      }
+    } catch {
+      setMedicines([]);
+      if (schemes.length === 0) setSchemes([]);
+    }
     setLoading(false);
   }, [selectedAgency]);
 
-  useEffect(() => { fetchMedicines(); }, [selectedAgency]);
+  useEffect(() => { fetchMedicines(search); }, [selectedAgency]);
 
   const handleSearch = (val: string) => {
     setSearch(val);
@@ -344,6 +372,7 @@ export const MarketplacePage: React.FC = () => {
                 key={med.id}
                 med={med}
                 cartQty={cartItem?.qty || 0}
+                schemes={schemes}
                 onAdd={() => addItem(med, 1)}
                 onInc={() => updateQty(med.id, (cartItem?.qty || 0) + 1)}
                 onDec={() => { const q = (cartItem?.qty || 0); q <= 1 ? removeItem(med.id) : updateQty(med.id, q - 1); }}

@@ -3,23 +3,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart, Trash2, Plus, Minus, Building2, ShoppingBag,
-  CreditCard, AlertTriangle, Check, ArrowRight, Package,
+  CreditCard, AlertTriangle, Check, ArrowRight, Package, Tag
 } from 'lucide-react';
 import { useCartStore } from '../../store/cartStore';
 import { useDataStore } from '../../store/dataStore';
 import { useAuthStore } from '../../store/authStore';
+import { Order } from '../../types';
 import { cn } from '../../utils/cn';
 
 export const CartPage: React.FC = () => {
   const { items, updateQty, removeItem, clearCart, totalAmount } = useCartStore();
-  const { placeOrder, fetchRetailerLedgerSummary, retailerLedgerSummary } = useDataStore();
+  const { placeOrder, fetchRetailerLedgerSummary, retailerLedgerSummary, schemes } = useDataStore();
   const { retailer } = useAuthStore();
   const navigate = useNavigate();
   const [placing, setPlacing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
 
-  React.useEffect(() => { fetchRetailerLedgerSummary().catch(() => {}); }, []);
+  React.useEffect(() => { fetchRetailerLedgerSummary().catch(() => { }); }, []);
 
   // Group items by wholesaler
   const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
@@ -68,7 +69,8 @@ export const CartPage: React.FC = () => {
           items: orderItems,
           sub_total, tax_total,
           total_amount: sub_total + tax_total,
-        });
+          notes: notes[wholesalerId] || '',
+        } as Omit<Order, 'id' | 'invoice_no' | 'created_at' | 'updated_at'>);
       }
       clearCart();
       setSuccess(true);
@@ -123,7 +125,7 @@ export const CartPage: React.FC = () => {
               {/* Supplier Header */}
               <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-100">
                 <Building2 size={14} className="text-slate-500" />
-                <span className="text-xs font-semibold text-slate-600">{supplierName}</span>
+                <span className="text-xs font-semibold text-slate-600">{supplierName as string}</span>
                 <span className="text-[10px] text-slate-400 ml-auto">{groupItems.length} item{groupItems.length > 1 ? 's' : ''}</span>
               </div>
 
@@ -138,6 +140,22 @@ export const CartPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-800 line-clamp-1">{ci.medicine.name}</p>
                         <p className="text-xs text-slate-400">{ci.medicine.brand} · ₹{ci.medicine.price.toFixed(2)}/unit</p>
+                        {(() => {
+                          const applicableSchemes = schemes.filter(s =>
+                            (s.type === 'CASH_DISCOUNT' && s.wholesaler_id === ci.medicine.wholesaler_id) ||
+                            (s.medicine_id === ci.medicine.id && s.wholesaler_id === ci.medicine.wholesaler_id)
+                          );
+                          if (applicableSchemes.length === 0) return null;
+                          return (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {applicableSchemes.map(s => (
+                                <span key={s.id} className="inline-flex items-center gap-1 text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200" title={s.name}>
+                                  <Tag size={8} /> {s.type === 'BOGO' ? 'BOGO Offer' : s.type === 'HALF_SCHEME' ? 'Half Price Offer' : 'Cash Discount'}
+                                </span>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </div>
                       <div className="flex items-center gap-1 bg-slate-50 rounded-lg">
                         <button onClick={() => ci.qty <= 1 ? removeItem(ci.medicine.id) : updateQty(ci.medicine.id, ci.qty - 1)}

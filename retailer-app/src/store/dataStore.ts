@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme } from '../types';
 
 
 interface DataState {
@@ -12,6 +12,7 @@ interface DataState {
   ledgerEntries: LedgerEntry[];
   payments: Payment[];
   notifications: AppNotification[];
+  schemes: Scheme[];
   retailerLedgerSummary: { global_credit_limit: number, global_current_balance: number, agencies: any[] } | null;
   retailerLedgerHistory: Record<string, LedgerEntry[]>;
   returns: ReturnRequest[];
@@ -30,6 +31,7 @@ interface DataState {
   fetchRetailerLedgerSummary: () => Promise<void>;
   fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
   fetchReturns: () => Promise<void>;
+  setSchemes: (schemes: Scheme[]) => void;
 
   // Mutations
   updateOrderStatus: (orderId: string, status: OrderStatus, wholesalerId: string, paymentData?: { amount: number; method: PaymentMethod } | null) => Promise<void>;
@@ -58,6 +60,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   ledgerEntries: [],
   payments: [],
   notifications: [],
+  schemes: [],
   retailerLedgerSummary: null,
   retailerLedgerHistory: {},
   returns: [],
@@ -128,7 +131,11 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ─── Fetchers ──────────────────────────────────────────────────────────
   fetchRetailers: async () => { const { data } = await api.get('/retailers'); set({ retailers: data }); },
   fetchOrders: async () => { const { data } = await api.get('/orders'); set({ orders: data }); },
-  fetchMedicines: async () => { const { data } = await api.get('/medicines'); set({ medicines: data }); },
+  fetchMedicines: async () => {
+    // This is primarily for Wholesalers. Retailers use the specific marketplace endpoint.
+    const { data } = await api.get('/medicines');
+    set({ medicines: data });
+  },
   fetchLedger: async (retailerId) => {
     const url = retailerId ? `/ledger?retailer_id=${retailerId}` : '/ledger';
     const { data } = await api.get(url);
@@ -148,6 +155,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
     const { data } = await api.get('/returns');
     set({ returns: data });
   },
+  setSchemes: (schemes) => set({ schemes }),
 
   // ─── Mutations ─────────────────────────────────────────────────────────
   updateOrderStatus: async (orderId, status, _wholesalerId, paymentData) => {

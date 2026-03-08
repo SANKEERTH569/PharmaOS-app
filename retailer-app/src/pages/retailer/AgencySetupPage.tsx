@@ -116,7 +116,7 @@ export const AgencySetupPage = () => {
                         <Building2 size={16} className="text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{w.business_name || w.name}</p>
+                        <p className="text-sm font-medium text-slate-800 truncate">{w.name}</p>
                         {w.phone && <p className="text-[10px] text-slate-400 flex items-center gap-1"><Phone size={9} />{w.phone}</p>}
                       </div>
                       {alreadyAdded ? (
@@ -163,7 +163,7 @@ export const AgencySetupPage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-800 truncate">{agency.wholesaler_name || 'Agency'}</p>
+                        <p className="text-sm font-medium text-slate-800 truncate">{agency.wholesaler?.name || 'Agency'}</p>
                         {agency.is_primary && (
                           <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
                             <Star size={8} fill="currentColor" /> Primary

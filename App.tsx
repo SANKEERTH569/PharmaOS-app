@@ -12,6 +12,8 @@ import { DashboardHome } from './pages/DashboardHome';
 import { OrdersPage } from './pages/OrdersPage';
 import { OrderDetailPage } from './pages/OrderDetailPage';
 import { InvoicePage } from './pages/InvoicePage';
+import { CombinedPrintPage } from './pages/CombinedPrintPage';
+import { DeliveryChallanPage } from './pages/DeliveryChallanPage';
 import { DailyInvoicePage } from './pages/DailyInvoicePage';
 import { RetailersPage } from './pages/RetailersPage';
 import { RetailerDetailPage } from './pages/RetailerDetailPage';
@@ -41,6 +43,11 @@ import { CouponManagement } from './pages/admin/CouponManagement';
 import { GstDashboardPage } from './pages/GstDashboardPage';
 import { QuickSalePage } from './pages/QuickSalePage';
 import { SchemesPage } from './pages/SchemesPage';
+import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { MainWholesalerLoginPage } from './pages/auth/MainWholesalerLoginPage';
+import { MainWholesalerLayout } from './components/MainWholesalerLayout';
+import { WholesalerDashboard } from './pages/wholesaler/WholesalerDashboard';
+import { SupplyOrdersPage } from './pages/wholesaler/SupplyOrdersPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -55,12 +62,16 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
   if (userRole !== allowedRole) {
     // Redirect to appropriate dashboard based on actual role
-    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : '/shop';
+    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : '/shop';
     return <Navigate to={dest} replace />;
   }
 
   if (allowedRole === 'ADMIN') {
     return <AdminLayout>{children}</AdminLayout>;
+  }
+
+  if (allowedRole === 'MAIN_WHOLESALER') {
+    return <MainWholesalerLayout>{children}</MainWholesalerLayout>;
   }
 
   return allowedRole === 'WHOLESALER' ? (
@@ -79,19 +90,19 @@ const RetailerAuthOnly = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
-  const { isAuthenticated, wholesaler, retailer, userRole } = useAuthStore();
+  const { isAuthenticated, wholesaler, retailer, mainWholesaler, userRole } = useAuthStore();
   const { initData } = useDataStore();
 
   // Connect socket for sessions restored from localStorage
   useEffect(() => {
-    if (isAuthenticated && userRole && userRole !== 'ADMIN') {
+    if (isAuthenticated && userRole && userRole !== 'ADMIN' && userRole !== 'MAIN_WHOLESALER') {
       const user = wholesaler || retailer;
       if (user) connectSocket(`${userRole.toLowerCase()}_${user.id}`);
     }
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && userRole !== 'ADMIN') {
+    if (isAuthenticated && userRole !== 'ADMIN' && userRole !== 'MAIN_WHOLESALER') {
       const id = wholesaler?.id || retailer?.id || '';
       const role = wholesaler ? 'WHOLESALER' : 'RETAILER';
       initData(id, role);
@@ -105,8 +116,21 @@ function App() {
         <Route path="/login/wholesaler" element={<WholesalerLoginPage />} />
         <Route path="/login/retailer" element={<RetailerLoginPage />} />
         <Route path="/login/admin" element={<AdminLoginPage />} />
+        <Route path="/login/main-wholesaler" element={<MainWholesalerLoginPage />} />
 
-        {/* Wholesaler Routes */}
+        {/* Main Wholesaler Routes */}
+        <Route path="/wholesaler" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <WholesalerDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/orders" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <SupplyOrdersPage />
+          </ProtectedRoute>
+        } />
+
+        {/* Sub-Wholesaler Routes */}
         <Route path="/" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <DashboardHome />
@@ -130,6 +154,16 @@ function App() {
         <Route path="/orders/:orderId/invoice" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <InvoicePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/orders/:orderId/combined-print" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <CombinedPrintPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/orders/:orderId/delivery-challan" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <DeliveryChallanPage />
           </ProtectedRoute>
         } />
         <Route path="/orders/daily-invoice" element={
@@ -180,6 +214,11 @@ function App() {
         <Route path="/rack-manager" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <RackManagerPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/purchase-orders" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <PurchaseOrdersPage />
           </ProtectedRoute>
         } />
         <Route path="/returns" element={

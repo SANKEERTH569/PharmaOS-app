@@ -174,7 +174,7 @@ export const RetailerReturnsPage = () => {
                     <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Supplier</label>
                     <select value={selectedWholesaler} onChange={e => setSelectedWholesaler(e.target.value)}
                       className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none">
-                      {agencies.map((a: any) => <option key={a.wholesaler_id} value={a.wholesaler_id}>{a.wholesaler_name || a.name || 'Agency'}</option>)}
+                      {agencies.map((a: any) => <option key={a.wholesaler_id} value={a.wholesaler_id}>{a.wholesaler?.name || 'Agency'}</option>)}
                     </select>
                   </div>
                   <div>
@@ -312,7 +312,7 @@ export const RetailerReturnsPage = () => {
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-slate-50">
                       <div className="p-4 space-y-3">
                         <div className="flex items-center gap-4 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Building2 size={12} />{ret.wholesaler_name || 'Supplier'}</span>
+                          <span className="flex items-center gap-1"><Building2 size={12} />{ret.wholesaler?.name || 'Supplier'}</span>
                           <span className="flex items-center gap-1">{reasonConfig[ret.reason]?.icon && React.createElement(reasonConfig[ret.reason]?.icon, { size: 12 })} {ret.reason}</span>
                         </div>
                         {ret.notes && <p className="text-xs text-slate-500 bg-slate-50 rounded-lg p-2">{ret.notes}</p>}

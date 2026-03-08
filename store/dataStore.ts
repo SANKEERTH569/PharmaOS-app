@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme, PurchaseOrder, POStatus, GoodsReceiptNote } from '../types';
 
 
 interface DataState {
@@ -16,6 +16,8 @@ interface DataState {
   retailerLedgerHistory: Record<string, LedgerEntry[]>;
   returns: ReturnRequest[];
   schemes: Scheme[];
+  purchaseOrders: PurchaseOrder[];
+  grns: GoodsReceiptNote[];
   isLoading: boolean;
 
   // Init
@@ -32,6 +34,13 @@ interface DataState {
   fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
   fetchReturns: () => Promise<void>;
   fetchSchemes: () => Promise<void>;
+  setSchemes: (schemes: Scheme[]) => void;
+  fetchPurchaseOrders: () => Promise<void>;
+  fetchGRNs: () => Promise<void>;
+  createPurchaseOrder: (data: { supplier_name: string; supplier_phone?: string; supplier_gstin?: string; notes?: string; main_wholesaler_id?: string; items: { medicine_id?: string; medicine_name: string; qty_ordered: number; unit_cost: number }[] }) => Promise<PurchaseOrder>;
+  updatePOStatus: (id: string, status: POStatus, main_wholesaler_id?: string) => Promise<void>;
+  deletePurchaseOrder: (id: string) => Promise<void>;
+  createGRN: (data: { po_id?: string; supplier_name: string; notes?: string; items: { medicine_id: string; medicine_name: string; batch_no: string; expiry_date: string; qty_received: number; unit_cost: number }[] }) => Promise<GoodsReceiptNote>;
 
   // Mutations
   updateOrderStatus: (orderId: string, status: OrderStatus, wholesalerId: string, paymentData?: { amount: number; method: PaymentMethod } | null) => Promise<void>;
@@ -70,6 +79,8 @@ export const useDataStore = create<DataState>()((set, get) => ({
   retailerLedgerHistory: {},
   returns: [],
   schemes: [],
+  purchaseOrders: [],
+  grns: [],
   isLoading: false,
 
   // ─── Init ──────────────────────────────────────────────────────────────
@@ -84,7 +95,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
         set({ orders: o.data, notifications: n.data, isLoading: false });
       } else {
         // Wholesaler — fetch all relevant data; each call catches independently
-        const [r, m, o, l, p, n, s] = await Promise.all([
+        const [r, m, o, l, p, n, s, pos] = await Promise.all([
           api.get('/retailers').catch(() => ({ data: [] })),
           api.get('/medicines').catch(() => ({ data: [] })),
           api.get('/orders').catch(() => ({ data: [] })),
@@ -92,6 +103,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
           api.get('/payments').catch(() => ({ data: [] })),
           api.get('/notifications').catch(() => ({ data: [] })),
           api.get('/schemes').catch(() => ({ data: [] })),
+          api.get('/purchase-orders').catch(() => ({ data: [] })),
         ]);
         set({
           retailers: r.data,
@@ -101,6 +113,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
           payments: p.data,
           notifications: n.data,
           schemes: s.data,
+          purchaseOrders: pos.data,
           isLoading: false,
         });
       }
@@ -161,6 +174,45 @@ export const useDataStore = create<DataState>()((set, get) => ({
   fetchSchemes: async () => {
     const { data } = await api.get('/schemes');
     set({ schemes: data });
+  },
+  setSchemes: (schemes) => set({ schemes }),
+
+  fetchPurchaseOrders: async () => {
+    const { data } = await api.get('/purchase-orders');
+    set({ purchaseOrders: data });
+  },
+
+  fetchGRNs: async () => {
+    const { data } = await api.get('/purchase-orders/grns/list');
+    set({ grns: data });
+  },
+
+  createPurchaseOrder: async (poData) => {
+    const { data: created } = await api.post('/purchase-orders', poData);
+    set((s) => ({ purchaseOrders: [created, ...s.purchaseOrders] }));
+    return created;
+  },
+
+  updatePOStatus: async (id, status, main_wholesaler_id?) => {
+    const payload: any = { status };
+    if (main_wholesaler_id !== undefined) payload.main_wholesaler_id = main_wholesaler_id;
+    const { data: updated } = await api.patch(`/purchase-orders/${id}`, payload);
+    set((s) => ({ purchaseOrders: s.purchaseOrders.map(p => p.id === id ? updated : p) }));
+  },
+
+  deletePurchaseOrder: async (id) => {
+    await api.delete(`/purchase-orders/${id}`);
+    set((s) => ({ purchaseOrders: s.purchaseOrders.filter(p => p.id !== id) }));
+  },
+
+  createGRN: async (grnData) => {
+    const { data: created } = await api.post('/purchase-orders/grns', grnData);
+    set((s) => ({ grns: [created, ...s.grns] }));
+    // Refresh medicines stock after GRN
+    get().fetchMedicines();
+    // Refresh POs if linked
+    if (grnData.po_id) get().fetchPurchaseOrders();
+    return created;
   },
 
   // ─── Mutations ─────────────────────────────────────────────────────────

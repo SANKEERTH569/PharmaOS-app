@@ -39,7 +39,7 @@ export interface AppNotification {
   created_at: string;
 }
 
-export type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN';
+export type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER';
 
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'DISPATCHED' | 'DELIVERED' | 'REJECTED' | 'CANCELLED';
 
@@ -240,4 +240,121 @@ export interface StatCardProps {
   trendUp?: boolean;
   icon: React.ReactNode;
   color: 'blue' | 'green' | 'red' | 'orange';
+}
+
+export type SchemeType = 'BOGO' | 'CASH_DISCOUNT' | 'HALF_SCHEME';
+
+export interface Scheme {
+  id: string;
+  wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  medicine?: {
+    id: string;
+    name: string;
+  };
+}
+
+// ── Purchase Orders & GRN ──────────────────────────────────────────────────
+
+export type POStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface POItem {
+  id: string;
+  po_id: string;
+  medicine_id: string | null;
+  medicine_name: string;
+  qty_ordered: number;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  wholesaler_id: string;
+  main_wholesaler_id?: string | null;
+  supplier_name: string;
+  supplier_phone?: string | null;
+  supplier_gstin?: string | null;
+  status: POStatus;
+  notes?: string | null;
+  items: POItem[];
+  grns?: { id: string; grn_number: string; created_at: string }[];
+  supply_order?: { id: string; so_number: string; status: SupplyOrderStatus } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GRNItem {
+  id: string;
+  grn_id: string;
+  medicine_id: string;
+  medicine_name: string;
+  batch_no: string;
+  expiry_date: string;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface GoodsReceiptNote {
+  id: string;
+  grn_number: string;
+  wholesaler_id: string;
+  po_id?: string | null;
+  po?: { id: string; po_number: string; supplier_name: string } | null;
+  supplier_name: string;
+  notes?: string | null;
+  items: GRNItem[];
+  created_at: string;
+}
+
+// ── Main Wholesaler & Supply Orders ──────────────────────────────────────
+
+export interface MainWholesaler {
+  id: string;
+  username: string;
+  name: string;
+  phone: string;
+  address?: string | null;
+  gstin?: string | null;
+  dl_number?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type SupplyOrderStatus = 'PENDING' | 'ACCEPTED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+
+export interface SupplyOrderItem {
+  id: string;
+  so_id: string;
+  medicine_name: string;
+  qty_ordered: number;
+  unit_cost: number;
+  total_price: number;
+}
+
+export interface SupplyOrder {
+  id: string;
+  so_number: string;
+  wholesaler_id: string;
+  wholesaler?: { id: string; name: string; phone: string; address?: string | null; gstin?: string | null };
+  main_wholesaler_id: string;
+  purchase_order_id?: string | null;
+  purchase_order?: { id: string; po_number: string } | null;
+  status: SupplyOrderStatus;
+  notes?: string | null;
+  total_amount: number;
+  dispatch_date?: string | null;
+  delivered_date?: string | null;
+  items: SupplyOrderItem[];
+  created_at: string;
+  updated_at: string;
 }
