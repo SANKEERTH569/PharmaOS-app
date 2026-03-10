@@ -23,6 +23,11 @@ model MainWholesaler {
   created_at    DateTime @default(now())
 
   supply_orders SupplyOrder[]
+  medicines     MainWholesalerMedicine[]
+  schemes       MainWholesalerScheme[]
+  connections   MainWholesalerConnection[]
+  ledger_entries MainWholesalerLedgerEntry[]
+  payments      MainWholesalerPayment[]
 }
 
 model Wholesaler {
@@ -56,6 +61,10 @@ model Wholesaler {
   purchase_orders   PurchaseOrder[]
   grns              GoodsReceiptNote[]
   supply_orders     SupplyOrder[]
+
+  mw_connections    MainWholesalerConnection[]
+  mw_ledger_entries MainWholesalerLedgerEntry[]
+  mw_payments       MainWholesalerPayment[]
 }
 
 model Retailer {
@@ -480,4 +489,87 @@ model SupplyOrderItem {
   total_price   Float
 
   @@index([so_id])
+}
+
+// ── Main Wholesaler Catalog ────────────────────────────────────────────────
+model MainWholesalerMedicine {
+  id                 String         @id @default(cuid())
+  main_wholesaler_id String
+  main_wholesaler    MainWholesaler @relation(fields: [main_wholesaler_id], references: [id], onDelete: Cascade)
+  medicine_name      String
+  brand              String?
+  mrp                Float?
+  price              Float          // B2B selling price
+  stock_qty          Int?           // Current stock available
+  expiry_date        DateTime?      // Nearest expiry date for current batch
+  gst_rate           Float          @default(12)
+  hsn_code           String         @default("3004")
+  unit_type          String         @default("strip")
+  is_active          Boolean        @default(true)
+  created_at         DateTime       @default(now())
+
+  schemes            MainWholesalerScheme[]
+
+  @@unique([main_wholesaler_id, medicine_name])
+}
+
+model MainWholesalerScheme {
+  id                 String                 @id @default(cuid())
+  main_wholesaler_id String
+  main_wholesaler    MainWholesaler         @relation(fields: [main_wholesaler_id], references: [id])
+  name               String
+  type               SchemeType
+  min_qty            Int?
+  free_qty           Float?
+  discount_pct       Float?
+  medicine_id        String?
+  medicine           MainWholesalerMedicine? @relation(fields: [medicine_id], references: [id])
+  is_active          Boolean                @default(true)
+  created_at         DateTime               @default(now())
+  updated_at         DateTime               @updatedAt
+}
+
+// ── Main Wholesaler Finance (Ledger & Payments) ────────────────────────────
+
+model MainWholesalerConnection {
+  id                 String         @id @default(cuid())
+  main_wholesaler_id String
+  wholesaler_id      String
+  main_wholesaler    MainWholesaler @relation(fields: [main_wholesaler_id], references: [id])
+  wholesaler         Wholesaler     @relation(fields: [wholesaler_id], references: [id])
+  credit_limit       Float          @default(500000)
+  current_balance    Float          @default(0)
+  status             String         @default("ACTIVE") // PENDING | ACTIVE | BLOCKED
+  created_at         DateTime       @default(now())
+
+  @@unique([main_wholesaler_id, wholesaler_id])
+}
+
+model MainWholesalerLedgerEntry {
+  id                 String         @id @default(cuid())
+  main_wholesaler_id String
+  wholesaler_id      String
+  main_wholesaler    MainWholesaler @relation(fields: [main_wholesaler_id], references: [id])
+  wholesaler         Wholesaler     @relation(fields: [wholesaler_id], references: [id])
+  type               LedgerType
+  amount             Float
+  balance_after      Float
+  reference_id       String?
+  description        String
+  created_at         DateTime       @default(now())
+}
+
+model MainWholesalerPayment {
+  id                 String         @id @default(cuid())
+  main_wholesaler_id String
+  wholesaler_id      String
+  main_wholesaler    MainWholesaler @relation(fields: [main_wholesaler_id], references: [id])
+  wholesaler         Wholesaler     @relation(fields: [wholesaler_id], references: [id])
+  wholesaler_name    String
+  amount             Float
+  method             PaymentMethod
+  status             PaymentStatus  @default(COMPLETED)
+  notes              String?
+  razorpay_id        String?
+  created_at         DateTime       @default(now())
 }

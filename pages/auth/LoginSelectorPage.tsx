@@ -1,119 +1,204 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Store, ArrowRight, Building, Warehouse } from 'lucide-react';
 
+const ROLES = [
+    {
+        key: 'depot',
+        label: 'Depot',
+        desc: 'Large-scale distribution hub for regional supply',
+        icon: Warehouse,
+        accent: '#7C3AED',
+        comingSoon: true,
+    },
+    {
+        key: 'wholesaler',
+        label: 'Wholesaler',
+        desc: 'Manage large inventory & supply to sub-wholesalers',
+        icon: Building,
+        accent: '#2563EB',
+        path: '/login/main-wholesaler',
+    },
+    {
+        key: 'sub-wholesaler',
+        label: 'Sub-Wholesaler',
+        desc: 'Manage orders, inventory, retailers & payments',
+        icon: Briefcase,
+        accent: '#4F46E5',
+        path: '/login/wholesaler',
+    },
+    {
+        key: 'retailer',
+        label: 'Retailer',
+        desc: 'Browse medicines, place orders & track deliveries',
+        icon: Store,
+        accent: '#059669',
+        path: '/login/retailer',
+    },
+] as const;
+
 export const LoginSelectorPage = () => {
     const navigate = useNavigate();
-
-    const roles = [
-        {
-            key: 'depot',
-            label: 'Depot',
-            desc: 'Large-scale distribution hub for regional supply',
-            icon: Warehouse,
-            gradient: 'from-violet-500 to-purple-600',
-            shadow: 'shadow-violet-500/20',
-            accent: 'text-violet-400',
-            hoverBorder: 'hover:border-violet-500/30',
-            hoverShadow: 'hover:shadow-violet-500/10',
-            comingSoon: true,
-        },
-        {
-            key: 'wholesaler',
-            label: 'Wholesaler',
-            desc: 'Manage large inventory & supply to sub-wholesalers',
-            icon: Building,
-            gradient: 'from-blue-500 to-cyan-600',
-            shadow: 'shadow-blue-500/20',
-            accent: 'text-blue-400',
-            hoverBorder: 'hover:border-blue-500/30',
-            hoverShadow: 'hover:shadow-blue-500/10',
-            path: '/login/main-wholesaler',
-        },
-        {
-            key: 'sub-wholesaler',
-            label: 'Sub-Wholesaler',
-            desc: 'Manage orders, inventory, retailers, payments & more',
-            icon: Briefcase,
-            gradient: 'from-indigo-500 to-blue-600',
-            shadow: 'shadow-indigo-500/20',
-            accent: 'text-indigo-400',
-            hoverBorder: 'hover:border-indigo-500/30',
-            hoverShadow: 'hover:shadow-indigo-500/10',
-            path: '/login/wholesaler',
-        },
-        {
-            key: 'retailer',
-            label: 'Retailer',
-            desc: 'Browse medicines, place orders & track deliveries',
-            icon: Store,
-            gradient: 'from-emerald-500 to-teal-600',
-            shadow: 'shadow-emerald-500/20',
-            accent: 'text-emerald-400',
-            hoverBorder: 'hover:border-emerald-500/30',
-            hoverShadow: 'hover:shadow-emerald-500/10',
-            path: '/login/retailer',
-        },
-    ];
+    const [hovered, setHovered] = useState<string | null>(null);
 
     return (
-        <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
-            style={{ background: 'linear-gradient(160deg, #0F172A 0%, #1E1B4B 40%, #0F172A 100%)' }}
+        <div
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
+            style={{
+                background: '#060A14',
+                backgroundImage: `
+                    linear-gradient(rgba(255,255,255,0.016) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.016) 1px, transparent 1px)
+                `,
+                backgroundSize: '64px 64px',
+            }}
         >
-            {/* Decorative */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-[15%] right-[10%] w-[40%] h-[40%] rounded-full bg-indigo-500/[0.06] blur-[100px]" />
-                <div className="absolute bottom-[-10%] left-[5%] w-[35%] h-[35%] rounded-full bg-emerald-500/[0.05] blur-[100px]" />
-                <div className="absolute top-[50%] left-[40%] w-[20%] h-[20%] rounded-full bg-violet-500/[0.04] blur-[80px]" />
+            {/* Ambient glows */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
+                <div
+                    className="absolute rounded-full"
+                    style={{
+                        top: '-18%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        width: '720px',
+                        height: '420px',
+                        background: 'radial-gradient(ellipse, rgba(79,70,229,0.11) 0%, transparent 68%)',
+                    }}
+                />
+                <div
+                    className="absolute rounded-full"
+                    style={{
+                        bottom: '-12%',
+                        right: '8%',
+                        width: '420px',
+                        height: '320px',
+                        background: 'radial-gradient(ellipse, rgba(5,150,105,0.07) 0%, transparent 70%)',
+                    }}
+                />
             </div>
 
-            <div className="relative z-10 text-center max-w-3xl w-full">
-                {/* Brand */}
-                <div className="flex items-center gap-3 justify-center mb-3">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                        <span className="text-white font-black text-2xl leading-none">P</span>
+            <div className="relative z-10 w-full max-w-3xl">
+
+                {/* ── Brand ── */}
+                <div className="text-center mb-12">
+                    <div
+                        className="inline-flex items-center justify-center w-[52px] h-[52px] rounded-[14px] mb-5"
+                        style={{
+                            background: 'linear-gradient(145deg, #5B54F5 0%, #2563EB 100%)',
+                            boxShadow: '0 0 0 1px rgba(91,84,245,0.35), 0 8px 28px rgba(79,70,229,0.35)',
+                        }}
+                    >
+                        <span className="text-white font-black text-[22px] leading-none tracking-tight">P</span>
                     </div>
+                    <h1 className="text-[2.2rem] font-bold text-white tracking-tight leading-none mb-2.5">
+                        PharmaOS
+                    </h1>
+                    <p className="text-[13px] font-medium" style={{ color: 'rgba(148,163,184,0.5)' }}>
+                        Choose your role to continue
+                    </p>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">PharmaOS</h1>
-                <p className="text-slate-500 text-sm font-medium mb-10">Choose how you want to sign in</p>
 
-                {/* Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                    {roles.map(({ key, label, desc, icon: Icon, gradient, shadow, accent, hoverBorder, hoverShadow, comingSoon, path }) => (
-                        <button
-                            key={key}
-                            onClick={() => path ? navigate(path) : null}
-                            disabled={comingSoon}
-                            className={`group bg-white/[0.05] ${comingSoon ? 'opacity-60 cursor-not-allowed' : `hover:bg-white/[0.08] ${hoverBorder} hover:-translate-y-1 hover:shadow-xl ${hoverShadow}`} border border-white/[0.08] rounded-2xl p-5 sm:p-6 text-left transition-all duration-300 relative`}
-                        >
-                            {comingSoon && (
-                                <span className="absolute top-3 right-3 text-[8px] font-black uppercase tracking-widest text-white/25 bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/[0.06]">
-                                    Soon
+                {/* ── Role cards ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {ROLES.map((role) => {
+                        const { key, label, desc, icon: Icon, accent, comingSoon } = role;
+                        const path = 'path' in role ? role.path : undefined;
+                        const active = hovered === key && !comingSoon;
+
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => !comingSoon && path && navigate(path)}
+                                onMouseEnter={() => !comingSoon && setHovered(key)}
+                                onMouseLeave={() => setHovered(null)}
+                                disabled={comingSoon}
+                                className="relative text-left rounded-2xl p-5 transition-all duration-200"
+                                style={{
+                                    background: active ? `${accent}0F` : 'rgba(255,255,255,0.025)',
+                                    border: `1px solid ${active ? `${accent}35` : 'rgba(255,255,255,0.07)'}`,
+                                    transform: active ? 'translateY(-3px)' : 'translateY(0)',
+                                    boxShadow: active
+                                        ? `0 20px 48px rgba(0,0,0,0.45), 0 0 0 1px ${accent}25`
+                                        : 'none',
+                                    opacity: comingSoon ? 0.36 : 1,
+                                    cursor: comingSoon ? 'not-allowed' : 'pointer',
+                                }}
+                            >
+                                {comingSoon && (
+                                    <span
+                                        className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-0.5 rounded-full"
+                                        style={{
+                                            background: 'rgba(255,255,255,0.05)',
+                                            color: 'rgba(255,255,255,0.22)',
+                                            border: '1px solid rgba(255,255,255,0.07)',
+                                        }}
+                                    >
+                                        Soon
+                                    </span>
+                                )}
+
+                                {/* Icon */}
+                                <div
+                                    className="w-[42px] h-[42px] rounded-xl flex items-center justify-center mb-5"
+                                    style={{
+                                        background: `${accent}14`,
+                                        border: `1px solid ${accent}28`,
+                                        transform: active ? 'scale(1.07)' : 'scale(1)',
+                                        transition: 'transform 0.2s',
+                                    }}
+                                >
+                                    <Icon size={17} style={{ color: accent }} />
+                                </div>
+
+                                <h3 className="text-[13.5px] font-semibold text-white mb-1.5 tracking-tight">
+                                    {label}
+                                </h3>
+                                <p className="text-[11px] leading-relaxed mb-4" style={{ color: 'rgba(255,255,255,0.28)' }}>
+                                    {desc}
+                                </p>
+
+                                <span
+                                    className="inline-flex items-center gap-1 text-[11px] font-semibold"
+                                    style={{ color: comingSoon ? 'rgba(255,255,255,0.18)' : accent }}
+                                >
+                                    {comingSoon ? 'Coming soon' : (
+                                        <>
+                                            Sign in
+                                            <ArrowRight
+                                                size={11}
+                                                style={{
+                                                    transform: active ? 'translateX(3px)' : 'translateX(0)',
+                                                    transition: 'transform 0.2s',
+                                                }}
+                                            />
+                                        </>
+                                    )}
                                 </span>
-                            )}
-                            <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-4 ${shadow} shadow-md ${comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
-                                <Icon size={18} className="text-white" />
-                            </div>
-                            <h3 className="text-sm sm:text-base font-extrabold text-white mb-1 tracking-tight">{label}</h3>
-                            <p className="text-white/30 text-[10px] sm:text-[11px] font-medium leading-relaxed mb-3">
-                                {desc}
-                            </p>
-                            <span className={`inline-flex items-center gap-1.5 ${accent} text-[10px] sm:text-xs font-bold ${comingSoon ? 'opacity-40' : `group-hover:brightness-125`} transition-colors`}>
-                                {comingSoon ? 'Coming soon' : <>Sign in <ArrowRight size={11} className="group-hover:translate-x-1 transition-transform" /></>}
-                            </span>
-                        </button>
-                    ))}
+                            </button>
+                        );
+                    })}
                 </div>
 
-                <p className="text-slate-600 text-[10px] font-medium tracking-[0.2em] mt-10">
-                    A product of <span className="text-indigo-400 font-bold">leeep dev</span>
-                </p>
-                <button
-                    onClick={() => navigate('/login/admin')}
-                    className="mt-3 text-[10px] text-slate-600 hover:text-rose-400 font-medium transition-colors"
-                >
-                    Admin Login →
-                </button>
+                {/* ── Footer ── */}
+                <div className="text-center mt-10 flex flex-col items-center gap-2.5">
+                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.13)' }}>
+                        A product of{' '}
+                        <span className="font-semibold" style={{ color: 'rgba(99,102,241,0.65)' }}>
+                            leeep dev
+                        </span>
+                    </p>
+                    <button
+                        onClick={() => navigate('/login/admin')}
+                        className="text-[11px] font-medium transition-colors duration-150"
+                        style={{ color: 'rgba(255,255,255,0.15)' }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#F43F5E')}
+                        onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.15)')}
+                    >
+                        Admin Login →
+                    </button>
+                </div>
+
             </div>
         </div>
     );

@@ -22,16 +22,71 @@ export const CartPage: React.FC = () => {
 
   React.useEffect(() => { fetchRetailerLedgerSummary().catch(() => { }); }, []);
 
+  // Calculate schemes and discounts
+  const itemsWithDiscounts = items.map(item => {
+    let discountPercent = 0;
+
+    // Check for applicable schemes
+    const activeSchemes = schemes.filter(s => s.medicine_id === item.medicine.id && s.is_active && s.wholesaler_id === item.medicine.wholesaler_id);
+    const scheme = activeSchemes.find(s => s.type === 'BOGO' || s.type === 'HALF_SCHEME');
+
+    if (scheme && scheme.min_qty && scheme.free_qty && item.qty >= scheme.min_qty) {
+      if (scheme.type === 'BOGO') {
+        const times = Math.floor(item.qty / scheme.min_qty);
+        const freeValue = times * scheme.free_qty * item.medicine.price;
+        const grossValue = item.qty * item.medicine.price;
+        discountPercent = (freeValue / grossValue) * 100;
+      } else if (scheme.type === 'HALF_SCHEME') {
+        const times = Math.floor(item.qty / scheme.min_qty);
+        const discountEquivalent = times * scheme.free_qty * item.medicine.price;
+        const grossValue = item.qty * item.medicine.price;
+        discountPercent = (discountEquivalent / grossValue) * 100;
+      }
+    }
+
+    return {
+      ...item,
+      discount_percent: parseFloat(discountPercent.toFixed(2))
+    };
+  });
+
   // Group items by wholesaler
-  const grouped = items.reduce<Record<string, typeof items>>((acc, item) => {
+  const grouped = itemsWithDiscounts.reduce<Record<string, typeof itemsWithDiscounts>>((acc, item) => {
     const wid = item.medicine.wholesaler_id || 'unknown';
     (acc[wid] = acc[wid] || []).push(item);
     return acc;
   }, {});
 
-  const subtotal = totalAmount();
-  const gstAmount = subtotal * 0.12;
-  const total = subtotal + gstAmount;
+  // For global cash discounts, it applies to subtotal
+  // Instead of recalculating, we apply it per-item so backend handles it elegantly just like Q-sale
+  const enhancedItems = itemsWithDiscounts.map(item => {
+    const activeCashDiscount = schemes.find(s => s.type === 'CASH_DISCOUNT' && s.is_active && s.wholesaler_id === item.medicine.wholesaler_id);
+    if (activeCashDiscount && activeCashDiscount.discount_pct) {
+      // Add the cash discount percent
+      return {
+        ...item,
+        discount_percent: Math.min(100, item.discount_percent + activeCashDiscount.discount_pct)
+      };
+    }
+    return item;
+  });
+
+  const totals = enhancedItems.reduce((acc, item) => {
+    const gross = item.medicine.price * item.qty;
+    const discountAmt = gross * (item.discount_percent / 100);
+    const taxable = gross - discountAmt;
+    const gstRate = parseFloat(item.medicine.gst_rate as any) || 12;
+    const tax = taxable * (gstRate / 100);
+    return {
+      subTotal: acc.subTotal + taxable,
+      taxTotal: acc.taxTotal + tax,
+      total: acc.total + taxable + tax
+    };
+  }, { subTotal: 0, taxTotal: 0, total: 0 });
+
+  const subtotal = totals.subTotal;
+  const gstAmount = totals.taxTotal;
+  const total = totals.total;
 
   const creditLimit = retailer?.credit_limit || retailerLedgerSummary?.global_credit_limit || 0;
   const currentBalance = retailer?.current_balance || retailerLedgerSummary?.global_current_balance || 0;
@@ -43,22 +98,36 @@ export const CartPage: React.FC = () => {
     if (!retailer || placing) return;
     setPlacing(true);
     try {
-      for (const [wholesalerId, groupItems] of Object.entries(grouped)) {
-        const orderItems = groupItems.map(ci => ({
-          id: crypto.randomUUID(),
-          medicine_id: ci.medicine.id,
-          medicine_name: ci.medicine.name,
-          qty: ci.qty,
-          mrp: ci.medicine.mrp,
-          unit_price: ci.medicine.price,
-          discount_percent: ci.medicine.mrp > 0 ? ((ci.medicine.mrp - ci.medicine.price) / ci.medicine.mrp * 100) : 0,
-          discount_amount: (ci.medicine.mrp - ci.medicine.price) * ci.qty,
-          total_price: ci.medicine.price * ci.qty,
-          hsn_code: ci.medicine.hsn_code || '',
-          gst_rate: ci.medicine.gst_rate || 12,
-          taxable_value: ci.medicine.price * ci.qty,
-          tax_amount: ci.medicine.price * ci.qty * (ci.medicine.gst_rate || 12) / 100,
-        }));
+      // Re-group enhanced items for placing order
+      const finalGrouped = enhancedItems.reduce<Record<string, typeof enhancedItems>>((acc, item) => {
+        const wid = item.medicine.wholesaler_id || 'unknown';
+        (acc[wid] = acc[wid] || []).push(item);
+        return acc;
+      }, {});
+
+      for (const [wholesalerId, groupItems] of Object.entries(finalGrouped)) {
+        const orderItems = groupItems.map(ci => {
+          const discountAmt = ci.medicine.price * ci.qty * (ci.discount_percent / 100);
+          const taxable = ci.medicine.price * ci.qty - discountAmt;
+          const gstRate = parseFloat(ci.medicine.gst_rate as any) || 12;
+          const tax = taxable * (gstRate / 100);
+
+          return {
+            id: crypto.randomUUID(),
+            medicine_id: ci.medicine.id,
+            medicine_name: ci.medicine.name,
+            qty: ci.qty,
+            mrp: ci.medicine.mrp,
+            unit_price: ci.medicine.price,
+            discount_percent: ci.discount_percent,
+            discount_amount: discountAmt,
+            total_price: taxable + tax,
+            hsn_code: ci.medicine.hsn_code || '',
+            gst_rate: gstRate,
+            taxable_value: taxable,
+            tax_amount: tax,
+          };
+        });
         const sub_total = orderItems.reduce((s, i) => s + i.taxable_value, 0);
         const tax_total = orderItems.reduce((s, i) => s + i.tax_amount, 0);
         await placeOrder({
@@ -165,7 +234,12 @@ export const CartPage: React.FC = () => {
                           className="p-1.5 hover:bg-slate-100 rounded-r-lg transition-colors"><Plus size={12} className="text-slate-500" /></button>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="text-sm font-semibold text-slate-800">₹{(ci.medicine.price * ci.qty).toFixed(2)}</p>
+                        <p className="text-sm font-semibold text-slate-800">
+                          ₹{(ci.medicine.price * ci.qty * (1 - ((ci as any).discount_percent || 0) / 100)).toFixed(2)}
+                        </p>
+                        {((ci as any).discount_percent || 0) > 0 && (
+                          <p className="text-[10px] text-emerald-600 line-through">₹{(ci.medicine.price * ci.qty).toFixed(2)}</p>
+                        )}
                       </div>
                       <button onClick={() => removeItem(ci.medicine.id)} className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors ml-1">
                         <Trash2 size={14} />

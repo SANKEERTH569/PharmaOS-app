@@ -29,13 +29,17 @@ export const CartPage: React.FC = () => {
   }, {});
 
   // Calculate totals and schemes
-  let subtotal = 0;
+  let grossSubtotal = 0;
   let totalSchemeDiscount = 0;
   let invoiceCashDiscount = 0;
+  let preciseGstAmount = 0;
 
   // Calculate item-level schemes
   const calculatedItems = Object.entries(grouped).map(([wid, groupItems]) => {
     const wholesalerSchemes = schemes.filter(s => s.wholesaler_id === wid && s.is_active);
+    const cashSchema = wholesalerSchemes.find(s => s.type === 'CASH_DISCOUNT');
+    const widCashDiscountRate = cashSchema?.discount_pct || 0;
+
     const updatedItems = groupItems.map(ci => {
       let schemeDiscount = 0;
       let appliedScheme = null;
@@ -49,25 +53,26 @@ export const CartPage: React.FC = () => {
       }
 
       const gross = ci.medicine.price * ci.qty;
-      subtotal += (gross - schemeDiscount);
+      grossSubtotal += gross;
       totalSchemeDiscount += schemeDiscount;
+
+      // Check for cash discount for this wholesaler
+      const itemTaxableBeforeCash = gross - schemeDiscount;
+      const itemCashDiscount = itemTaxableBeforeCash * (widCashDiscountRate / 100);
+      invoiceCashDiscount += itemCashDiscount;
+
+      const finalItemTaxable = itemTaxableBeforeCash - itemCashDiscount;
+      preciseGstAmount += finalItemTaxable * ((ci.medicine.gst_rate || 12) / 100);
 
       return { ...ci, schemeDiscount, appliedScheme };
     });
 
-    // Check for cash discount for this wholesaler
-    const cashSchema = wholesalerSchemes.find(s => s.type === 'CASH_DISCOUNT');
-    if (cashSchema && cashSchema.discount_pct) {
-      // Assuming subtotal for this wholesaler
-      const widSubtotal = updatedItems.reduce((acc, item) => acc + (item.medicine.price * item.qty - item.schemeDiscount), 0);
-      invoiceCashDiscount += widSubtotal * (cashSchema.discount_pct / 100);
-    }
-
     return { wid, items: updatedItems, cashSchema };
   });
 
-  const gstAmount = (subtotal - invoiceCashDiscount) * 0.12;
-  const total = (subtotal - invoiceCashDiscount) + gstAmount;
+  const taxableAmount = grossSubtotal - totalSchemeDiscount - invoiceCashDiscount;
+  const gstAmount = preciseGstAmount;
+  const total = taxableAmount + gstAmount;
 
   const creditLimit = retailer?.credit_limit || retailerLedgerSummary?.global_credit_limit || 0;
   const currentBalance = retailer?.current_balance || retailerLedgerSummary?.global_current_balance || 0;
@@ -87,13 +92,18 @@ export const CartPage: React.FC = () => {
         let widSubtotal = 0;
 
         const orderItems = groupItems.map((ci) => {
-          const baseDiscountPerUnit = ci.medicine.mrp > 0 ? (ci.medicine.mrp - ci.medicine.price) : 0;
-          const tradeDiscount = baseDiscountPerUnit * ci.qty;
-          const totalDiscount = tradeDiscount + ci.schemeDiscount;
+          const grossValue = ci.medicine.price * ci.qty;
+          const schemeDiscountPct = grossValue > 0 ? (ci.schemeDiscount / grossValue) * 100 : 0;
+          const globalCashDiscount = group.cashSchema?.discount_pct || 0;
+          const finalDiscountPct = Math.min(100, schemeDiscountPct + globalCashDiscount);
 
-          const taxable = (ci.medicine.price * ci.qty) - ci.schemeDiscount;
+          const finalDiscountAmount = grossValue * (finalDiscountPct / 100);
+          const taxable = grossValue - finalDiscountAmount;
+
           widSubtotal += taxable;
-          const tax = taxable * ((ci.medicine.gst_rate || 12) / 100);
+
+          const gstRate = parseFloat(ci.medicine.gst_rate as any) || 12;
+          const tax = taxable * (gstRate / 100);
 
           return {
             id: crypto.randomUUID(),
@@ -102,11 +112,11 @@ export const CartPage: React.FC = () => {
             qty: ci.qty,
             mrp: ci.medicine.mrp,
             unit_price: ci.medicine.price,
-            discount_percent: ci.medicine.mrp > 0 ? (totalDiscount / (ci.medicine.mrp * ci.qty) * 100) : 0,
-            discount_amount: totalDiscount,
+            discount_percent: finalDiscountPct,
+            discount_amount: finalDiscountAmount,
             total_price: taxable + tax,
             hsn_code: ci.medicine.hsn_code || '',
-            gst_rate: ci.medicine.gst_rate || 12,
+            gst_rate: gstRate,
             taxable_value: taxable,
             tax_amount: tax,
           };
@@ -116,8 +126,8 @@ export const CartPage: React.FC = () => {
           cashDiscountAmount = widSubtotal * (group.cashSchema.discount_pct / 100);
         }
 
-        const sub_total = widSubtotal - cashDiscountAmount;
-        const tax_total = orderItems.reduce((s, i) => s + i.tax_amount, 0); // simplified tax
+        const sub_total = orderItems.reduce((s, i) => s + i.taxable_value, 0);
+        const tax_total = orderItems.reduce((s, i) => s + i.tax_amount, 0);
 
         await placeOrder({
           wholesaler_id: wholesalerId,
@@ -259,14 +269,14 @@ export const CartPage: React.FC = () => {
           </h3>
 
           <div className="space-y-2.5 text-sm">
-            <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="text-slate-700 font-semibold">₹{subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="text-slate-700 font-semibold">₹{grossSubtotal.toFixed(2)}</span></div>
             {totalSchemeDiscount > 0 && (
               <div className="flex justify-between"><span className="text-emerald-500 flex items-center gap-1"><Sparkles size={12} /> Item Schemes</span><span className="text-emerald-600 font-bold">-₹{totalSchemeDiscount.toFixed(2)}</span></div>
             )}
             {invoiceCashDiscount > 0 && (
               <div className="flex justify-between"><span className="text-indigo-500 flex items-center gap-1"><Sparkles size={12} /> Cash Discount</span><span className="text-indigo-600 font-bold">-₹{invoiceCashDiscount.toFixed(2)}</span></div>
             )}
-            <div className="flex justify-between"><span className="text-slate-500">GST (12% approx)</span><span className="text-slate-700 font-semibold">₹{gstAmount.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span className="text-slate-500">Total GST</span><span className="text-slate-700 font-semibold">₹{gstAmount.toFixed(2)}</span></div>
             <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent my-3" />
             <div className="flex justify-between items-end"><span className="text-slate-800 font-bold">Total</span><span className="text-xl font-extrabold text-blue-700">₹{total.toFixed(2)}</span></div>
           </div>
@@ -300,7 +310,7 @@ export const CartPage: React.FC = () => {
             {placing ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <>Place Order <ArrowRight size={14} /></>
+              <>Place Order ({total.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}) <ArrowRight size={14} /></>
             )}
           </motion.button>
 

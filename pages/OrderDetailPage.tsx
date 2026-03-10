@@ -219,6 +219,7 @@ export const OrderDetailPage = () => {
                                         <th className="px-6 py-4 text-right">MRP</th>
                                         <th className="px-6 py-4 text-right">Rate</th>
                                         <th className="px-6 py-4 text-right">Qty</th>
+                                        <th className="px-6 py-4 text-right">Disc %</th>
                                         <th className="px-6 py-4 text-right">GST</th>
                                         <th className="px-6 py-4 text-right">Amount</th>
                                         {(order.status === 'PENDING' || order.status === 'ACCEPTED') && order.items.length > 0 && (
@@ -236,6 +237,7 @@ export const OrderDetailPage = () => {
                                             <td className="px-6 py-4 text-right text-slate-500 font-medium">₹{(item.mrp ?? 0).toFixed(2)}</td>
                                             <td className="px-6 py-4 text-right text-slate-700 font-medium">₹{item.unit_price.toFixed(2)}</td>
                                             <td className="px-6 py-4 text-right font-black text-slate-900">{item.qty}</td>
+                                            <td className="px-6 py-4 text-right text-emerald-600 font-bold">{(item.discount_percent ?? 0) > 0 ? `${item.discount_percent}%` : '-'}</td>
                                             <td className="px-6 py-4 text-right text-indigo-600 text-xs font-bold">{item.gst_rate}%</td>
                                             <td className="px-6 py-4 text-right font-black text-slate-900">₹{(item.total_price ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                                             {(order.status === 'PENDING' || order.status === 'ACCEPTED') && (

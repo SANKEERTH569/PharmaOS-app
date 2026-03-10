@@ -162,6 +162,36 @@ export interface Scheme {
   created_at: string;
 }
 
+export interface MainWholesalerScheme {
+  id: string;
+  main_wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MainWholesalerMedicine {
+  id: string;
+  main_wholesaler_id: string;
+  medicine_name: string;
+  brand: string | null;
+  mrp: number | null;
+  price: number;
+  stock_qty: number | null;
+  expiry_date: string | null;
+  gst_rate: number;
+  hsn_code: string;
+  unit_type: string;
+  is_active: boolean;
+  created_at: string;
+  schemes?: MainWholesalerScheme[];
+}
+
 // ── Purchase Orders & GRN ──────────────────────────────────────────────────
 
 export type POStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';

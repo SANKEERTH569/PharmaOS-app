@@ -44,10 +44,23 @@ import { GstDashboardPage } from './pages/GstDashboardPage';
 import { QuickSalePage } from './pages/QuickSalePage';
 import { SchemesPage } from './pages/SchemesPage';
 import { PurchaseOrdersPage } from './pages/PurchaseOrdersPage';
+import { CreatePurchaseOrderPage } from './pages/CreatePurchaseOrderPage';
+import { WholesalerOrderPage } from './pages/WholesalerOrderPage';
+import { PurchaseOrderInvoicePage } from './pages/PurchaseOrderInvoicePage';
 import { MainWholesalerLoginPage } from './pages/auth/MainWholesalerLoginPage';
 import { MainWholesalerLayout } from './components/MainWholesalerLayout';
 import { WholesalerDashboard } from './pages/wholesaler/WholesalerDashboard';
 import { SupplyOrdersPage } from './pages/wholesaler/SupplyOrdersPage';
+import { SupplyOrderInvoicePage } from './pages/wholesaler/SupplyOrderInvoicePage';
+import { MainWholesalerCatalogPage } from './pages/wholesaler/MainWholesalerCatalogPage';
+import { MainWholesalerSchemesPage } from './pages/wholesaler/MainWholesalerSchemesPage';
+import { MainWholesalerSubWholesalersPage } from './pages/wholesaler/MainWholesalerSubWholesalersPage';
+import { MainWholesalerLedgerPage } from './pages/wholesaler/MainWholesalerLedgerPage';
+import { MainWholesalerPaymentsPage } from './pages/wholesaler/MainWholesalerPaymentsPage';
+import { MainWholesalerGstPage } from './pages/wholesaler/MainWholesalerGstPage';
+import { MainWholesalerCollectionPage } from './pages/wholesaler/MainWholesalerCollectionPage';
+import { MainWholesalerSettingsPage } from './pages/wholesaler/MainWholesalerSettingsPage';
+import { MainWholesalerAlertsPage } from './pages/wholesaler/MainWholesalerAlertsPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -124,9 +137,59 @@ function App() {
             <WholesalerDashboard />
           </ProtectedRoute>
         } />
+        <Route path="/wholesaler/catalog" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerCatalogPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/main-schemes" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerSchemesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/sub-wholesalers" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerSubWholesalersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/main-ledger" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerLedgerPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/main-payments" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerPaymentsPage />
+          </ProtectedRoute>
+        } />
         <Route path="/wholesaler/orders" element={
           <ProtectedRoute allowedRole="MAIN_WHOLESALER">
             <SupplyOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/orders/:soId/invoice" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <SupplyOrderInvoicePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/gst" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerGstPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/collection" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerCollectionPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/settings" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerSettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/wholesaler/alerts" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <MainWholesalerAlertsPage />
           </ProtectedRoute>
         } />
 
@@ -219,6 +282,21 @@ function App() {
         <Route path="/purchase-orders" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <PurchaseOrdersPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/purchase-orders/new" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <CreatePurchaseOrderPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/order-from-wholesaler" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <WholesalerOrderPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/purchase-orders/:poId/invoice" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <PurchaseOrderInvoicePage />
           </ProtectedRoute>
         } />
         <Route path="/returns" element={

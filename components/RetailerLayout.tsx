@@ -24,14 +24,17 @@ const SidebarItem: React.FC<{ item: SideNavItem; active: boolean }> = ({ item, a
   <Link to={item.path} className="block">
     <motion.div whileHover={{ x: 3 }} whileTap={{ scale: 0.97 }}
       className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative",
-        active ? "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm border border-blue-100/50" : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900")}>
-      {active && <motion.div layoutId="sidebar-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-r-full" transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
-      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200", active ? "bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-500/20" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200")}>
+        active ? "text-teal-700 shadow-sm" : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900")}
+      style={active ? { background: 'linear-gradient(90deg, #CCFBF1 0%, #F0FDFB 100%)', border: '1px solid rgba(20,184,166,0.18)' } : {}}>
+      {active && <motion.div layoutId="sidebar-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full" style={{ background: 'linear-gradient(180deg, #14B8A6, #059669)' }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
+      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200", active ? "text-white shadow-md" : "bg-slate-100 text-slate-500")}
+        style={active ? { background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.30)' } : {}}>
         <item.icon size={16} strokeWidth={active ? 2.2 : 1.8} />
       </div>
       <span className={cn(active && "font-semibold")}>{item.label}</span>
       {item.badge && item.badge > 0 ? (
-        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-sm shadow-rose-500/30">
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center"
+          style={{ background: 'linear-gradient(135deg, #F97316, #EF4444)', boxShadow: '0 2px 6px rgba(249,115,22,0.35)' }}>
           {item.badge}
         </motion.span>
       ) : null}
@@ -40,12 +43,14 @@ const SidebarItem: React.FC<{ item: SideNavItem; active: boolean }> = ({ item, a
 );
 
 const BottomTab: React.FC<{ icon: any; label: string; path: string; active: boolean; badge?: number; isCenter?: boolean }> = ({ icon: Icon, label, path, active, badge, isCenter }) => (
-  <Link to={path} className={cn("flex flex-col items-center justify-center relative transition-all duration-200", isCenter ? "w-16" : "flex-1", active ? "text-blue-600" : "text-slate-400")}>
+  <Link to={path} className={cn("flex flex-col items-center justify-center relative transition-all duration-200", isCenter ? "w-16" : "flex-1", active ? "text-teal-600" : "text-slate-400")}>
     {isCenter ? (
-      <motion.div whileTap={{ scale: 0.9 }} className={cn("w-13 h-13 -mt-5 rounded-2xl flex items-center justify-center shadow-lg relative", active ? "bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-blue-500/40" : "bg-white text-slate-600 shadow-slate-200/60 border border-slate-100")}>
+      <motion.div whileTap={{ scale: 0.9 }} className={cn("w-13 h-13 -mt-5 rounded-2xl flex items-center justify-center shadow-lg relative", active ? "text-white" : "bg-white text-slate-600 shadow-slate-200/60 border border-slate-100")}
+        style={active ? { background: 'linear-gradient(135deg, #14B8A6, #059669)', boxShadow: '0 8px 20px rgba(20,184,166,0.40)' } : {}}>
         <Icon size={22} strokeWidth={2} />
         {badge && badge > 0 ? (
-          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white shadow-sm">
+          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-1.5 -right-1.5 text-white text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white shadow-sm"
+            style={{ background: 'linear-gradient(135deg, #F97316, #EF4444)' }}>
             {badge > 9 ? '9+' : badge}
           </motion.span>
         ) : null}
@@ -53,11 +58,11 @@ const BottomTab: React.FC<{ icon: any; label: string; path: string; active: bool
     ) : (
       <div className="relative p-1">
         <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
-        {badge && badge > 0 ? <span className="absolute -top-0.5 -right-1 bg-rose-500 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center">{badge > 9 ? '9+' : badge}</span> : null}
+        {badge && badge > 0 ? <span className="absolute -top-0.5 -right-1 text-white text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center" style={{ background: '#F97316' }}>{badge > 9 ? '9+' : badge}</span> : null}
       </div>
     )}
-    <span className={cn("text-[10px] mt-0.5 font-medium", active ? "text-blue-600 font-semibold" : "text-slate-400", isCenter && "mt-1")}>{label}</span>
-    {active && !isCenter && <motion.div layoutId="bottom-tab-indicator" className="absolute -bottom-1 w-5 h-[3px] bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
+    <span className={cn("text-[10px] mt-0.5 font-medium", active ? "text-teal-600 font-semibold" : "text-slate-400", isCenter && "mt-1")}>{label}</span>
+    {active && !isCenter && <motion.div layoutId="bottom-tab-indicator" className="absolute -bottom-1 w-5 h-[3px] rounded-full" style={{ background: 'linear-gradient(90deg, #14B8A6, #059669)' }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
   </Link>
 );
 
@@ -86,16 +91,19 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
   const grouped = navItems.reduce<Record<string, SideNavItem[]>>((acc, item) => { (acc[item.group] = acc[item.group] || []).push(item); return acc; }, {});
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="flex h-screen" style={{ background: 'linear-gradient(150deg, #F0FDFB 0%, #FFFFFF 50%, #F0FDF4 100%)' }}>
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-[260px] z-40 bg-white/80 backdrop-blur-xl border-r border-slate-200/60 shrink-0">
-        <div className="flex items-center gap-3 px-6 h-16 border-b border-slate-100/60 shrink-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
+        <div className="flex items-center gap-3 px-6 h-16 border-b border-teal-100/60 shrink-0">
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(20,184,166,0.30)' }}
+          >
             <Pill size={18} className="text-white" />
           </div>
           <div>
             <p className="text-[15px] font-bold text-slate-900 leading-none tracking-tight">PharmaConnect</p>
-            <p className="text-[10px] text-blue-500 font-semibold mt-0.5 tracking-wide uppercase">Retail Portal</p>
+            <p className="text-[10px] font-semibold mt-0.5 tracking-wide uppercase" style={{ color: '#0D9488' }}>Retail Portal</p>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-hide">
@@ -107,8 +115,11 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
           ))}
         </nav>
         <div className="p-4 border-t border-slate-100/60 shrink-0">
-          <div className="flex items-center gap-3 px-3 py-3 bg-gradient-to-r from-slate-50 to-blue-50/50 rounded-xl border border-slate-100/50">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-md shadow-blue-500/20">
+          <div className="flex items-center gap-3 px-3 py-3 rounded-xl border" style={{ background: 'linear-gradient(90deg, #F0FDFB 0%, #ECFDF5 100%)', borderColor: 'rgba(20,184,166,0.15)' }}>
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
+              style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.28)' }}
+            >
               {retailer?.shop_name?.charAt(0).toUpperCase() || 'R'}
             </div>
             <div className="min-w-0 flex-1">
@@ -140,7 +151,7 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
             </button>
             <div className="w-px h-6 bg-slate-200/80 mx-1" />
             <button onClick={() => navigate('/shop/profile')} className="flex items-center gap-2.5 hover:bg-slate-50 pl-2 pr-3 py-1.5 rounded-xl transition-all duration-200">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-blue-500/20">{retailer?.shop_name?.charAt(0).toUpperCase() || 'R'}</div>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold" style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 3px 8px rgba(20,184,166,0.28)' }}>{retailer?.shop_name?.charAt(0).toUpperCase() || 'R'}</div>
               <div className="text-right"><p className="text-xs font-semibold text-slate-700">{retailer?.shop_name}</p><p className="text-[10px] text-slate-400">{retailer?.name}</p></div>
             </button>
           </div>
@@ -149,10 +160,13 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
         {/* Mobile Header */}
         <header className="lg:hidden bg-white/90 backdrop-blur-xl h-14 shrink-0 z-30 flex items-center justify-between px-4 sticky top-0 border-b border-slate-100/60 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md shadow-blue-500/20"><Pill size={16} className="text-white" /></div>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.28)' }}
+            ><Pill size={16} className="text-white" /></div>
             <div>
               <span className="text-[14px] font-bold text-slate-900 tracking-tight block leading-tight">PharmaConnect</span>
-              <span className="text-[9px] text-blue-500 font-semibold tracking-wide uppercase">{getGreeting()}</span>
+              <span className="text-[9px] font-semibold tracking-wide uppercase" style={{ color: '#0D9488' }}>{getGreeting()}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -165,7 +179,7 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
                 </span>
               )}
             </button>
-            <button onClick={() => navigate('/shop/profile')} className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm shadow-blue-500/20">{retailer?.shop_name?.charAt(0).toUpperCase() || 'R'}</button>
+            <button onClick={() => navigate('/shop/profile')} className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold" style={{ background: 'linear-gradient(135deg, #14B8A6, #059669)', boxShadow: '0 3px 8px rgba(20,184,166,0.28)' }}>{retailer?.shop_name?.charAt(0).toUpperCase() || 'R'}</button>
           </div>
         </header>
 

@@ -4,7 +4,7 @@ import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import {
   Search, Plus, AlertTriangle, AlertCircle, Pill, Edit, BookOpen,
-  ChevronLeft, ChevronRight, X, Download, CheckCircle,
+  ChevronLeft, ChevronRight, X, Download, CheckCircle, Trash2,
   Loader2, Info, PackageSearch, MapPin, Crown,
   FlaskConical, Syringe, Droplets, Wind, Package2, Layers
 } from 'lucide-react';
@@ -77,7 +77,7 @@ const emptyForm = () => ({
 });
 
 export const MedicinesPage = () => {
-  const { medicines, addMedicine, addMedicineToStore, updateMedicine, toggleMedicineStatus } = useDataStore();
+  const { medicines, addMedicine, addMedicineToStore, updateMedicine, toggleMedicineStatus, removeMedicine } = useDataStore();
   const { wholesaler } = useAuthStore();
 
   // Pro plan check for rack locator feature
@@ -351,9 +351,15 @@ export const MedicinesPage = () => {
                 <tr key={med.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                        <Pill size={18} />
-                      </div>
+                      {(() => {
+                        const t = getMedType(med.unit, (med as any).pack_size);
+                        const { Icon, bg, color } = MED_ICON[t];
+                        return (
+                          <div className={`w-10 h-10 rounded-xl ${bg} ${color} flex items-center justify-center border border-slate-100 transition-colors shrink-0`}>
+                            <Icon size={18} />
+                          </div>
+                        );
+                      })()}
                       <div>
                         <span className="font-bold text-slate-900 block">{med.name}</span>
                         <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{med.salt}</span>
@@ -448,6 +454,21 @@ export const MedicinesPage = () => {
                         className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                       >
                         <Edit size={16} />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Are you sure you want to delete ${med.name}?`)) {
+                            try {
+                              await removeMedicine(med.id);
+                            } catch (err: any) {
+                              alert(err?.response?.data?.error || 'Failed to delete medicine');
+                            }
+                          }
+                        }}
+                        title="Delete Medicine"
+                        className="p-2 text-red-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </td>

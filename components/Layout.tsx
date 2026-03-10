@@ -6,7 +6,7 @@ import {
   LogOut, Menu, Wallet, Activity, HandCoins,
   Settings, Bell, X, ChevronRight, RotateCcw,
   Check, CheckCheck, Package, CreditCard, AlertTriangle,
-  Clock, ArrowRight, MapPin, FileText, Home, Tag, Truck
+  Clock, ArrowRight, MapPin, FileText, Home, Tag, Truck, ShoppingBag
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
@@ -39,6 +39,7 @@ const navGroups = [
     items: [
       { icon: Pill, label: 'Medicines', path: '/medicines' },
       { icon: Truck, label: 'Purchase Orders', path: '/purchase-orders' },
+      { icon: ShoppingBag, label: 'Order from Wholesaler', path: '/order-from-wholesaler' },
       { icon: Tag, label: 'Schemes', path: '/schemes' },
       { icon: MapPin, label: 'Rack Manager', path: '/rack-manager', pro: true },
       { icon: Settings, label: 'Settings', path: '/settings' },
@@ -60,6 +61,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings': 'Settings',
   '/gst': 'GST Returns',
   '/purchase-orders': 'Purchase Orders',
+  '/order-from-wholesaler': 'Order from Wholesaler',
 };
 
 /* ── Notification icon helper ────────────────────────────────────────────── */

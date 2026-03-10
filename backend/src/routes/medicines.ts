@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, requireAnyRole } from '../middleware/auth';
 
 const router = Router();
 router.use(authenticate);
@@ -50,7 +50,7 @@ router.get('/alerts/expiry', requireRole('WHOLESALER'), async (req, res) => {
 
 // GET /api/medicines/catalog — Search the full 256K catalog (all wholesalers)
 // Used by wholesalers to browse & import medicines into their own inventory
-router.get('/catalog', requireRole('WHOLESALER'), async (req, res) => {
+router.get('/catalog', requireAnyRole(['WHOLESALER', 'MAIN_WHOLESALER']), async (req, res) => {
   try {
     const {
       search = '',
@@ -314,6 +314,33 @@ router.patch('/:id/toggle', requireRole('WHOLESALER'), async (req, res) => {
     });
     res.json(updated);
   } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/medicines/:id — Delete a medicine (only if no active orders linked)
+router.delete('/:id', requireRole('WHOLESALER'), async (req, res) => {
+  try {
+    const med = await prisma.medicine.findFirst({
+      where: { id: req.params.id, wholesaler_id: req.user!.wholesaler_id! },
+    });
+
+    if (!med) return res.status(404).json({ error: 'Medicine not found' });
+
+    await prisma.medicine.delete({
+      where: { id: req.params.id },
+    });
+
+    res.status(204).send();
+  } catch (err: any) {
+    // If there's a foreign key constraint violation (e.g., used in orders or batches), 
+    // it will throw a P2003 code. Give a friendly message.
+    if (err.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Cannot delete this medicine because it is linked to existing batches or orders. Please mark it as "Inactive" instead.'
+      });
+    }
+
     res.status(500).json({ error: err.message });
   }
 });

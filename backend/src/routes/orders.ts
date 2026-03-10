@@ -118,8 +118,10 @@ router.post('/', requireRole('RETAILER'), async (req, res) => {
     // Calculate totals
     let subTotal = 0;
     const orderItems = items.map((i: any) => {
-      const taxable = i.unit_price * i.qty;
-      const tax = taxable * (i.gst_rate / 100);
+      const discountAmt = i.discount_percent ? (i.unit_price * i.qty * i.discount_percent / 100) : (i.discount_amount || 0);
+      const taxable = i.unit_price * i.qty - discountAmt;
+      const gstRate = parseFloat(i.gst_rate) || 12;
+      const tax = taxable * (gstRate / 100);
       subTotal += taxable;
       return {
         medicine_id: i.medicine_id,
@@ -128,15 +130,15 @@ router.post('/', requireRole('RETAILER'), async (req, res) => {
         mrp: i.mrp,
         unit_price: i.unit_price,
         discount_percent: i.discount_percent || 0,
-        discount_amount: i.discount_amount || 0,
+        discount_amount: discountAmt,
         total_price: taxable + tax,
-        hsn_code: i.hsn_code,
-        gst_rate: i.gst_rate,
+        hsn_code: i.hsn_code || '3004',
+        gst_rate: gstRate,
         taxable_value: taxable,
         tax_amount: tax,
       };
     });
-    const taxTotal = subTotal * 0.12;
+    const taxTotal = orderItems.reduce((s: number, i: any) => s + i.tax_amount, 0);
 
     // Credit limit check (skip for self-registered retailers with no credit limit)
     if (retailer.credit_limit > 0 && retailer.current_balance + subTotal + taxTotal > retailer.credit_limit) {
@@ -367,7 +369,8 @@ router.post('/quick-sale', requireRole('WHOLESALER'), async (req, res) => {
     const orderItems = items.map((i: any) => {
       const discountAmt = i.discount_percent ? (i.unit_price * i.qty * i.discount_percent / 100) : (i.discount_amount || 0);
       const taxable = i.unit_price * i.qty - discountAmt;
-      const tax = taxable * ((i.gst_rate || 12) / 100);
+      const gstRate = parseFloat(i.gst_rate) || 12;
+      const tax = taxable * (gstRate / 100);
       subTotal += taxable;
       return {
         medicine_id: i.medicine_id,
@@ -379,7 +382,7 @@ router.post('/quick-sale', requireRole('WHOLESALER'), async (req, res) => {
         discount_amount: discountAmt,
         total_price: taxable + tax,
         hsn_code: i.hsn_code || '3004',
-        gst_rate: i.gst_rate || 12,
+        gst_rate: gstRate,
         taxable_value: taxable,
         tax_amount: tax,
       };

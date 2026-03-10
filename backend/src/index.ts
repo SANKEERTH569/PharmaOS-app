@@ -22,6 +22,9 @@ import adminRouter from './routes/admin';
 import schemesRouter from './routes/schemes';
 import purchaseOrdersRouter from './routes/purchaseOrders';
 import mainWholesalerRouter from './routes/mainWholesaler';
+import mainWholesalerSchemesRouter from './routes/mainWholesalerSchemes';
+import mainWholesalerLedgerRouter from './routes/mainWholesalerLedger';
+import mainWholesalerPaymentsRouter from './routes/mainWholesalerPayments';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -97,6 +100,9 @@ app.use('/api/admin', adminRouter);
 app.use('/api/schemes', schemesRouter);
 app.use('/api/purchase-orders', purchaseOrdersRouter);
 app.use('/api/main-wholesalers', mainWholesalerRouter);
+app.use('/api/main-wholesalers/schemes', mainWholesalerSchemesRouter);
+app.use('/api/main-wholesalers/ledger', mainWholesalerLedgerRouter);
+app.use('/api/main-wholesalers/payments', mainWholesalerPaymentsRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

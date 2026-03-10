@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Package, LogOut, Menu, X, Users, BookOpen, IndianRupee, FileText, Wallet, Settings, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../utils/cn';
 import api from '../utils/api';
@@ -13,16 +13,54 @@ const navGroups = [
     ],
   },
   {
+    label: 'Network',
+    items: [
+      { path: '/wholesaler/sub-wholesalers', label: 'Sub Wholesalers', icon: Users },
+    ],
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { path: '/wholesaler/catalog', label: 'Catalog', icon: Package, exact: true },
+      { path: '/wholesaler/main-schemes', label: 'Schemes', icon: Package, exact: true },
+      { path: '/wholesaler/alerts', label: 'Alerts & Expiry', icon: AlertTriangle, exact: true },
+    ],
+  },
+  {
     label: 'Orders',
     items: [
       { path: '/wholesaler/orders', label: 'Supply Orders', icon: Package },
     ],
   },
+  {
+    label: 'Finance',
+    items: [
+      { path: '/wholesaler/collection', label: 'Collection', icon: Wallet },
+      { path: '/wholesaler/main-ledger', label: 'Ledger', icon: BookOpen },
+      { path: '/wholesaler/main-payments', label: 'Payments', icon: IndianRupee },
+      { path: '/wholesaler/gst', label: 'GST Returns', icon: FileText },
+    ]
+  },
+  {
+    label: 'Settings',
+    items: [
+      { path: '/wholesaler/settings', label: 'Settings', icon: Settings, exact: true },
+    ]
+  }
 ];
 
 const PAGE_TITLES: Record<string, string> = {
   '/wholesaler': 'Dashboard',
+  '/wholesaler/catalog': 'Product Catalog',
+  '/wholesaler/main-schemes': 'Schemes',
   '/wholesaler/orders': 'Supply Orders',
+  '/wholesaler/sub-wholesalers': 'Sub Wholesalers',
+  '/wholesaler/main-ledger': 'General Ledger',
+  '/wholesaler/main-payments': 'Payments',
+  '/wholesaler/gst': 'GST Returns',
+  '/wholesaler/collection': 'Collection Management',
+  '/wholesaler/settings': 'Settings',
+  '/wholesaler/alerts': 'Alerts & Expiry Tracker',
 };
 
 export const MainWholesalerLayout = ({ children }: { children: React.ReactNode }) => {
@@ -35,7 +73,7 @@ export const MainWholesalerLayout = ({ children }: { children: React.ReactNode }
   useEffect(() => {
     api.get('/main-wholesalers/supply-orders', { params: { status: 'PENDING' } })
       .then(({ data }) => setPendingCount(Array.isArray(data) ? data.length : 0))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleLogout = () => { logout(); navigate('/login'); };

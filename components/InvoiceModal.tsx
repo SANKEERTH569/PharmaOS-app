@@ -223,6 +223,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                   <th className="px-1.5 py-2 text-right font-black">MRP</th>
                   <th className="px-1.5 py-2 text-right font-black">Qty</th>
                   <th className="px-1.5 py-2 text-right font-black">Rate</th>
+                  <th className="px-1.5 py-2 text-right font-black">Disc %</th>
                   <th className="px-1.5 py-2 text-right font-black">Amount</th>
                   <th className="px-1.5 py-2 text-center font-black">GST</th>
                 </tr>
@@ -231,7 +232,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                 {order.items.map((item, idx) => {
                   const mrp = item.mrp ?? 0;
                   const rate = item.unit_price ?? 0;
-                  const amount = item.taxable_value ?? (rate * item.qty);
+                  const disc = item.discount_percent ?? 0;
+                  const amount = item.taxable_value ?? ((rate * item.qty) - (item.discount_amount ?? 0));
                   return (
                     <tr key={item.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                       <td className="px-1.5 py-2 text-center text-slate-400 font-bold">{idx + 1}</td>
@@ -241,6 +243,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({ order, retailer, onC
                       <td className="px-1.5 py-2 text-right text-slate-500">₹{mrp.toFixed(2)}</td>
                       <td className="px-1.5 py-2 text-right font-black text-slate-900">{item.qty}</td>
                       <td className="px-1.5 py-2 text-right font-bold text-slate-700">₹{rate.toFixed(2)}</td>
+                      <td className="px-1.5 py-2 text-right text-emerald-600 font-bold">{disc > 0 ? `${disc.toFixed(1)}%` : '-'}</td>
                       <td className="px-1.5 py-2 text-right font-black text-slate-900">₹{amount.toFixed(2)}</td>
                       <td className="px-1.5 py-2 text-center font-bold text-[#0D2B5E]">{item.gst_rate ?? 0}%</td>
                     </tr>

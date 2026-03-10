@@ -59,6 +59,7 @@ interface DataState {
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
   submitReturn: (data: { wholesaler_id: string; reason: ReturnReason; notes?: string; items: any[] }) => Promise<void>;
   updateReturnStatus: (returnId: string, status: 'APPROVED' | 'REJECTED', rejection_note?: string) => Promise<void>;
+  removeMedicine: (id: string) => Promise<void>;
   removeOrderItem: (orderId: string, itemId: string) => Promise<void>;
   createScheme: (data: Omit<Scheme, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
   deleteScheme: (id: string) => Promise<void>;
@@ -286,6 +287,11 @@ export const useDataStore = create<DataState>()((set, get) => ({
   toggleMedicineStatus: async (id) => {
     const { data: updated } = await api.patch(`/medicines/${id}/toggle`);
     set((s) => ({ medicines: s.medicines.map(m => m.id === id ? updated : m) }));
+  },
+
+  removeMedicine: async (id) => {
+    await api.delete(`/medicines/${id}`);
+    set((s) => ({ medicines: s.medicines.filter(m => m.id !== id) }));
   },
 
   placeOrder: async (order) => {

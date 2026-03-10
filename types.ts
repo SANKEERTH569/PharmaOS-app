@@ -316,7 +316,7 @@ export interface GoodsReceiptNote {
   created_at: string;
 }
 
-// ── Main Wholesaler & Supply Orders ──────────────────────────────────────
+// ── Main Wholesaler Types ──────────────────────────────────────────────────
 
 export interface MainWholesaler {
   id: string;
@@ -326,6 +326,22 @@ export interface MainWholesaler {
   address?: string | null;
   gstin?: string | null;
   dl_number?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MainWholesalerMedicine {
+  id: string;
+  main_wholesaler_id: string;
+  medicine_name: string;
+  brand?: string | null;
+  mrp?: number | null;
+  price: number;
+  stock_qty?: number | null;
+  expiry_date?: string | null;
+  gst_rate: number;
+  hsn_code: string;
+  unit_type: string;
   is_active: boolean;
   created_at: string;
 }
@@ -355,6 +371,21 @@ export interface SupplyOrder {
   dispatch_date?: string | null;
   delivered_date?: string | null;
   items: SupplyOrderItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MainWholesalerScheme {
+  id: string;
+  main_wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  medicine?: MainWholesalerMedicine;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

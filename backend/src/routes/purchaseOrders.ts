@@ -68,7 +68,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const wholesaler_id = req.user!.wholesaler_id!;
-    const { supplier_name, supplier_phone, supplier_gstin, notes, items } = req.body;
+    const { supplier_name, supplier_phone, supplier_gstin, notes, main_wholesaler_id, items } = req.body;
 
     if (!supplier_name || !items || items.length === 0) {
       return res.status(400).json({ error: 'supplier_name and items are required' });
@@ -88,6 +88,7 @@ router.post('/', async (req, res) => {
         supplier_name: supplier_name.trim(),
         supplier_phone: supplier_phone?.trim() || null,
         supplier_gstin: supplier_gstin?.trim() || null,
+        main_wholesaler_id: main_wholesaler_id || null,
         notes: notes?.trim() || null,
         items: {
           create: items.map((item: any) => ({
@@ -100,6 +101,48 @@ router.post('/', async (req, res) => {
       },
       include: { items: true },
     });
+
+    // ── Auto-add new medicines to the sub-wholesaler's catalog ────────────
+    // For each ordered item that came from a MW catalog (has a medicine_id),
+    // look up the MW medicine and create it in the wholesaler's Medicine table
+    // if it doesn't already exist (matched case-insensitively by name).
+    if (main_wholesaler_id) {
+      const mwMedicineIds = items
+        .filter((i: any) => i.medicine_id)
+        .map((i: any) => i.medicine_id as string);
+
+      if (mwMedicineIds.length > 0) {
+        const mwMedicines = await prisma.mainWholesalerMedicine.findMany({
+          where: { id: { in: mwMedicineIds } },
+        });
+
+        for (const mwMed of mwMedicines) {
+          const matchingItem = items.find((i: any) => i.medicine_id === mwMed.id);
+          const unitCost = matchingItem ? Number(matchingItem.unit_cost) : mwMed.price;
+
+          const existing = await prisma.medicine.findFirst({
+            where: {
+              wholesaler_id,
+              name: { equals: mwMed.medicine_name, mode: 'insensitive' },
+            },
+          });
+
+          if (!existing) {
+            await prisma.medicine.create({
+              data: {
+                wholesaler_id,
+                name: mwMed.medicine_name,
+                brand: mwMed.brand || null,
+                mrp: mwMed.mrp ?? unitCost,
+                price: unitCost,
+                stock_qty: 0,
+              },
+            });
+          }
+        }
+      }
+    }
+
     res.status(201).json(po);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -189,6 +232,133 @@ router.patch('/:id', async (req, res) => {
     }
 
     res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/purchase-orders/:id/receive-stock
+// Called after supply order is DELIVERED — updates medicine stock from PO items,
+// creates batches, marks PO as RECEIVED.
+router.post('/:id/receive-stock', async (req, res) => {
+  try {
+    const wholesaler_id = req.user!.wholesaler_id!;
+    const po = await prisma.purchaseOrder.findFirst({
+      where: { id: req.params.id, wholesaler_id },
+      include: { items: true },
+    });
+    if (!po) return res.status(404).json({ error: 'Purchase order not found' });
+    if (po.status === 'RECEIVED') {
+      return res.status(400).json({ error: 'Stock already updated for this PO' });
+    }
+
+    // items: [{ medicine_name, qty_received, unit_cost, mrp?, batch_no?, expiry_date? }]
+    const { items } = req.body as {
+      items: {
+        medicine_name: string;
+        qty_received: number;
+        unit_cost: number;
+        mrp?: number;
+        batch_no?: string;
+        expiry_date?: string;
+      }[];
+    };
+
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'items array is required' });
+    }
+
+    const now = Date.now();
+
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const qty = Number(item.qty_received) || 0;
+      if (qty <= 0) continue;
+
+      const batchNo = item.batch_no?.trim() || `PO-${now}-${idx + 1}`;
+      const expiryDate = item.expiry_date
+        ? new Date(item.expiry_date)
+        : new Date(new Date().setFullYear(new Date().getFullYear() + 2));
+
+      // Find existing medicine (case-insensitive)
+      let med = await prisma.medicine.findFirst({
+        where: {
+          wholesaler_id,
+          name: { equals: item.medicine_name.trim(), mode: 'insensitive' },
+        },
+      });
+
+      if (!med) {
+        // Auto-create medicine if it doesn't exist
+        med = await prisma.medicine.create({
+          data: {
+            wholesaler_id,
+            name: item.medicine_name.trim(),
+            mrp: item.mrp ?? item.unit_cost,
+            price: item.unit_cost,
+            stock_qty: 0,
+          },
+        });
+      } else {
+        // Optionally refresh price/mrp with latest purchase cost
+        await prisma.medicine.update({
+          where: { id: med.id },
+          data: {
+            price: item.unit_cost,
+            ...(item.mrp !== undefined && { mrp: item.mrp }),
+          },
+        });
+      }
+
+      // Create/upsert batch
+      const existingBatch = await prisma.medicineBatch.findUnique({
+        where: { medicine_id_batch_no: { medicine_id: med.id, batch_no: batchNo } },
+      });
+
+      if (existingBatch) {
+        await prisma.medicineBatch.update({
+          where: { medicine_id_batch_no: { medicine_id: med.id, batch_no: batchNo } },
+          data: { stock_qty: existingBatch.stock_qty + qty, expiry_date: expiryDate },
+        });
+      } else {
+        await prisma.medicineBatch.create({
+          data: {
+            medicine_id: med.id,
+            batch_no: batchNo,
+            stock_qty: qty,
+            expiry_date: expiryDate,
+          },
+        });
+      }
+
+      // Sync medicine totals from all batches
+      await syncMedicineTotals(med.id, wholesaler_id);
+    }
+
+    // Update PO items qty_received and set PO status to RECEIVED
+    for (const item of items) {
+      const poItem = po.items.find(
+        (p) => p.medicine_name.toLowerCase() === item.medicine_name.trim().toLowerCase()
+      );
+      if (poItem) {
+        await prisma.pOItem.update({
+          where: { id: poItem.id },
+          data: { qty_received: Number(item.qty_received) || 0 },
+        });
+      }
+    }
+
+    const updatedPO = await prisma.purchaseOrder.update({
+      where: { id: po.id },
+      data: { status: 'RECEIVED' },
+      include: {
+        items: true,
+        grns: { select: { id: true, grn_number: true, created_at: true } },
+        supply_order: { select: { id: true, so_number: true, status: true } },
+      },
+    });
+
+    res.json(updatedPO);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

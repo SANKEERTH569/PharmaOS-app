@@ -56,7 +56,7 @@ export const RetailerLoginPage = () => {
   };
 
   const inputBase =
-    'w-full px-4 py-3.5 bg-white border border-slate-200/80 rounded-2xl focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 outline-none transition-all text-slate-800 placeholder-slate-300 text-sm font-medium shadow-sm';
+    'w-full px-4 py-3.5 bg-white border border-slate-200/60 rounded-2xl focus:ring-2 focus:ring-teal-400/30 focus:border-teal-300 outline-none transition-all text-slate-800 placeholder-slate-300 text-sm font-medium shadow-sm';
   const labelBase = 'text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2 block';
 
   return (
@@ -65,21 +65,28 @@ export const RetailerLoginPage = () => {
       {/* ─── Left: Branding Panel ─── */}
       <div
         className="hidden lg:flex lg:w-[45%] relative overflow-hidden flex-col justify-between p-12"
-        style={{ background: 'linear-gradient(135deg, #0F172A 0%, #1E1B4B 40%, #312E81 70%, #1E293B 100%)' }}
+        style={{ background: 'linear-gradient(145deg, #042F2E 0%, #065F46 35%, #0D6E5C 65%, #052E27 100%)' }}
       >
-        {/* Decorative orbs */}
-        <div className="absolute -top-[15%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-500/[0.10] blur-[100px]" />
-        <div className="absolute bottom-[5%] right-[-5%] w-[45%] h-[45%] rounded-full bg-blue-500/[0.08] blur-[100px]" />
-        <div className="absolute top-[40%] left-[20%] w-[25%] h-[25%] rounded-full bg-violet-500/[0.06] blur-[80px]" />
+        {/* Grid texture */}
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+        }} />
+        {/* Ambient glows */}
+        <div className="absolute -top-[10%] -left-[5%] w-[55%] h-[55%] rounded-full blur-[120px]" style={{ background: 'rgba(20,184,166,0.14)' }} />
+        <div className="absolute bottom-[5%] right-[-5%] w-[45%] h-[45%] rounded-full blur-[100px]" style={{ background: 'rgba(16,185,129,0.10)' }} />
 
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(145deg, #14B8A6, #059669)', boxShadow: '0 8px 24px rgba(20,184,166,0.35)' }}
+            >
               <span className="text-white font-black text-xl leading-none">P</span>
             </div>
             <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
           </div>
-          <p className="text-indigo-300/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">
+          <p className="text-teal-300/50 text-xs font-semibold tracking-[0.3em] uppercase mt-1">
             Retailer Portal
           </p>
         </div>
@@ -87,9 +94,9 @@ export const RetailerLoginPage = () => {
         <div className="relative z-10 max-w-md">
           <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
             Order medicines<br />with{' '}
-            <span className="text-indigo-400">confidence.</span>
+            <span style={{ color: '#5EEAD4' }}>confidence.</span>
           </h2>
-          <p className="text-slate-400 text-base leading-relaxed font-medium">
+          <p className="text-white/40 text-base leading-relaxed font-medium">
             Browse thousands of medicines, place orders with your wholesaler, and track every delivery in real time.
           </p>
 
@@ -100,31 +107,31 @@ export const RetailerLoginPage = () => {
               { icon: CreditCard,  label: 'Credit Ledger',      desc: 'Track balances' },
               { icon: Shield,      label: 'Secure Platform',    desc: 'Always safe' },
             ].map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="bg-white/[0.04] border border-white/[0.06] rounded-2xl p-4">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center mb-2">
-                  <Icon size={15} className="text-indigo-300" />
+              <div key={label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2" style={{ background: 'rgba(20,184,166,0.18)' }}>
+                  <Icon size={15} style={{ color: '#5EEAD4' }} />
                 </div>
                 <p className="text-white font-extrabold text-sm">{label}</p>
-                <p className="text-slate-500 text-xs font-semibold mt-0.5">{desc}</p>
+                <p className="text-white/30 text-xs font-semibold mt-0.5">{desc}</p>
               </div>
             ))}
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-slate-600 text-[10px] font-medium tracking-[0.2em]">
-            A product of <span className="text-indigo-400 font-bold">leeep dev</span>
+          <p className="text-white/20 text-[10px] font-medium tracking-[0.2em]">
+            A product of <span className="font-bold" style={{ color: 'rgba(94,234,212,0.6)' }}>leeep dev</span>
           </p>
         </div>
       </div>
 
       {/* ─── Right: Form Panel ─── */}
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-[#FAFBFC]">
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-10" style={{ background: '#F7FFFE' }}>
         <div className="w-full max-w-md">
 
           {/* Mobile brand */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-md">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(145deg, #14B8A6, #059669)', boxShadow: '0 6px 18px rgba(20,184,166,0.30)' }}>
               <span className="text-white font-black text-lg leading-none">P</span>
             </div>
             <span className="text-slate-900 font-extrabold text-xl tracking-tight">PharmaOS</span>
@@ -182,10 +189,9 @@ export const RetailerLoginPage = () => {
               <button type="submit" disabled={loading}
                 className={cn(
                   'w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 group mt-2',
-                  loading
-                    ? 'bg-slate-100 text-slate-400'
-                    : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:shadow-xl hover:shadow-indigo-600/20 hover:scale-[1.01]',
+                  loading ? 'bg-slate-100 text-slate-400' : 'text-white hover:shadow-xl hover:scale-[1.01]',
                 )}
+                style={loading ? {} : { background: 'linear-gradient(135deg, #0D9488 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(13,148,136,0.30)' }}
               >
                 {loading ? 'Signing in...' : 'Sign In'}
                 {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />}
@@ -201,7 +207,7 @@ export const RetailerLoginPage = () => {
                 New here?{' '}
                 <button type="button"
                   onClick={() => { setMode('REGISTER'); useAuthStore.setState({ authError: null }); }}
-                  className="text-indigo-600 font-bold hover:text-indigo-700 hover:underline transition-colors">
+                  className="text-teal-600 font-bold hover:text-teal-700 hover:underline transition-colors">
                   Create Account →
                 </button>
               </p>
@@ -302,8 +308,9 @@ export const RetailerLoginPage = () => {
               <button type="submit" disabled={loading}
                 className={cn(
                   'w-full py-4 rounded-2xl font-bold text-sm tracking-wide transition-all flex items-center justify-center gap-3 group',
-                  loading ? 'bg-slate-100 text-slate-400' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:shadow-xl hover:shadow-indigo-600/20 hover:scale-[1.01]',
+                  loading ? 'bg-slate-100 text-slate-400' : 'text-white hover:shadow-xl hover:scale-[1.01]',
                 )}
+                style={loading ? {} : { background: 'linear-gradient(135deg, #0D9488 0%, #059669 100%)', boxShadow: '0 8px 24px rgba(13,148,136,0.30)' }}
               >
                 {loading ? 'Creating account...' : 'Create Account'}
                 {!loading && <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />}
@@ -313,7 +320,7 @@ export const RetailerLoginPage = () => {
                 Already have an account?{' '}
                 <button type="button"
                   onClick={() => { setMode('LOGIN'); useAuthStore.setState({ authError: null }); }}
-                  className="text-indigo-600 font-bold hover:underline transition-colors">Sign in</button>
+                  className="text-teal-600 font-bold hover:underline transition-colors">Sign in</button>
               </p>
             </form>
           )}

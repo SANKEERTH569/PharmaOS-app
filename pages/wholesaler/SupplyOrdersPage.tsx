@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Package, Clock, CheckCircle, Truck, XCircle, ChevronDown, ChevronUp,
-  Search, FilterX, RefreshCw, AlertCircle, PackageCheck, MapPin,
+  Search, FilterX, RefreshCw, AlertCircle, PackageCheck, MapPin, FileText,
 } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { cn } from '../../utils/cn';
 import { SupplyOrder, SupplyOrderStatus } from '../../types';
@@ -85,6 +85,7 @@ const StatusTimeline: React.FC<{ order: SupplyOrder }> = ({ order }) => {
 };
 
 export const SupplyOrdersPage = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<SupplyOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -339,6 +340,17 @@ export const SupplyOrdersPage = () => {
                     <div>
                       <div className="text-slate-400 text-[10px] uppercase tracking-wider font-bold mb-3">Order Journey</div>
                       <StatusTimeline order={order} />
+                    </div>
+
+                    {/* Invoice button — always shown */}
+                    <div>
+                      <button
+                        onClick={() => navigate(`/wholesaler/orders/${order.id}/invoice`)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-sm font-bold transition-all"
+                      >
+                        <FileText size={14} />
+                        View Invoice
+                      </button>
                     </div>
 
                     {/* Action buttons */}

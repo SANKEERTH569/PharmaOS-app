@@ -92,14 +92,28 @@ router.get('/medicines', async (req, res) => {
     for (const alt of alternativeMeds) {
       const salt = alt.salt || '';
       if (!altBySalt[salt]) altBySalt[salt] = [];
-      if (altBySalt[salt].length < 5) altBySalt[salt].push(alt);
+      altBySalt[salt].push(alt);
     }
 
     // 6. Attach alternatives
-    const medicinesWithAlts = medicines.map((med) => ({
-      ...med,
-      alternatives: altBySalt[med.salt || ''] || [],
-    }));
+    const medicinesWithAlts = medicines.map((med) => {
+      const allSaltAlts = altBySalt[med.salt || ''] || [];
+
+      // Filter out same wholesaler
+      const validAlts = allSaltAlts.filter(a => a.wholesaler_id !== med.wholesaler_id);
+
+      // Sort to prioritize exact name matches (since DB already sorted by price, stable sort keeps price order)
+      validAlts.sort((a, b) => {
+        const aExact = a.name.toLowerCase() === med.name.toLowerCase() ? 1 : 0;
+        const bExact = b.name.toLowerCase() === med.name.toLowerCase() ? 1 : 0;
+        return bExact - aExact;
+      });
+
+      return {
+        ...med,
+        alternatives: validAlts.slice(0, 5),
+      };
+    });
 
     // 7. Fetch active schemes for linked wholesalers
     const schemes = await prisma.scheme.findMany({

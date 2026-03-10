@@ -127,7 +127,8 @@ export const QuickSalePage = () => {
       const gross = item.unit_price * item.qty;
       const discountAmt = gross * (item.discount_percent / 100);
       const taxable = gross - discountAmt;
-      const tax = taxable * (item.medicine.gst_rate / 100);
+      const gstRate = parseFloat(item.medicine.gst_rate as any) || 12;
+      const tax = taxable * (gstRate / 100);
       subTotal += taxable;
       taxTotal += tax;
       discTotal += discountAmt;
@@ -170,17 +171,21 @@ export const QuickSalePage = () => {
           ? `[Applied ${totals.cashDiscountPct}% Cash Discount = ₹${totals.cashDiscountAmount.toFixed(2)}] ${notes}`
           : notes,
         payment_terms: totals.cashDiscountAmount > 0 ? `Includes ${totals.cashDiscountPct}% Cash Discount` : undefined,
-        items: items.map(i => ({
-          medicine_id: i.medicine.id,
-          medicine_name: i.medicine.name,
-          qty: i.qty,
-          mrp: i.medicine.mrp,
-          unit_price: i.unit_price,
-          gst_rate: i.medicine.gst_rate,
-          hsn_code: i.medicine.hsn_code,
-          discount_percent: i.discount_percent,
-          discount_amount: i.unit_price * i.qty * (i.discount_percent / 100),
-        })),
+        items: items.map(i => {
+          const globalCashDiscount = totals.cashDiscountPct > 0 ? totals.cashDiscountPct : 0;
+          const finalDiscountPct = Math.min(100, i.discount_percent + globalCashDiscount);
+          return {
+            medicine_id: i.medicine.id,
+            medicine_name: i.medicine.name,
+            qty: i.qty,
+            mrp: i.medicine.mrp,
+            unit_price: i.unit_price,
+            gst_rate: parseFloat(i.medicine.gst_rate as any) || 12,
+            hsn_code: i.medicine.hsn_code || '3004',
+            discount_percent: finalDiscountPct,
+            discount_amount: i.unit_price * i.qty * (finalDiscountPct / 100),
+          };
+        }),
       });
       setCreatedOrder(order);
     } catch (err: any) {
@@ -459,7 +464,8 @@ export const QuickSalePage = () => {
                   const gross = item.unit_price * item.qty;
                   const discAmt = gross * (item.discount_percent / 100);
                   const taxable = gross - discAmt;
-                  const tax = taxable * (item.medicine.gst_rate / 100);
+                  const gstRate = parseFloat(item.medicine.gst_rate as any) || 12;
+                  const tax = taxable * (gstRate / 100);
                   const lineTotal = taxable + tax;
                   const isOverStock = item.qty > item.medicine.stock_qty;
 
