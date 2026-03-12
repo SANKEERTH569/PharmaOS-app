@@ -6,7 +6,8 @@ import {
   LogOut, Menu, Wallet, Activity, HandCoins,
   Settings, Bell, X, ChevronRight, RotateCcw,
   Check, CheckCheck, Package, CreditCard, AlertTriangle,
-  Clock, ArrowRight, MapPin, FileText, Home, Tag, Truck, ShoppingBag
+  Clock, ArrowRight, MapPin, FileText, Home, Tag, Truck, ShoppingBag,
+  Users2, TrendingUp, ClipboardList, UserCheck
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
@@ -43,6 +44,16 @@ const navGroups = [
       { icon: Tag, label: 'Schemes', path: '/schemes' },
       { icon: MapPin, label: 'Rack Manager', path: '/rack-manager', pro: true },
       { icon: Settings, label: 'Settings', path: '/settings' },
+    ],
+  },
+  {
+    label: 'Sales Team',
+    items: [
+      { icon: Users2, label: 'Salesmen', path: '/salesmen' },
+      { icon: UserCheck, label: 'Requests', path: '/salesmen/requests' },
+      { icon: MapPin, label: 'Beat Routes', path: '/beat-routes' },
+      { icon: ClipboardList, label: 'Call Reports', path: '/call-reports' },
+      { icon: TrendingUp, label: 'Performance', path: '/sales-performance' },
     ],
   },
 ];

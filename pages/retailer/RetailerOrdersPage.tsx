@@ -3,15 +3,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ClipboardList, Clock, CheckCircle, Truck, Package, XCircle,
   ChevronDown, ChevronUp, Building2, RefreshCw, ShoppingBag,
-  ShoppingCart, Calendar, Hash, ArrowRight, TrendingUp,
+  ShoppingCart, Calendar, Hash, ArrowRight, TrendingUp, AlertCircle, Check
 } from 'lucide-react';
 import { useDataStore } from '../../store/dataStore';
 import { useCartStore } from '../../store/cartStore';
 import { cn } from '../../utils/cn';
 import { Order, OrderStatus } from '../../types';
 import { OrderTimeline } from '../../components/OrderTimeline';
+import api from '../../utils/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any; bg: string }> = {
+  PENDING_RETAILER: { label: 'Needs Confirmation', color: 'text-indigo-600', icon: AlertCircle, bg: 'bg-indigo-50 border-indigo-200' },
   PENDING: { label: 'Pending', color: 'text-amber-600', icon: Clock, bg: 'bg-amber-50 border-amber-200' },
   ACCEPTED: { label: 'Accepted', color: 'text-blue-600', icon: CheckCircle, bg: 'bg-blue-50 border-blue-200' },
   DISPATCHED: { label: 'Dispatched', color: 'text-indigo-600', icon: Truck, bg: 'bg-indigo-50 border-indigo-200' },
@@ -34,12 +36,13 @@ export const RetailerOrdersPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
+  const [processingMR, setProcessingMR] = useState<string | null>(null);
 
   useEffect(() => { fetchOrders().catch(() => {}); }, []);
 
   const filtered = orders.filter(o => {
     if (tab === 'ALL') return true;
-    if (tab === 'ACTIVE') return ['PENDING', 'ACCEPTED', 'DISPATCHED'].includes(o.status);
+    if (tab === 'ACTIVE') return ['PENDING_RETAILER', 'PENDING', 'ACCEPTED', 'DISPATCHED'].includes(o.status);
     if (tab === 'DELIVERED') return o.status === 'DELIVERED';
     if (tab === 'CANCELLED') return o.status === 'CANCELLED' || o.status === 'REJECTED';
     return true;
@@ -50,6 +53,19 @@ export const RetailerOrdersPage: React.FC = () => {
     try { await cancelOrder(orderId); } catch (e) { console.error(e); }
     setCancelling(null);
     setConfirmCancel(null);
+  };
+
+  const handleMRConfirm = async (orderId: string, action: 'confirm' | 'reject') => {
+    setProcessingMR(orderId);
+    try {
+      const endpoint = action === 'confirm' ? 'retailer-confirm' : 'retailer-reject';
+      await api.patch(`/orders/${orderId}/${endpoint}`);
+      await fetchOrders();
+    } catch (e: any) {
+      alert(e.response?.data?.error || `Failed to ${action} order`);
+    } finally {
+      setProcessingMR(null);
+    }
   };
 
   const handleReorder = (order: Order) => {
@@ -99,7 +115,7 @@ export const RetailerOrdersPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex gap-1.5 bg-white rounded-2xl border border-slate-100/80 p-1.5 shadow-sm">
         {TABS.map(t => {
-          const count = t.key === 'ALL' ? orders.length : t.key === 'ACTIVE' ? orders.filter(o => ['PENDING','ACCEPTED','DISPATCHED'].includes(o.status)).length : t.key === 'DELIVERED' ? orders.filter(o => o.status === 'DELIVERED').length : orders.filter(o => o.status === 'CANCELLED' || o.status === 'REJECTED').length;
+          const count = t.key === 'ALL' ? orders.length : t.key === 'ACTIVE' ? orders.filter(o => ['PENDING_RETAILER','PENDING','ACCEPTED','DISPATCHED'].includes(o.status)).length : t.key === 'DELIVERED' ? orders.filter(o => o.status === 'DELIVERED').length : orders.filter(o => o.status === 'CANCELLED' || o.status === 'REJECTED').length;
           return (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={cn("flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all", tab === t.key ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/20" : "text-slate-500 hover:bg-slate-50")}>
@@ -138,6 +154,36 @@ export const RetailerOrdersPage: React.FC = () => {
                 className="bg-white rounded-2xl border border-slate-100/80 shadow-sm hover:shadow-md transition-all overflow-hidden">
                 {/* Header */}
                 <div className="p-4">
+                  {order.status === 'PENDING_RETAILER' && (
+                    <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="text-indigo-600 mt-0.5 shrink-0" size={18} />
+                        <div>
+                          <p className="text-sm font-bold text-indigo-900 leading-tight">MR Order Needs Confirmation</p>
+                          <p className="text-xs text-indigo-700 mt-1">
+                            Field rep <span className="font-bold">{order.salesman?.name || 'Unknown'}</span> placed this order on your behalf.
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMRConfirm(order.id, 'confirm'); }}
+                              disabled={processingMR === order.id}
+                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 disabled:opacity-50 transition-colors"
+                            >
+                              {processingMR === order.id ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />}
+                              Confirm Order
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleMRConfirm(order.id, 'reject'); }}
+                              disabled={processingMR === order.id}
+                              className="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-xs font-bold rounded-lg transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

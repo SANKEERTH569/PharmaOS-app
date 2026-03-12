@@ -326,6 +326,16 @@ export const OrdersPage = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-slate-900">{order.retailer_name}</div>
+                    {(order as any).salesman_id && (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full border border-purple-200 uppercase tracking-wide">
+                          🏷 MR Order
+                        </span>
+                        {(order as any).salesman?.name && (
+                          <span className="text-[10px] text-purple-600 font-semibold">via {(order as any).salesman.name}</span>
+                        )}
+                      </div>
+                    )}
                     {order.invoice_no && <div className="text-blue-600 text-xs mt-0.5 font-mono bg-blue-50 w-fit px-1 rounded">{order.invoice_no}</div>}
                   </td>
                   <td className="px-6 py-4">

@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useDataStore } from '../store/dataStore';
 import {
     RotateCcw, Clock, CheckCircle, XCircle, ChevronDown, ChevronUp,
-    Loader2, AlertTriangle, Calendar, Package, Store, Filter, User, AlertCircle
+    Loader2, AlertTriangle, Calendar, Package, Store, Filter, User, AlertCircle,
+    ShieldAlert, PackageX, Minus
 } from 'lucide-react';
-import { ReturnRequest, ReturnReason, ReturnStatus } from '../types';
+import { ReturnRequest, ReturnReason, ReturnStatus, StockComplaint, ComplaintType, ComplaintStatus } from '../types';
 
 export const WholesalerReturnsPage = () => {
-    const { returns, fetchReturns, updateReturnStatus } = useDataStore();
+    const { returns, fetchReturns, updateReturnStatus, stockComplaints, fetchStockComplaints, updateComplaintStatus } = useDataStore();
 
     const [filter, setFilter] = useState<ReturnStatus | 'ALL'>('ALL');
     const [expandedReturns, setExpandedReturns] = useState<Record<string, boolean>>({});
@@ -15,13 +16,49 @@ export const WholesalerReturnsPage = () => {
     const [rejectionNote, setRejectionNote] = useState('');
     const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
-    useEffect(() => { fetchReturns(); }, []);
+    useEffect(() => { fetchReturns(); fetchStockComplaints(); }, []);
+
+    const [activeTab, setActiveTab] = useState<'RETURNS' | 'COMPLAINTS'>('RETURNS');
+    const [complaintFilter, setComplaintFilter] = useState<ComplaintStatus | 'ALL'>('ALL');
+    const [expandedComplaints, setExpandedComplaints] = useState<Record<string, boolean>>({});
+    const [processingComplaintId, setProcessingComplaintId] = useState<string | null>(null);
+    const [resolutionNote, setResolutionNote] = useState('');
+    const [showResolveModal, setShowResolveModal] = useState<string | null>(null);
 
     const filteredReturns = filter === 'ALL' ? returns : returns.filter(r => r.status === filter);
 
     const pendingCount = returns.filter(r => r.status === 'PENDING').length;
 
     const toggleExpand = (id: string) => setExpandedReturns(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleExpandComplaint = (id: string) => setExpandedComplaints(prev => ({ ...prev, [id]: !prev[id] }));
+
+    const filteredComplaints = complaintFilter === 'ALL' ? stockComplaints : stockComplaints.filter(c => c.status === complaintFilter);
+    const openCount = stockComplaints.filter(c => c.status === 'OPEN').length;
+
+    const handleAcknowledge = async (complaintId: string) => {
+        setProcessingComplaintId(complaintId);
+        try {
+            await updateComplaintStatus(complaintId, 'ACKNOWLEDGED');
+        } catch (err: any) {
+            alert(err?.response?.data?.error || 'Failed to acknowledge');
+        } finally {
+            setProcessingComplaintId(null);
+        }
+    };
+
+    const handleResolveConfirm = async () => {
+        if (!showResolveModal) return;
+        setProcessingComplaintId(showResolveModal);
+        try {
+            await updateComplaintStatus(showResolveModal, 'RESOLVED', resolutionNote || undefined);
+            setShowResolveModal(null);
+            setResolutionNote('');
+        } catch (err: any) {
+            alert(err?.response?.data?.error || 'Failed to resolve');
+        } finally {
+            setProcessingComplaintId(null);
+        }
+    };
 
     const handleApprove = async (returnId: string) => {
         if (!window.confirm('Approve this return? The retailer\'s balance will be credited.')) return;
@@ -86,21 +123,47 @@ export const WholesalerReturnsPage = () => {
     return (
         <div className="animate-in fade-in duration-500 space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-gradient-to-br from-orange-500 to-rose-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
-                        <RotateCcw size={22} />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-900">Return Requests</h1>
-                        <p className="text-xs text-slate-400 font-medium">
-                            {pendingCount > 0
-                                ? <span className="text-amber-600">{pendingCount} pending for review</span>
-                                : 'Manage product returns from retailers'}
-                        </p>
-                    </div>
+            <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-gradient-to-br from-orange-500 to-rose-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
+                    <RotateCcw size={22} />
                 </div>
-                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+                <div>
+                    <h1 className="text-2xl font-black text-slate-900">Returns & Complaints</h1>
+                    <p className="text-xs text-slate-400 font-medium">
+                        {pendingCount > 0
+                            ? <span className="text-amber-600">{pendingCount} return{pendingCount > 1 ? 's' : ''} pending</span>
+                            : openCount > 0
+                            ? <span className="text-rose-600">{openCount} complaint{openCount > 1 ? 's' : ''} open</span>
+                            : 'Manage returns and stock complaints from retailers'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-0 border-b border-slate-200">
+                <button
+                    onClick={() => setActiveTab('RETURNS')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold border-b-2 -mb-px transition-all ${activeTab === 'RETURNS' ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                >
+                    <RotateCcw size={15} /> Returns
+                    {pendingCount > 0 && (
+                        <span className="bg-amber-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">{pendingCount}</span>
+                    )}
+                </button>
+                <button
+                    onClick={() => setActiveTab('COMPLAINTS')}
+                    className={`flex items-center gap-2 px-5 py-2.5 text-sm font-bold border-b-2 -mb-px transition-all ${activeTab === 'COMPLAINTS' ? 'border-rose-500 text-rose-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                >
+                    <ShieldAlert size={15} /> Stock Complaints
+                    {openCount > 0 && (
+                        <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full leading-none">{openCount}</span>
+                    )}
+                </button>
+            </div>
+
+            {/* ─── RETURNS TAB ─── */}
+            {activeTab === 'RETURNS' && (<>
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 w-fit">
                     <Filter size={16} className="text-slate-400" />
                     <select
                         value={filter}
@@ -113,35 +176,32 @@ export const WholesalerReturnsPage = () => {
                         <option value="REJECTED">Rejected ({returns.filter(r => r.status === 'REJECTED').length})</option>
                     </select>
                 </div>
-            </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <Clock size={16} className="text-amber-500" />
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Clock size={16} className="text-amber-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</span>
+                        </div>
+                        <p className="text-2xl font-black text-amber-600">{returns.filter(r => r.status === 'PENDING').length}</p>
                     </div>
-                    <p className="text-2xl font-black text-amber-600">{returns.filter(r => r.status === 'PENDING').length}</p>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle size={16} className="text-emerald-500" />
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</span>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle size={16} className="text-emerald-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</span>
+                        </div>
+                        <p className="text-2xl font-black text-emerald-600">{returns.filter(r => r.status === 'APPROVED').length}</p>
                     </div>
-                    <p className="text-2xl font-black text-emerald-600">{returns.filter(r => r.status === 'APPROVED').length}</p>
-                </div>
-                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                        <XCircle size={16} className="text-rose-500" />
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</span>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <XCircle size={16} className="text-rose-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rejected</span>
+                        </div>
+                        <p className="text-2xl font-black text-rose-600">{returns.filter(r => r.status === 'REJECTED').length}</p>
                     </div>
-                    <p className="text-2xl font-black text-rose-600">{returns.filter(r => r.status === 'REJECTED').length}</p>
                 </div>
-            </div>
 
-            {/* Return List */}
-            <div className="space-y-4">
+                <div className="space-y-4">
                 {filteredReturns.map(ret => {
                     const isExpanded = expandedReturns[ret.id];
                     const visibleItems = isExpanded ? ret.items : ret.items.slice(0, 2);
@@ -239,6 +299,165 @@ export const WholesalerReturnsPage = () => {
                     </div>
                 )}
             </div>
+            </>)}
+
+            {/* ─── COMPLAINTS TAB ─── */}
+            {activeTab === 'COMPLAINTS' && (<>
+                <div className="flex flex-wrap items-center gap-2">
+                    {(['ALL', 'OPEN', 'ACKNOWLEDGED', 'RESOLVED'] as const).map(s => (
+                        <button
+                            key={s}
+                            onClick={() => setComplaintFilter(s as ComplaintStatus | 'ALL')}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${complaintFilter === s ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-500 border-slate-200 hover:border-rose-300'}`}
+                        >
+                            {s === 'ALL' ? `All (${stockComplaints.length})` : `${s} (${stockComplaints.filter(c => c.status === s).length})`}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <AlertCircle size={16} className="text-rose-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Open</span>
+                        </div>
+                        <p className="text-2xl font-black text-rose-600">{stockComplaints.filter(c => c.status === 'OPEN').length}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Clock size={16} className="text-amber-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Acknowledged</span>
+                        </div>
+                        <p className="text-2xl font-black text-amber-600">{stockComplaints.filter(c => c.status === 'ACKNOWLEDGED').length}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle size={16} className="text-emerald-500" />
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Resolved</span>
+                        </div>
+                        <p className="text-2xl font-black text-emerald-600">{stockComplaints.filter(c => c.status === 'RESOLVED').length}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    {filteredComplaints.map(complaint => {
+                        const isExpanded = expandedComplaints[complaint.id];
+                        const complaintTypeCfg: Record<ComplaintType, { label: string; icon: any; color: string; bg: string }> = {
+                            SHORT_DELIVERY: { label: 'Short Delivery', icon: Minus, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+                            WRONG_ITEM: { label: 'Wrong Item', icon: PackageX, color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
+                            MISSING_ITEM: { label: 'Missing Item', icon: ShieldAlert, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' },
+                        };
+                        const complaintStatusCfg: Record<ComplaintStatus, { color: string; bg: string }> = {
+                            OPEN: { color: 'text-rose-600', bg: 'bg-rose-50 border-rose-200' },
+                            ACKNOWLEDGED: { color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+                            RESOLVED: { color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+                        };
+                        const typeCfg = complaintTypeCfg[complaint.complaint_type];
+                        const statusCfg = complaintStatusCfg[complaint.status];
+                        const TypeIcon = typeCfg.icon;
+                        return (
+                            <div key={complaint.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex-1">
+                                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                                            <span className="font-bold text-slate-900">Complaint #{complaint.id.slice(-6).toUpperCase()}</span>
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold uppercase border ${typeCfg.bg} ${typeCfg.color}`}>
+                                                <TypeIcon size={12} /> {typeCfg.label}
+                                            </span>
+                                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold uppercase border ${statusCfg.bg} ${statusCfg.color}`}>
+                                                {complaint.status}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                                                <User size={11} /> {complaint.retailer?.shop_name || complaint.retailer?.name || 'Retailer'}
+                                            </span>
+                                            {complaint.order_id && (
+                                                <span className="text-slate-400">Order: …{complaint.order_id.slice(-8).toUpperCase()}</span>
+                                            )}
+                                            <span className="text-slate-400">{new Date(complaint.created_at).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {complaint.items && complaint.items.length > 0 && (
+                                    <div className="mt-3 border-t border-slate-50 pt-3">
+                                        <button
+                                            onClick={() => toggleExpandComplaint(complaint.id)}
+                                            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-700 mb-2 transition-colors"
+                                        >
+                                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                            {complaint.items.length} item{complaint.items.length > 1 ? 's' : ''} reported
+                                        </button>
+                                        {isExpanded && (
+                                            <div className="rounded-xl overflow-hidden border border-slate-100">
+                                                <table className="w-full text-xs">
+                                                    <thead className="bg-slate-50">
+                                                        <tr>
+                                                            <th className="text-left p-2.5 font-bold text-slate-500">Medicine</th>
+                                                            <th className="text-center p-2.5 font-bold text-slate-500">Ordered</th>
+                                                            <th className="text-center p-2.5 font-bold text-slate-500">Received</th>
+                                                            <th className="text-center p-2.5 font-bold text-slate-500">Diff</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-50">
+                                                        {complaint.items.map(item => (
+                                                            <tr key={item.id} className="hover:bg-slate-50/50">
+                                                                <td className="p-2.5 text-slate-700 font-medium">{item.medicine_name}</td>
+                                                                <td className="p-2.5 text-center text-slate-600">{item.ordered_qty}</td>
+                                                                <td className={`p-2.5 text-center font-bold ${item.received_qty < item.ordered_qty ? 'text-rose-600' : 'text-emerald-600'}`}>{item.received_qty}</td>
+                                                                <td className={`p-2.5 text-center font-bold ${item.received_qty < item.ordered_qty ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                                    {item.received_qty - item.ordered_qty}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {complaint.notes && (
+                                    <p className="text-xs text-slate-500 italic mt-3 bg-slate-50 px-3 py-2 rounded-lg">💬 {complaint.notes}</p>
+                                )}
+                                {complaint.resolution_note && complaint.status === 'RESOLVED' && (
+                                    <p className="text-xs text-emerald-700 font-medium mt-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">✅ Resolution: {complaint.resolution_note}</p>
+                                )}
+
+                                {complaint.status !== 'RESOLVED' && (
+                                    <div className="pt-3 mt-3 border-t border-slate-100 flex gap-2">
+                                        {complaint.status === 'OPEN' && (
+                                            <button
+                                                onClick={() => handleAcknowledge(complaint.id)}
+                                                disabled={processingComplaintId === complaint.id}
+                                                className="flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-xl border border-amber-200 transition-all disabled:opacity-50"
+                                            >
+                                                {processingComplaintId === complaint.id ? <Loader2 size={13} className="animate-spin" /> : <Clock size={13} />}
+                                                Acknowledge
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => { setShowResolveModal(complaint.id); setResolutionNote(''); }}
+                                            disabled={processingComplaintId === complaint.id}
+                                            className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-3 py-2 rounded-xl border border-emerald-200 transition-all disabled:opacity-50"
+                                        >
+                                            <CheckCircle size={13} /> Mark Resolved
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {filteredComplaints.length === 0 && (
+                        <div className="p-10 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 border-dashed">
+                            <ShieldAlert size={40} className="mx-auto mb-3 text-slate-200" />
+                            <p className="font-bold text-slate-500">No stock complaints</p>
+                            <p className="text-sm mt-1">Complaints from retailers will appear here.</p>
+                        </div>
+                    )}
+                </div>
+            </>)}
 
             {/* Rejection Modal */}
             {showRejectModal && (
@@ -268,6 +487,40 @@ export const WholesalerReturnsPage = () => {
                             >
                                 {processingId ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
                                 Reject Return
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Resolve Complaint Modal */}
+            {showResolveModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <CheckCircle size={20} className="text-emerald-500" /> Resolve Complaint
+                        </h3>
+                        <p className="text-sm text-slate-500">Add an optional note to inform the retailer how it was resolved.</p>
+                        <textarea
+                            value={resolutionNote}
+                            onChange={e => setResolutionNote(e.target.value)}
+                            placeholder="e.g. Replacement dispatched, credit note issued..."
+                            className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-emerald-300 resize-none h-24"
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowResolveModal(null)}
+                                className="px-5 py-2 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleResolveConfirm}
+                                disabled={processingComplaintId !== null}
+                                className="flex items-center gap-2 bg-emerald-500 text-white font-bold text-sm px-5 py-2 rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                            >
+                                {processingComplaintId ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                                Mark as Resolved
                             </button>
                         </div>
                     </div>

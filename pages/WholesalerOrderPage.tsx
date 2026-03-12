@@ -5,9 +5,10 @@ import {
   Search, Building2, ShoppingCart, Plus, Minus, Trash2,
   X, Loader2, CheckCircle, ArrowLeft, Package, Send,
   ChevronRight, Pill, FlaskConical, Syringe, Droplets,
-  Wind, Package2, AlertCircle, Store, Phone, MapPin, Tag
+  Wind, Package2, AlertCircle, Store, Phone, MapPin, Tag, AlertTriangle
 } from 'lucide-react';
 import api from '../utils/api';
+import { cn } from '../utils/cn';
 import { MainWholesalerMedicine, MainWholesalerScheme } from '../types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -395,6 +396,9 @@ export const WholesalerOrderPage = () => {
             const t = getMedType(med.medicine_name);
             const { Icon, bg, color } = MED_ICON[t];
             const margin = med.mrp && med.mrp > 0 ? ((med.mrp - med.price) / med.mrp * 100) : 0;
+            const stockQty = med.stock_qty ?? null;
+            const isOutOfStock = stockQty !== null && stockQty <= 0;
+            const isLowStock = stockQty !== null && stockQty > 0 && stockQty <= 20;
             return (
               <div
                 key={med.id}
@@ -402,17 +406,28 @@ export const WholesalerOrderPage = () => {
               >
                 {/* Card body */}
                 <div className="p-4 flex-1">
-                  {/* Icon + type badge */}
+                  {/* Icon + badges row */}
                   <div className="flex items-center justify-between mb-3">
                     <div className={`w-10 h-10 rounded-xl ${bg} ${color} flex items-center justify-center shrink-0`}>
                       <Icon size={18} />
                     </div>
-                    {med.schemes && med.schemes.length > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider rounded-lg border border-emerald-200 shadow-sm">
-                        <Tag size={9} className="opacity-70" />
-                        Offer
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {isOutOfStock ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />Out of Stock
+                        </span>
+                      ) : isLowStock ? (
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />Low Stock
+                        </span>
+                      ) : null}
+                      {med.schemes && med.schemes.length > 0 && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-wider rounded-lg border border-emerald-200 shadow-sm">
+                          <Tag size={9} className="opacity-70" />
+                          Offer
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Name */}
@@ -466,9 +481,15 @@ export const WholesalerOrderPage = () => {
                   {qty === 0 ? (
                     <button
                       onClick={() => addToCart(med)}
-                      className="w-full py-2.5 text-xs font-bold text-indigo-600 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-indigo-100/50"
+                      className={cn(
+                        "w-full py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 border",
+                        isOutOfStock
+                          ? "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200/60"
+                          : "text-indigo-600 bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 border-indigo-100/50"
+                      )}
                     >
-                      <Plus size={14} strokeWidth={2.5} /> Add to Cart
+                      <Plus size={14} strokeWidth={2.5} />
+                      {isOutOfStock ? 'Pre-order' : 'Add to Cart'}
                     </button>
                   ) : (
                     <div className="flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-1.5 border border-indigo-100/50">
@@ -486,6 +507,16 @@ export const WholesalerOrderPage = () => {
                         <Plus size={14} strokeWidth={2.5} />
                       </button>
                     </div>
+                  )}
+                  {isOutOfStock && (
+                    <p className="text-[10px] text-amber-600 text-center mt-1.5 font-medium flex items-center justify-center gap-1">
+                      <AlertTriangle size={10} className="shrink-0" /> Out of stock — wholesaler will fulfill on restock
+                    </p>
+                  )}
+                  {!isOutOfStock && isLowStock && (
+                    <p className="text-[10px] text-amber-600 text-center mt-1.5 font-medium">
+                      Only {stockQty} left — order before it runs out
+                    </p>
                   )}
                 </div>
               </div>

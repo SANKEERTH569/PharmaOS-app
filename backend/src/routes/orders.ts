@@ -74,6 +74,7 @@ router.get('/', async (req, res) => {
         items: { include: { medicine: { select: { expiry_date: true } } } },
         wholesaler: { select: { id: true, name: true, phone: true } },
         retailer: { select: { id: true, name: true, shop_name: true } },
+        salesman: { select: { id: true, name: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -349,6 +350,186 @@ router.patch('/:id/status', requireRole('WHOLESALER'), async (req, res) => {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// POST /api/orders/mr-order — MR (SALESMAN) places order on behalf of a retailer
+router.post('/mr-order', async (req, res) => {
+  if (req.user!.role !== 'SALESMAN') return res.status(403).json({ error: 'Only salesmen can place MR orders' });
+  try {
+    const { retailer_id, items, notes, lat, lng, wholesaler_id: requested_wholesaler_id } = req.body;
+    if (!retailer_id || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'retailer_id and items[] are required' });
+    }
+
+    const salesman_id = req.user!.salesman_id!;
+    // Default to the user's current wholesaler_id, but allow them to swap to another they are linked to
+    let wholesaler_id = requested_wholesaler_id || req.user!.wholesaler_id!;
+    
+    // Safety check if they requested a specific wholesaler
+    if (requested_wholesaler_id && requested_wholesaler_id !== req.user!.wholesaler_id!) {
+      const link = await prisma.salesmanWholesalerLink.findUnique({
+        where: { salesman_id_wholesaler_id: { salesman_id, wholesaler_id: requested_wholesaler_id } }
+      });
+      if (!link || link.status !== 'APPROVED') {
+        return res.status(403).json({ error: 'You are not an approved salesman for this wholesaler' });
+      }
+    }
+
+    const retailer = await prisma.retailer.findUnique({ where: { id: retailer_id } });
+    if (!retailer) return res.status(404).json({ error: 'Retailer not found' });
+
+    // Calculate order totals
+    let subTotal = 0;
+    const orderItems = items.map((i: any) => {
+      const discountAmt = i.discount_percent ? (i.unit_price * i.qty * i.discount_percent / 100) : (i.discount_amount || 0);
+      const taxable = i.unit_price * i.qty - discountAmt;
+      const gstRate = parseFloat(i.gst_rate) || 12;
+      const tax = taxable * (gstRate / 100);
+      subTotal += taxable;
+      return {
+        medicine_id: i.medicine_id,
+        medicine_name: i.medicine_name,
+        qty: i.qty,
+        mrp: i.mrp,
+        unit_price: i.unit_price,
+        discount_percent: i.discount_percent || 0,
+        discount_amount: discountAmt,
+        total_price: taxable + tax,
+        hsn_code: i.hsn_code || '3004',
+        gst_rate: gstRate,
+        taxable_value: taxable,
+        tax_amount: tax,
+      };
+    });
+    const taxTotal = orderItems.reduce((s: number, i: any) => s + i.tax_amount, 0);
+    const totalAmount = subTotal + taxTotal;
+
+    // Create the order tagged with salesman_id
+    const order = await prisma.order.create({
+      data: {
+        wholesaler_id,
+        retailer_id: retailer.id,
+        retailer_name: retailer.shop_name,
+        salesman_id,
+        sub_total: subTotal,
+        tax_total: taxTotal,
+        total_amount: totalAmount,
+        payment_terms: 'NET 15',
+        status: 'PENDING_RETAILER', // Awaiting retailer confirmation
+        notes: notes ? `[MR Order] ${notes}` : '[MR Order] Placed by company field rep',
+        items: { create: orderItems },
+      },
+      include: { items: true },
+    });
+
+    // Auto-log a DailyCallReport for this visit
+    await prisma.dailyCallReport.create({
+      data: {
+        wholesaler_id,
+        salesman_id,
+        retailer_id: retailer.id,
+        visit_date: new Date(),
+        outcome: 'ORDER_TAKEN',
+        order_id: order.id,
+        lat: lat || null,
+        lng: lng || null,
+        notes: notes || null,
+      },
+    });
+
+    const salesman = await prisma.salesman.findUnique({ where: { id: salesman_id }, select: { name: true } });
+
+    const notification = await prisma.notification.create({
+      data: {
+        wholesaler_id,
+        retailer_id: retailer.id,
+        type: 'NEW_ORDER',
+        title: 'New MR Order Pending',
+        body: `${salesman?.name || 'Field Rep'} placed an order worth ₹${totalAmount.toFixed(0)}`,
+      },
+    });
+
+    io.to(`wholesaler_${wholesaler_id}`).emit('new_order', order);
+    io.to(`wholesaler_${wholesaler_id}`).emit('notification', notification);
+
+    // Notify retailer that an MR placed an order
+    const retNotif = await prisma.notification.create({
+      data: {
+        wholesaler_id,
+        retailer_id: retailer.id,
+        title: 'New MR Order Pending',
+        body: `${salesman?.name || 'A field rep'} placed an order worth ₹${totalAmount.toLocaleString()}. Please review and confirm it.`,
+        type: 'NEW_ORDER',
+      },
+    });
+    io.to(`retailer_${retailer.id}`).emit('notification', retNotif);
+
+    res.status(201).json(order);
+  } catch (error: any) {
+    console.error('MR Quick Order API Error:', error);
+    res.status(500).json({ error: error.message || 'Failed to place MR order' });
+  }
+});
+
+// PATCH /api/orders/:id/retailer-confirm — Retailer confirms an MR order
+router.patch('/:id/retailer-confirm', async (req, res) => {
+  if (req.user!.role !== 'RETAILER') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.id, retailer_id: req.user!.retailer_id!, status: 'PENDING_RETAILER' },
+      include: { salesman: true, wholesaler: true },
+    });
+    if (!order) return res.status(404).json({ error: 'Order not found or not in pending confirmation state' });
+
+    // Update to PENDING (now moves to Sub-wholesaler's main queue)
+    const updated = await prisma.order.update({
+      where: { id: order.id },
+      data: { status: 'PENDING' },
+    });
+
+    // Notify sub-wholesaler
+    const sysNotif = await prisma.notification.create({
+      data: {
+        wholesaler_id: order.wholesaler_id,
+        title: 'MR Order Confirmed',
+        body: `${order.retailer_name} confirmed the order placed by ${order.salesman?.name || 'MR'} - ₹${order.total_amount.toLocaleString()}`,
+        type: 'ORDER_STATUS_CHANGED',
+      },
+    });
+    io.to(`wholesaler_${order.wholesaler_id}`).emit('notification', sysNotif);
+
+    res.json(updated);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// PATCH /api/orders/:id/retailer-reject — Retailer rejects an MR order
+router.patch('/:id/retailer-reject', async (req, res) => {
+  if (req.user!.role !== 'RETAILER') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.id, retailer_id: req.user!.retailer_id!, status: 'PENDING_RETAILER' },
+      include: { salesman: true },
+    });
+    if (!order) return res.status(404).json({ error: 'Order not found or not in pending confirmation state' });
+
+    const updated = await prisma.order.update({
+      where: { id: order.id },
+      data: { status: 'REJECTED' },
+    });
+
+    // Notify sub-wholesaler that MR order was rejected
+    const sysNotif = await prisma.notification.create({
+      data: {
+        wholesaler_id: order.wholesaler_id,
+        title: 'MR Order Rejected',
+        body: `${order.retailer_name} rejected the order placed by ${order.salesman?.name || 'MR'}.`,
+        type: 'ORDER_STATUS_CHANGED',
+      },
+    });
+    io.to(`wholesaler_${order.wholesaler_id}`).emit('notification', sysNotif);
+
+    res.json(updated);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 // POST /api/orders/quick-sale — Wholesaler creates a sale (auto-accepted with invoice)

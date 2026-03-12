@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { connectSocket, disconnectSocket } from '../utils/socket';
-import { Wholesaler, Retailer, Admin, MainWholesaler, UserRole } from '../types';
+import { Wholesaler, Retailer, Admin, MainWholesaler, Salesman, UserRole } from '../types';
 
 interface AuthState {
   token: string | null;
@@ -10,6 +10,7 @@ interface AuthState {
   retailer: Retailer | null;
   admin: Admin | null;
   mainWholesaler: MainWholesaler | null;
+  salesman: Salesman | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   authError: string | null;
@@ -18,6 +19,7 @@ interface AuthState {
   loginWholesaler: (username: string, password: string) => Promise<void>;
   loginRetailer: (phone: string, password: string) => Promise<void>;
   loginMainWholesaler: (username: string, password: string) => Promise<void>;
+  loginSalesman: (username: string, password: string) => Promise<void>;
   register: (data: { username: string; password: string; name: string; phone: string; email?: string; address?: string }) => Promise<void>;
   registerMainWholesaler: (data: { username: string; password: string; name: string; phone: string; address?: string; gstin?: string }) => Promise<void>;
   registerRetailer: (data: { name: string; shop_name: string; phone: string; password: string; address?: string; gstin?: string; dl_number?: string }) => Promise<void>;
@@ -26,6 +28,7 @@ interface AuthState {
   updateWholesaler: (data: Partial<Wholesaler>) => Promise<void>;
   updateRetailerProfile: (data: Partial<Retailer>) => Promise<void>;
   loginAdmin: (username: string, password: string) => Promise<void>;
+  salesmanRegister: (formData: any) => Promise<void>;
 }
 
 // 5 Mock Sub-Wholesalers (kept for MarketplacePage compatibility)
@@ -52,6 +55,7 @@ function getInitialAuthState() {
       retailer: role === 'RETAILER' ? user : null,
       admin: role === 'ADMIN' ? user : null,
       mainWholesaler: role === 'MAIN_WHOLESALER' ? user : null,
+      salesman: role === 'SALESMAN' ? user : null,
       isAuthenticated: true,
     };
   } catch {
@@ -69,6 +73,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   retailer: initialAuth.retailer ?? null,
   admin: initialAuth.admin ?? null,
   mainWholesaler: (initialAuth as any).mainWholesaler ?? null,
+  salesman: (initialAuth as any).salesman ?? null,
   isAuthenticated: initialAuth.isAuthenticated ?? false,
   isLoading: false,
   authError: null,
@@ -85,6 +90,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         retailer: role === 'RETAILER' ? user : null,
         admin: role === 'ADMIN' ? user : null,
         mainWholesaler: role === 'MAIN_WHOLESALER' ? user : null,
+        salesman: role === 'SALESMAN' ? user : null,
         isAuthenticated: true,
       });
       if (role !== 'ADMIN') connectSocket(`${role.toLowerCase()}_${user.id}`);
@@ -110,6 +116,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         retailer: data.role === 'RETAILER' ? data.user : null,
         admin: data.role === 'ADMIN' ? data.user : null,
         mainWholesaler: data.role === 'MAIN_WHOLESALER' ? data.user : null,
+        salesman: data.role === 'SALESMAN' ? data.user : null,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -124,6 +131,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   loginWholesaler: async (username, password) => { await get().login(username, password, 'WHOLESALER'); },
   loginRetailer: async (phone, password) => { await get().login(phone, password, 'RETAILER'); },
   loginMainWholesaler: async (username, password) => { await get().login(username, password, 'MAIN_WHOLESALER'); },
+  loginSalesman: async (username, password) => { await get().login(username, password, 'SALESMAN'); },
 
   registerRetailer: async (formData) => {
     set({ isLoading: true, authError: null });
@@ -191,6 +199,27 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     }
   },
 
+  salesmanRegister: async (formData) => {
+    set({ isLoading: true, authError: null });
+    try {
+      const { data } = await api.post('/auth/salesman/register', formData);
+      localStorage.setItem('pharma_token', data.token);
+      localStorage.setItem('pharma_auth', JSON.stringify({ role: data.role, user: data.salesman }));
+      set({
+        token: data.token,
+        userRole: 'SALESMAN',
+        salesman: data.salesman,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+      connectSocket(`salesman_${data.salesman.id}`);
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Registration failed. Please try again.';
+      set({ isLoading: false, authError: msg });
+      throw new Error(msg);
+    }
+  },
+
   logout: () => {
     const { wholesaler, retailer, mainWholesaler, userRole } = get();
     if (userRole === 'WHOLESALER' && wholesaler) disconnectSocket(`wholesaler_${wholesaler.id}`);
@@ -198,7 +227,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     if (userRole === 'MAIN_WHOLESALER' && mainWholesaler) disconnectSocket(`main_wholesaler_${mainWholesaler.id}`);
     localStorage.removeItem('pharma_token');
     localStorage.removeItem('pharma_auth');
-    set({ token: null, userRole: null, wholesaler: null, retailer: null, admin: null, mainWholesaler: null, isAuthenticated: false, authError: null });
+    set({ token: null, userRole: null, wholesaler: null, retailer: null, admin: null, mainWholesaler: null, salesman: null, isAuthenticated: false, authError: null });
   },
 
   updateWholesaler: async (data) => {

@@ -20,7 +20,7 @@ export const RetailerLoginPage = () => {
   const [loginPass, setLoginPass] = useState('');
 
   const [reg, setReg] = useState({
-    name: '', shop_name: '', phone: '', address: '', gstin: '', password: '', confirm: '',
+    name: '', shop_name: '', phone: '', drug_license_number: '', address: '', gstin: '', password: '', confirm: '',
   });
 
   const { loginRetailer, registerRetailer, authError } = useAuthStore();
@@ -49,6 +49,7 @@ export const RetailerLoginPage = () => {
       await registerRetailer({
         name: reg.name.trim(), shop_name: reg.shop_name.trim(),
         phone: reg.phone.trim(), password: reg.password,
+        dl_number: reg.drug_license_number.trim(),
         address: reg.address.trim() || undefined, gstin: reg.gstin.trim() || undefined,
       });
       navigate('/shop/setup-agencies');
@@ -256,6 +257,16 @@ export const RetailerLoginPage = () => {
                       onChange={e => setReg(p => ({ ...p, gstin: e.target.value.toUpperCase() }))}
                       className={cn(inputBase, 'pl-10 text-xs')} placeholder="27AAAAA0000A1Z5" />
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className={labelBase}>Drug License Number <span className="text-rose-400 lowercase normal-case font-bold">(required)</span></label>
+                <div className="relative">
+                  <Shield size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <input type="text" value={reg.drug_license_number}
+                    onChange={e => setReg(p => ({ ...p, drug_license_number: e.target.value.toUpperCase() }))}
+                    className={cn(inputBase, 'pl-10 text-xs')} placeholder="MH-MUM-123456" required />
                 </div>
               </div>
 

@@ -18,6 +18,7 @@ import wholesalerAgenciesRouter from './routes/wholesalerAgencies';
 import marketplaceRouter from './routes/marketplace';
 import retailerLedgerRouter from './routes/retailerLedger';
 import returnsRouter from './routes/returns';
+import stockComplaintsRouter from './routes/stockComplaints';
 import adminRouter from './routes/admin';
 import schemesRouter from './routes/schemes';
 import purchaseOrdersRouter from './routes/purchaseOrders';
@@ -25,6 +26,14 @@ import mainWholesalerRouter from './routes/mainWholesaler';
 import mainWholesalerSchemesRouter from './routes/mainWholesalerSchemes';
 import mainWholesalerLedgerRouter from './routes/mainWholesalerLedger';
 import mainWholesalerPaymentsRouter from './routes/mainWholesalerPayments';
+import remindersRouter from './routes/reminders';
+import salesmenRouter from './routes/salesmen';
+import beatRoutesRouter from './routes/beatRoutes';
+import callReportsRouter from './routes/callReports';
+import performanceRouter from './routes/performance';
+import salesmanRegisterRouter from './routes/salesmanRegister';
+import salesmanLinksRouter from './routes/salesmanLinks';
+import { startReminderCron } from './routes/reminderCron';
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -96,6 +105,7 @@ app.use('/api/retailer/ledger', retailerLedgerRouter);
 app.use('/api/wholesaler/agencies', wholesalerAgenciesRouter);
 app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/returns', returnsRouter);
+app.use('/api/stock-complaints', stockComplaintsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/schemes', schemesRouter);
 app.use('/api/purchase-orders', purchaseOrdersRouter);
@@ -103,6 +113,13 @@ app.use('/api/main-wholesalers', mainWholesalerRouter);
 app.use('/api/main-wholesalers/schemes', mainWholesalerSchemesRouter);
 app.use('/api/main-wholesalers/ledger', mainWholesalerLedgerRouter);
 app.use('/api/main-wholesalers/payments', mainWholesalerPaymentsRouter);
+app.use('/api/reminders', remindersRouter);
+app.use('/api/salesmen', salesmenRouter);
+app.use('/api/beat-routes', beatRoutesRouter);
+app.use('/api/call-reports', callReportsRouter);
+app.use('/api/performance', performanceRouter);
+app.use('/api/auth', salesmanRegisterRouter);
+app.use('/api/salesman-links', salesmanLinksRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {
@@ -124,4 +141,5 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 httpServer.listen(PORT, () => {
   console.log(`✅  Pharma B2B API running on http://localhost:${PORT}`);
   console.log(`🔌  Socket.io ready for real-time connections`);
+  startReminderCron();
 });

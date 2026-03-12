@@ -25,6 +25,7 @@ export interface Retailer {
   is_active: boolean;
   last_payment_date?: string;
   gstin?: string;
+  drug_license_number?: string;
 }
 
 export type OrderStatus =

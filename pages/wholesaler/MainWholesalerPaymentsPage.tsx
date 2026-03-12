@@ -58,6 +58,8 @@ export const MainWholesalerPaymentsPage = () => {
     const [filterWholesaler, setFilterWholesaler] = useState('ALL');
     const [filterMethod, setFilterMethod] = useState('ALL');
     const [filterStatus, setFilterStatus] = useState('ALL');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     // Modal
     const [showAdd, setShowAdd] = useState(false);
@@ -99,10 +101,18 @@ export const MainWholesalerPaymentsPage = () => {
                 if (search && !p.wholesaler_name.toLowerCase().includes(search.toLowerCase()) &&
                     !p.id.toLowerCase().includes(search.toLowerCase()) &&
                     !(p.notes?.toLowerCase().includes(search.toLowerCase()))) return false;
+                if (dateFrom) {
+                    const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+                    if (new Date(p.created_at) < from) return false;
+                }
+                if (dateTo) {
+                    const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+                    if (new Date(p.created_at) > to) return false;
+                }
                 return true;
             })
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }, [payments, filterWholesaler, filterMethod, filterStatus, search]);
+    }, [payments, filterWholesaler, filterMethod, filterStatus, search, dateFrom, dateTo]);
 
     const handleRecord = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -210,9 +220,30 @@ export const MainWholesalerPaymentsPage = () => {
                     </div>
                 ))}
 
-                {(search || filterWholesaler !== 'ALL' || filterMethod !== 'ALL' || filterStatus !== 'ALL') && (
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                    <Calendar size={14} className="text-slate-400 shrink-0" />
+                    <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={e => setDateFrom(e.target.value)}
+                        className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
+                        title="From date"
+                    />
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                    <Calendar size={14} className="text-slate-400 shrink-0" />
+                    <input
+                        type="date"
+                        value={dateTo}
+                        onChange={e => setDateTo(e.target.value)}
+                        className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
+                        title="To date"
+                    />
+                </div>
+
+                {(search || filterWholesaler !== 'ALL' || filterMethod !== 'ALL' || filterStatus !== 'ALL' || dateFrom || dateTo) && (
                     <button
-                        onClick={() => { setSearch(''); setFilterWholesaler('ALL'); setFilterMethod('ALL'); setFilterStatus('ALL'); }}
+                        onClick={() => { setSearch(''); setFilterWholesaler('ALL'); setFilterMethod('ALL'); setFilterStatus('ALL'); setDateFrom(''); setDateTo(''); }}
                         className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-700 px-3 py-2 bg-rose-50 rounded-xl border border-rose-100 transition-colors ml-auto"
                     >
                         <X size={13} /> Clear

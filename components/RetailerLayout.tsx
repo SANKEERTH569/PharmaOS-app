@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Store, ShoppingCart, ClipboardList, RotateCcw, Wallet,
-  User, LogOut, Bell, CreditCard, Building2, Pill, Search,
+  User, LogOut, Bell, CreditCard, Building2, Pill, Search, AlertTriangle,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
@@ -133,7 +133,20 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
 
       {/* Main Column */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden lg:pl-[260px]">
-        {/* Desktop Header */}
+      {/* Drug License Warning Banner */}
+      {retailer && !retailer.drug_license_number && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-3 shrink-0 z-40">
+          <div className="flex items-center gap-2 text-amber-800">
+            <AlertTriangle size={15} className="shrink-0 text-amber-500" />
+            <span className="text-xs font-semibold">Drug License Number is required to place orders. Please update your profile.</span>
+          </div>
+          <button onClick={() => navigate('/shop/profile')} className="shrink-0 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1 rounded-lg transition-all">
+            Update Now →
+          </button>
+        </div>
+      )}
+
+      {/* Desktop Header */}
         <header className="hidden lg:flex h-16 shrink-0 items-center justify-between px-8 bg-white/80 backdrop-blur-xl border-b border-slate-100/60 sticky top-0 z-30">
           <div>
             <h1 className="text-sm font-bold text-slate-800">{navItems.find(n => n.path === location.pathname)?.label || 'Dashboard'}</h1>

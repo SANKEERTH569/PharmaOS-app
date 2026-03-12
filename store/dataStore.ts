@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme, PurchaseOrder, POStatus, GoodsReceiptNote } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme, PurchaseOrder, POStatus, GoodsReceiptNote, StockComplaint, ComplaintType } from '../types';
 
 
 interface DataState {
@@ -15,6 +15,7 @@ interface DataState {
   retailerLedgerSummary: { global_credit_limit: number, global_current_balance: number, agencies: any[] } | null;
   retailerLedgerHistory: Record<string, LedgerEntry[]>;
   returns: ReturnRequest[];
+  stockComplaints: StockComplaint[];
   schemes: Scheme[];
   purchaseOrders: PurchaseOrder[];
   grns: GoodsReceiptNote[];
@@ -33,6 +34,7 @@ interface DataState {
   fetchRetailerLedgerSummary: () => Promise<void>;
   fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
   fetchReturns: () => Promise<void>;
+  fetchStockComplaints: () => Promise<void>;
   fetchSchemes: () => Promise<void>;
   setSchemes: (schemes: Scheme[]) => void;
   fetchPurchaseOrders: () => Promise<void>;
@@ -59,6 +61,8 @@ interface DataState {
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
   submitReturn: (data: { wholesaler_id: string; reason: ReturnReason; notes?: string; items: any[] }) => Promise<void>;
   updateReturnStatus: (returnId: string, status: 'APPROVED' | 'REJECTED', rejection_note?: string) => Promise<void>;
+  submitStockComplaint: (data: { wholesaler_id: string; order_id?: string; complaint_type: ComplaintType; notes?: string; items: { medicine_name: string; ordered_qty: number; received_qty: number; unit_price: number }[] }) => Promise<void>;
+  updateComplaintStatus: (complaintId: string, status: 'ACKNOWLEDGED' | 'RESOLVED', resolution_note?: string) => Promise<void>;
   removeMedicine: (id: string) => Promise<void>;
   removeOrderItem: (orderId: string, itemId: string) => Promise<void>;
   createScheme: (data: Omit<Scheme, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
@@ -79,6 +83,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   retailerLedgerSummary: null,
   retailerLedgerHistory: {},
   returns: [],
+  stockComplaints: [],
   schemes: [],
   purchaseOrders: [],
   grns: [],
@@ -171,6 +176,10 @@ export const useDataStore = create<DataState>()((set, get) => ({
   fetchReturns: async () => {
     const { data } = await api.get('/returns');
     set({ returns: data });
+  },
+  fetchStockComplaints: async () => {
+    const { data } = await api.get('/stock-complaints');
+    set({ stockComplaints: data });
   },
   fetchSchemes: async () => {
     const { data } = await api.get('/schemes');
@@ -333,6 +342,16 @@ export const useDataStore = create<DataState>()((set, get) => ({
       get().fetchLedger();
       get().fetchRetailers();
     }
+  },
+
+  submitStockComplaint: async (complaintData) => {
+    const { data: created } = await api.post('/stock-complaints', complaintData);
+    set((s) => ({ stockComplaints: [created, ...s.stockComplaints] }));
+  },
+
+  updateComplaintStatus: async (complaintId, status, resolution_note) => {
+    const { data: updated } = await api.patch(`/stock-complaints/${complaintId}/status`, { status, resolution_note });
+    set((s) => ({ stockComplaints: s.stockComplaints.map(c => c.id === complaintId ? updated : c) }));
   },
 
   removeOrderItem: async (orderId, itemId) => {

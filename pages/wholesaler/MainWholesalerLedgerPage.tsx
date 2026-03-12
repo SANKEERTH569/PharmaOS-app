@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Filter, Download } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Filter, Download, X, Calendar } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../utils/api';
 
@@ -24,6 +24,8 @@ export const MainWholesalerLedgerPage = () => {
     const [entries, setEntries] = useState<LedgerEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterWholesaler, setFilterWholesaler] = useState<string>('ALL');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     useEffect(() => {
         const fetchLedger = async () => {
@@ -42,13 +44,22 @@ export const MainWholesalerLedgerPage = () => {
     // Unique wholesalers from the ledger itself for the dropdown
     const uniqueWholesalers = Array.from(new Map(entries.map(e => [e.wholesaler.id, e.wholesaler])).values()) as { id: string, name: string, phone: string }[];
 
-    const filteredEntries = filterWholesaler === 'ALL'
-        ? entries
-        : entries.filter(e => e.wholesaler_id === filterWholesaler);
-
-    const sortedEntries = [...filteredEntries].sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const sortedEntries = useMemo(() => {
+        return [...entries]
+            .filter(e => {
+                if (filterWholesaler !== 'ALL' && e.wholesaler_id !== filterWholesaler) return false;
+                if (dateFrom) {
+                    const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+                    if (new Date(e.created_at) < from) return false;
+                }
+                if (dateTo) {
+                    const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+                    if (new Date(e.created_at) > to) return false;
+                }
+                return true;
+            })
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }, [entries, filterWholesaler, dateFrom, dateTo]);
 
     return (
         <div className="space-y-5 animate-slide-up">
@@ -57,7 +68,7 @@ export const MainWholesalerLedgerPage = () => {
                     <h1 className="text-xl font-bold text-slate-800">General Ledger</h1>
                     <p className="text-slate-500 text-sm font-medium mt-0.5">Full transaction history for {mainWholesaler?.name}.</p>
                 </div>
-                <div className="flex gap-3 w-full sm:w-auto">
+                <div className="flex flex-wrap gap-3 w-full sm:w-auto items-center">
                     <div className="relative">
                         <select
                             className="pl-4 pr-10 py-2.5 border border-slate-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-violet-500/30 appearance-none font-bold text-slate-700 shadow-sm w-full"
@@ -71,6 +82,37 @@ export const MainWholesalerLedgerPage = () => {
                         </select>
                         <Filter className="absolute right-3 top-2.5 text-slate-400 w-4 h-4 pointer-events-none" />
                     </div>
+
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                        <Calendar size={14} className="text-slate-400 shrink-0" />
+                        <input
+                            type="date"
+                            value={dateFrom}
+                            onChange={e => setDateFrom(e.target.value)}
+                            className="outline-none text-sm text-slate-700 font-medium bg-transparent w-[130px]"
+                            title="From date"
+                        />
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                        <Calendar size={14} className="text-slate-400 shrink-0" />
+                        <input
+                            type="date"
+                            value={dateTo}
+                            onChange={e => setDateTo(e.target.value)}
+                            className="outline-none text-sm text-slate-700 font-medium bg-transparent w-[130px]"
+                            title="To date"
+                        />
+                    </div>
+
+                    {(filterWholesaler !== 'ALL' || dateFrom || dateTo) && (
+                        <button
+                            onClick={() => { setFilterWholesaler('ALL'); setDateFrom(''); setDateTo(''); }}
+                            className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:text-rose-800 px-3 py-2 bg-rose-50 rounded-xl border border-rose-100 transition-colors"
+                        >
+                            <X size={13} /> Clear
+                        </button>
+                    )}
+
                     <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm transition-colors">
                         <Download size={15} /> Export
                     </button>

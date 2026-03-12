@@ -20,6 +20,7 @@ export const RetailerProfilePage = () => {
     phone: retailer?.phone || '',
     address: retailer?.address || '',
     gstin: retailer?.gstin || '',
+    drug_license_number: retailer?.drug_license_number || '',
   });
 
   const handleSave = (e: React.FormEvent) => {
@@ -63,6 +64,8 @@ export const RetailerProfilePage = () => {
             <h2 className="text-xl font-extrabold text-slate-800">{retailer.shop_name || 'My Shop'}</h2>
             <p className="text-sm text-slate-500 font-medium">{retailer.name} · {retailer.phone}</p>
             {retailer.gstin && <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-semibold"><Shield size={10} className="text-emerald-500" /> GSTIN: {retailer.gstin}</p>}
+            {retailer.drug_license_number && <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-semibold"><FileText size={10} className="text-blue-500" /> DL: {retailer.drug_license_number}</p>}
+            {!retailer.drug_license_number && <p className="text-[10px] text-amber-500 mt-0.5 flex items-center gap-1 font-semibold"><FileText size={10} /> Drug License missing — please update</p>}
           </div>
         </div>
       </motion.div>
@@ -121,6 +124,7 @@ export const RetailerProfilePage = () => {
               { label: 'Phone', key: 'phone', icon: Phone, placeholder: 'Phone number' },
               { label: 'Address', key: 'address', icon: MapPin, placeholder: 'Business address' },
               { label: 'GSTIN', key: 'gstin', icon: FileText, placeholder: 'GST Identification Number' },
+              { label: 'Drug License Number', key: 'drug_license_number', icon: Shield, placeholder: 'MH-MUM-123456' },
             ].map(field => {
               const Icon = field.icon;
               return (
@@ -134,6 +138,7 @@ export const RetailerProfilePage = () => {
                       onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
                       className="w-full text-sm border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all hover:border-slate-300"
+                      required={field.key === 'drug_license_number'}
                     />
                   ) : (
                     <p className="text-sm text-slate-700 py-3 font-medium">{(formData as any)[field.key] || <span className="text-slate-300 italic">Not set</span>}</p>
@@ -145,7 +150,7 @@ export const RetailerProfilePage = () => {
 
           {editMode && (
             <div className="flex gap-2 mt-6">
-              <button type="button" onClick={() => { setEditMode(false); setFormData({ name: retailer.name, shop_name: retailer.shop_name, phone: retailer.phone, address: retailer.address || '', gstin: retailer.gstin || '' }); }}
+              <button type="button" onClick={() => { setEditMode(false); setFormData({ name: retailer.name, shop_name: retailer.shop_name, phone: retailer.phone, address: retailer.address || '', gstin: retailer.gstin || '', drug_license_number: retailer.drug_license_number || '' }); }}
                 className="flex-1 py-3 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
               <motion.button whileTap={{ scale: 0.97 }} type="submit" className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/20">
                 <Save size={14} /> Save Changes

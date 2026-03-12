@@ -155,6 +155,26 @@ router.post('/login', async (req, res) => {
       return res.json({ token, user: safeAdmin, role: 'ADMIN' });
     }
 
+    if (role === 'SALESMAN') {
+      if (!username) return res.status(400).json({ error: 'username is required for salesman login' });
+
+      const salesman = await prisma.salesman.findUnique({ where: { username } });
+      if (!salesman) return res.status(401).json({ error: 'Invalid username or password' });
+      if (!salesman.is_active) return res.status(403).json({ error: 'Account deactivated. Contact your manager.' });
+
+      const valid = await bcrypt.compare(password, salesman.password_hash);
+      if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
+
+      const token = jwt.sign(
+        { id: salesman.id, role: 'SALESMAN', wholesaler_id: salesman.wholesaler_id, salesman_id: salesman.id },
+        process.env.JWT_SECRET!,
+        { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
+      );
+
+      const { password_hash: _pw, ...safeSalesman } = salesman;
+      return res.json({ token, user: safeSalesman, role: 'SALESMAN' });
+    }
+
     if (role === 'MAIN_WHOLESALER') {
       if (!username) return res.status(400).json({ error: 'username is required for wholesaler login' });
 

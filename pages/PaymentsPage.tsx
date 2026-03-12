@@ -40,6 +40,8 @@ export const PaymentsPage = () => {
   const [filterRetailer, setFilterRetailer] = useState('ALL');
   const [filterMethod, setFilterMethod] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   // ── Record Payment Modal ─────────────────────────────────────────────────
   const [showAdd, setShowAdd] = useState(false);
@@ -69,10 +71,18 @@ export const PaymentsPage = () => {
         if (search && !p.retailer_name.toLowerCase().includes(search.toLowerCase()) &&
           !p.id.toLowerCase().includes(search.toLowerCase()) &&
           !(p.notes?.toLowerCase().includes(search.toLowerCase()))) return false;
+        if (dateFrom) {
+          const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+          if (new Date(p.created_at) < from) return false;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+          if (new Date(p.created_at) > to) return false;
+        }
         return true;
       })
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [myPayments, filterRetailer, filterMethod, filterStatus, search]);
+  }, [myPayments, filterRetailer, filterMethod, filterStatus, search, dateFrom, dateTo]);
 
   const handleExport = () => {
     const header = 'Payment ID,Retailer,Date,Method,Amount,Status,Notes';
@@ -194,9 +204,30 @@ export const PaymentsPage = () => {
           </div>
         ))}
 
-        {(search || filterRetailer !== 'ALL' || filterMethod !== 'ALL' || filterStatus !== 'ALL') && (
+        <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-100 rounded-xl px-3 py-2">
+          <Calendar size={14} className="text-slate-400 shrink-0" />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
+            title="From date"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-100 rounded-xl px-3 py-2">
+          <Calendar size={14} className="text-slate-400 shrink-0" />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
+            title="To date"
+          />
+        </div>
+
+        {(search || filterRetailer !== 'ALL' || filterMethod !== 'ALL' || filterStatus !== 'ALL' || dateFrom || dateTo) && (
           <button
-            onClick={() => { setSearch(''); setFilterRetailer('ALL'); setFilterMethod('ALL'); setFilterStatus('ALL'); }}
+            onClick={() => { setSearch(''); setFilterRetailer('ALL'); setFilterMethod('ALL'); setFilterStatus('ALL'); setDateFrom(''); setDateTo(''); }}
             className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-800 px-3 py-2 bg-rose-50 rounded-xl border border-rose-100 transition-colors"
           >
             <X size={13} /> Clear filters

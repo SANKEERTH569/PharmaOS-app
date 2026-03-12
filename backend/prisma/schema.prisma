@@ -61,10 +61,19 @@ model Wholesaler {
   purchase_orders   PurchaseOrder[]
   grns              GoodsReceiptNote[]
   supply_orders     SupplyOrder[]
+  stock_complaints  StockComplaint[]
 
   mw_connections    MainWholesalerConnection[]
   mw_ledger_entries MainWholesalerLedgerEntry[]
   mw_payments       MainWholesalerPayment[]
+  reminder_logs     ReminderLog[]
+
+  // Sales Force Management
+  salesmen          Salesman[]
+  beat_routes       BeatRoute[]
+  call_reports      DailyCallReport[]
+  salesman_targets  SalesmanTarget[]
+  salesman_links    SalesmanWholesalerLink[]
 }
 
 model Retailer {
@@ -91,6 +100,12 @@ model Retailer {
   notifications    Notification[]
   agencies         RetailerAgency[]
   return_requests  ReturnRequest[]
+  stock_complaints StockComplaint[]
+  reminder_logs    ReminderLog[]
+
+  // Sales Force Management
+  beat_assignments BeatRetailer[]
+  call_reports     DailyCallReport[]
 }
 
 model RetailerAgency {
@@ -178,6 +193,8 @@ model Order {
   retailer_id   String
   wholesaler    Wholesaler  @relation(fields: [wholesaler_id], references: [id])
   retailer      Retailer    @relation(fields: [retailer_id], references: [id])
+  salesman_id   String?
+  salesman      Salesman?   @relation(fields: [salesman_id], references: [id])
   retailer_name String
   status        OrderStatus @default(PENDING)
   sub_total     Float
@@ -193,6 +210,7 @@ model Order {
 }
 
 enum OrderStatus {
+  PENDING_RETAILER
   PENDING
   ACCEPTED
   DISPATCHED
@@ -332,6 +350,44 @@ model ReturnItem {
   unit_price      Float
   total_price     Float
   reason_detail   String?
+}
+
+enum ComplaintType {
+  SHORT_DELIVERY
+  WRONG_ITEM
+  MISSING_ITEM
+}
+
+enum ComplaintStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+}
+
+model StockComplaint {
+  id              String          @id @default(cuid())
+  wholesaler_id   String
+  retailer_id     String
+  wholesaler      Wholesaler      @relation(fields: [wholesaler_id], references: [id])
+  retailer        Retailer        @relation(fields: [retailer_id], references: [id])
+  order_id        String?
+  complaint_type  ComplaintType
+  status          ComplaintStatus @default(OPEN)
+  notes           String?
+  resolution_note String?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+  items           StockComplaintItem[]
+}
+
+model StockComplaintItem {
+  id            String         @id @default(cuid())
+  complaint_id  String
+  complaint     StockComplaint @relation(fields: [complaint_id], references: [id], onDelete: Cascade)
+  medicine_name String
+  ordered_qty   Int
+  received_qty  Int
+  unit_price    Float
 }
 
 model Admin {
@@ -572,4 +628,134 @@ model MainWholesalerPayment {
   notes              String?
   razorpay_id        String?
   created_at         DateTime       @default(now())
+}
+
+// ── Payment Reminder Logs ──────────────────────────────────────────────────
+
+model ReminderLog {
+  id            String     @id @default(cuid())
+  wholesaler_id String
+  retailer_id   String
+  wholesaler    Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  retailer      Retailer   @relation(fields: [retailer_id], references: [id])
+  channel       String     // WHATSAPP | SMS | IN_APP
+  status        String     // SENT | FAILED | SKIPPED
+  amount_due    Float
+  phone         String
+  error         String?
+  sent_at       DateTime   @default(now())
+
+  @@index([wholesaler_id, sent_at])
+  @@index([retailer_id, sent_at])
+}
+
+// ── Sales Rep & Field Force Management ────────────────────────────────────
+
+model Salesman {
+  id            String     @id @default(cuid())
+  wholesaler_id String?
+  wholesaler    Wholesaler? @relation(fields: [wholesaler_id], references: [id])
+  name          String
+  phone         String     @unique
+  username      String     @unique
+  password_hash String
+  company_name  String?    // Pharma company they represent
+  employee_id   String?    // Company employee/MR code
+  territory     String?    // e.g., "Hyderabad North"
+  is_active     Boolean    @default(true)
+  created_at    DateTime   @default(now())
+
+  beat_routes  BeatRoute[]
+  call_reports DailyCallReport[]
+  targets      SalesmanTarget[]
+  orders       Order[]
+  links        SalesmanWholesalerLink[]
+}
+
+model SalesmanWholesalerLink {
+  id            String     @id @default(cuid())
+  salesman_id   String
+  salesman      Salesman   @relation(fields: [salesman_id], references: [id])
+  wholesaler_id String
+  wholesaler    Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  status        LinkStatus @default(PENDING)
+  message       String?    // Optional message from salesman
+  created_at    DateTime   @default(now())
+  updated_at    DateTime   @updatedAt
+
+  @@unique([salesman_id, wholesaler_id])
+}
+
+enum LinkStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BeatRoute {
+  id            String     @id @default(cuid())
+  wholesaler_id String
+  wholesaler    Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  salesman_id   String?
+  salesman      Salesman?  @relation(fields: [salesman_id], references: [id])
+  name          String
+  description   String?
+  created_at    DateTime   @default(now())
+
+  retailers BeatRetailer[]
+}
+
+model BeatRetailer {
+  id          String    @id @default(cuid())
+  beat_id     String
+  beat        BeatRoute @relation(fields: [beat_id], references: [id], onDelete: Cascade)
+  retailer_id String
+  retailer    Retailer  @relation(fields: [retailer_id], references: [id])
+
+  @@unique([beat_id, retailer_id])
+}
+
+enum CallOutcome {
+  ORDER_TAKEN
+  NO_ORDER
+  PAYMENT_COLLECTED
+  NOT_VISITED
+}
+
+model DailyCallReport {
+  id             String      @id @default(cuid())
+  wholesaler_id  String
+  wholesaler     Wholesaler  @relation(fields: [wholesaler_id], references: [id])
+  salesman_id    String
+  salesman       Salesman    @relation(fields: [salesman_id], references: [id])
+  retailer_id    String
+  retailer       Retailer    @relation(fields: [retailer_id], references: [id])
+  visit_date     DateTime    @default(now())
+  outcome        CallOutcome
+  order_id       String?
+  payment_amount  Float?
+  payment_method  String?   // CASH | UPI | CHEQUE | BANK_TRANSFER
+  notes          String?
+  lat            Float?
+  lng            Float?
+  created_at     DateTime    @default(now())
+
+  @@index([wholesaler_id, visit_date])
+  @@index([salesman_id, visit_date])
+}
+
+model SalesmanTarget {
+  id                    String     @id @default(cuid())
+  wholesaler_id         String
+  wholesaler            Wholesaler @relation(fields: [wholesaler_id], references: [id])
+  salesman_id           String
+  salesman              Salesman   @relation(fields: [salesman_id], references: [id])
+  month                 Int
+  year                  Int
+  order_target          Float      @default(0)
+  collection_target     Float      @default(0)
+  new_retailers_target  Int        @default(0)
+  created_at            DateTime   @default(now())
+
+  @@unique([salesman_id, month, year])
 }

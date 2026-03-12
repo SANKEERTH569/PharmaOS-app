@@ -61,6 +61,17 @@ import { MainWholesalerGstPage } from './pages/wholesaler/MainWholesalerGstPage'
 import { MainWholesalerCollectionPage } from './pages/wholesaler/MainWholesalerCollectionPage';
 import { MainWholesalerSettingsPage } from './pages/wholesaler/MainWholesalerSettingsPage';
 import { MainWholesalerAlertsPage } from './pages/wholesaler/MainWholesalerAlertsPage';
+import { SalesmenPage } from './pages/SalesmenPage';
+import { SalesmanRequestsPage } from './pages/wholesaler/SalesmanRequestsPage';
+import { BeatRoutesPage } from './pages/BeatRoutesPage';
+import { CallReportsPage } from './pages/CallReportsPage';
+import { SalesPerformancePage } from './pages/SalesPerformancePage';
+import { SalesmanLayout } from './components/SalesmanLayout';
+import { SalesmanDashboard } from './pages/salesman/SalesmanDashboard';
+import { SalesmanCallReportPage } from './pages/salesman/SalesmanCallReportPage';
+import { SalesmanCollectPage } from './pages/salesman/SalesmanCollectPage';
+import { SalesmanRegisterPage } from './pages/auth/SalesmanRegisterPage';
+import { SalesmanConnectPage } from './pages/salesman/SalesmanConnectPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -75,7 +86,7 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
   if (userRole !== allowedRole) {
     // Redirect to appropriate dashboard based on actual role
-    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : '/shop';
+    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : userRole === 'SALESMAN' ? '/salesman' : '/shop';
     return <Navigate to={dest} replace />;
   }
 
@@ -85,6 +96,10 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
   if (allowedRole === 'MAIN_WHOLESALER') {
     return <MainWholesalerLayout>{children}</MainWholesalerLayout>;
+  }
+
+  if (allowedRole === 'SALESMAN') {
+    return <SalesmanLayout>{children}</SalesmanLayout>;
   }
 
   return allowedRole === 'WHOLESALER' ? (
@@ -309,6 +324,65 @@ function App() {
             <SchemesPage />
           </ProtectedRoute>
         } />
+        <Route path="/salesmen/requests" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <SalesmanRequestsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/salesmen" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <SalesmenPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/beat-routes" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <BeatRoutesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/call-reports" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <CallReportsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/sales-performance" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <SalesPerformancePage />
+          </ProtectedRoute>
+        } />
+
+        {/* Salesman Routes */}
+        <Route path="/salesman/connect" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanConnectPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/salesman/wholesalers" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanLayout>
+              <SalesmanConnectPage embedded />
+            </SalesmanLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/salesman" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/salesman/order" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanCallReportPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/salesman/reports" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanCallReportPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/salesman/collect" element={
+          <ProtectedRoute allowedRole="SALESMAN">
+            <SalesmanCollectPage />
+          </ProtectedRoute>
+        } />
 
         {/* Retailer Routes */}
         <Route path="/shop" element={
@@ -357,6 +431,8 @@ function App() {
           </ProtectedRoute>
         } />
 
+        <Route path="/register/salesman" element={<SalesmanRegisterPage />} />
+        
         {/* Admin Routes */}
         <Route path="/admin" element={
           <ProtectedRoute allowedRole="ADMIN">

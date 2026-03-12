@@ -53,7 +53,7 @@ const MedicineCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("bg-white rounded-2xl border border-slate-100/80 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden group", isOutOfStock && "opacity-60")}
+      className={cn("bg-white rounded-2xl border border-slate-100/80 shadow-sm hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300 overflow-hidden group")}
     >
       <div className="p-4 cursor-pointer" onClick={onDetail}>
         {/* Top row: Type + Stock */}
@@ -126,18 +126,36 @@ const MedicineCard: React.FC<{
 
       {/* Cart Controls */}
       <div className="px-4 pb-4" onClick={e => e.stopPropagation()}>
-        {isOutOfStock ? (
-          <div className="py-2.5 text-center text-xs text-slate-400 bg-slate-50 rounded-xl font-medium">Unavailable</div>
-        ) : cartQty > 0 ? (
+        {cartQty > 0 ? (
           <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-1.5 border border-blue-100/50">
             <motion.button whileTap={{ scale: 0.9 }} onClick={onDec} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white hover:bg-blue-100 text-blue-600 transition-colors shadow-sm"><Minus size={14} strokeWidth={2.5} /></motion.button>
             <span className="text-sm font-extrabold text-blue-700 tabular-nums">{cartQty}</span>
             <motion.button whileTap={{ scale: 0.9 }} onClick={onInc} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white hover:bg-blue-100 text-blue-600 transition-colors shadow-sm"><Plus size={14} strokeWidth={2.5} /></motion.button>
           </div>
         ) : (
-          <motion.button whileTap={{ scale: 0.97 }} onClick={onAdd} className="w-full py-2.5 text-xs font-bold text-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl transition-all flex items-center justify-center gap-1.5 border border-blue-100/50">
-            <Plus size={14} strokeWidth={2.5} /> Add to Cart
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={onAdd}
+            className={cn(
+              "w-full py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 border",
+              isOutOfStock
+                ? "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200/60"
+                : "text-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 border-blue-100/50"
+            )}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            {isOutOfStock ? 'Pre-order' : 'Add to Cart'}
           </motion.button>
+        )}
+        {isOutOfStock && (
+          <p className="text-[10px] text-amber-600 text-center mt-1.5 font-medium flex items-center justify-center gap-1">
+            <AlertTriangle size={10} className="shrink-0" /> Out of stock — supplier will fulfill on restock
+          </p>
+        )}
+        {!isOutOfStock && isLow && (
+          <p className="text-[10px] text-amber-600 text-center mt-1.5 font-medium">
+            Only {med.stock_qty} left — order before it runs out
+          </p>
         )}
       </div>
 

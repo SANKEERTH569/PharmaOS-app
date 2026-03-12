@@ -1,12 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER' | 'SALESMAN';
+
 export interface AuthPayload {
   id: string;
-  role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER';
+  role: UserRole;
   wholesaler_id: string | null;
   retailer_id?: string;
   main_wholesaler_id?: string;
+  salesman_id?: string;
 }
 
 declare global {
@@ -31,7 +34,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const requireRole = (role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER') => {
+export const requireRole = (role: UserRole) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.user?.role !== role) {
       return res.status(403).json({ error: `Forbidden: ${role} role required` });
@@ -40,7 +43,7 @@ export const requireRole = (role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WH
   };
 };
 
-export const requireAnyRole = (roles: Array<'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER'>) => {
+export const requireAnyRole = (roles: UserRole[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ error: `Forbidden: One of [${roles.join(', ')}] roles required` });
