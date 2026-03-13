@@ -20,6 +20,7 @@ import retailerLedgerRouter from './routes/retailerLedger';
 import returnsRouter from './routes/returns';
 import stockComplaintsRouter from './routes/stockComplaints';
 import adminRouter from './routes/admin';
+import adminControlRouter from './routes/adminControl';
 import schemesRouter from './routes/schemes';
 import purchaseOrdersRouter from './routes/purchaseOrders';
 import mainWholesalerRouter from './routes/mainWholesaler';
@@ -33,6 +34,7 @@ import callReportsRouter from './routes/callReports';
 import performanceRouter from './routes/performance';
 import salesmanRegisterRouter from './routes/salesmanRegister';
 import salesmanLinksRouter from './routes/salesmanLinks';
+import supportTicketsRouter from './routes/supportTickets';
 import { startReminderCron } from './routes/reminderCron';
 
 const app = express();
@@ -106,6 +108,7 @@ app.use('/api/marketplace', marketplaceRouter);
 app.use('/api/returns', returnsRouter);
 app.use('/api/stock-complaints', stockComplaintsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/admin/control', adminControlRouter);
 app.use('/api/schemes', schemesRouter);
 app.use('/api/purchase-orders', purchaseOrdersRouter);
 app.use('/api/main-wholesalers', mainWholesalerRouter);
@@ -119,6 +122,7 @@ app.use('/api/call-reports', callReportsRouter);
 app.use('/api/performance', performanceRouter);
 app.use('/api/auth', salesmanRegisterRouter);
 app.use('/api/salesman-links', salesmanLinksRouter);
+app.use('/api/support-tickets', supportTicketsRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

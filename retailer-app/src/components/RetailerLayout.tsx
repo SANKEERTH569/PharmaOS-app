@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Store, ShoppingCart, ClipboardList, RotateCcw, Wallet,
-  User, LogOut, Bell, CreditCard, Building2, Pill, Search, AlertTriangle,
+  LogOut, Bell, CreditCard, Building2, Pill, AlertTriangle, ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
@@ -85,7 +85,7 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
     { icon: Wallet, label: 'Accounts', path: '/shop/ledger', group: 'Account' },
     { icon: CreditCard, label: 'Payments', path: '/shop/payments', group: 'Account' },
     { icon: Building2, label: 'Agencies', path: '/shop/setup-agencies', group: 'Account' },
-    { icon: User, label: 'Profile', path: '/shop/profile', group: 'Account' },
+    { icon: ShieldAlert, label: 'Stock Complaints', path: '/shop/returns?tab=complaints', group: 'Account' },
   ];
 
   const grouped = navItems.reduce<Record<string, SideNavItem[]>>((acc, item) => { (acc[item.group] = acc[item.group] || []).push(item); return acc; }, {});
@@ -209,7 +209,7 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
           <BottomTab icon={ClipboardList} label="Orders" path="/shop/orders" active={location.pathname === '/shop/orders'} />
           <BottomTab icon={ShoppingCart} label="Cart" path="/shop/cart" active={location.pathname === '/shop/cart'} badge={cartCount} isCenter />
           <BottomTab icon={Wallet} label="Accounts" path="/shop/ledger" active={location.pathname === '/shop/ledger'} />
-          <BottomTab icon={User} label="Profile" path="/shop/profile" active={location.pathname === '/shop/profile'} />
+          <BottomTab icon={ShieldAlert} label="Complaints" path="/shop/returns?tab=complaints" active={location.pathname === '/shop/returns'} />
         </nav>
       </div>
     </div>

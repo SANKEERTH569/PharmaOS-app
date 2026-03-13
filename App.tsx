@@ -38,8 +38,14 @@ import { WholesalerManagement } from './pages/admin/WholesalerManagement';
 import { RetailerManagement } from './pages/admin/RetailerManagement';
 import { AdminOrdersPage } from './pages/admin/AdminOrdersPage';
 import { PlanManagement } from './pages/admin/PlanManagement';
+import { RevenueManagement } from './pages/admin/RevenueManagement';
 import { ActivityLog } from './pages/admin/ActivityLog';
 import { CouponManagement } from './pages/admin/CouponManagement';
+import { IssuesControlPage } from './pages/admin/IssuesControlPage';
+import { CollectionsControlPage } from './pages/admin/CollectionsControlPage';
+import { SalesforceControlPage } from './pages/admin/SalesforceControlPage';
+import { InventoryControlPage } from './pages/admin/InventoryControlPage';
+import { ComplianceControlPage } from './pages/admin/ComplianceControlPage';
 import { GstDashboardPage } from './pages/GstDashboardPage';
 import { QuickSalePage } from './pages/QuickSalePage';
 import { SchemesPage } from './pages/SchemesPage';
@@ -73,6 +79,7 @@ import { SalesmanCallReportPage } from './pages/salesman/SalesmanCallReportPage'
 import { SalesmanCollectPage } from './pages/salesman/SalesmanCollectPage';
 import { SalesmanRegisterPage } from './pages/auth/SalesmanRegisterPage';
 import { SalesmanConnectPage } from './pages/salesman/SalesmanConnectPage';
+import { SupportTicketsPage } from './pages/SupportTicketsPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -204,6 +211,11 @@ function App() {
             <MainWholesalerSettingsPage />
           </ProtectedRoute>
         } />
+        <Route path="/wholesaler/support-tickets" element={
+          <ProtectedRoute allowedRole="MAIN_WHOLESALER">
+            <SupportTicketsPage />
+          </ProtectedRoute>
+        } />
         <Route path="/wholesaler/alerts" element={
           <ProtectedRoute allowedRole="MAIN_WHOLESALER">
             <MainWholesalerAlertsPage />
@@ -289,6 +301,11 @@ function App() {
         <Route path="/settings" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <SettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/support-tickets" element={
+          <ProtectedRoute allowedRole="WHOLESALER">
+            <SupportTicketsPage />
           </ProtectedRoute>
         } />
         <Route path="/rack-manager" element={
@@ -458,7 +475,7 @@ function App() {
         } />
         <Route path="/admin/revenue" element={
           <ProtectedRoute allowedRole="ADMIN">
-            <PlanManagement />
+            <RevenueManagement />
           </ProtectedRoute>
         } />
         <Route path="/admin/plans" element={
@@ -474,6 +491,31 @@ function App() {
         <Route path="/admin/coupons" element={
           <ProtectedRoute allowedRole="ADMIN">
             <CouponManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/issues" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <IssuesControlPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/collections" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <CollectionsControlPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/salesforce" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <SalesforceControlPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/inventory" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <InventoryControlPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/admin/compliance" element={
+          <ProtectedRoute allowedRole="ADMIN">
+            <ComplianceControlPage />
           </ProtectedRoute>
         } />
 

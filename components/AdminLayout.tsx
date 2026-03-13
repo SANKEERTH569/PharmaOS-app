@@ -3,7 +3,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Users, Briefcase, ShoppingCart, TrendingUp,
-    CreditCard, Activity, LogOut, Menu, X, Shield, Ticket,
+    CreditCard, Activity, LogOut, Menu, X, Shield, Ticket, ShieldAlert, Wallet, Users2, PackageSearch, FileCheck2,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../utils/cn';
@@ -37,6 +37,16 @@ const navGroups = [
             { icon: Activity, label: 'Activity Log', path: '/admin/activity' },
         ],
     },
+    {
+        label: 'Control Center',
+        items: [
+            { icon: ShieldAlert, label: 'Issues', path: '/admin/issues' },
+            { icon: Wallet, label: 'Collections', path: '/admin/collections' },
+            { icon: Users2, label: 'Salesforce', path: '/admin/salesforce' },
+            { icon: PackageSearch, label: 'Inventory', path: '/admin/inventory' },
+            { icon: FileCheck2, label: 'Compliance', path: '/admin/compliance' },
+        ],
+    },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -48,6 +58,11 @@ const PAGE_TITLES: Record<string, string> = {
     '/admin/plans': 'Plans & Billing',
     '/admin/coupons': 'Coupons & Plan Requests',
     '/admin/activity': 'Activity Log',
+    '/admin/issues': 'Issues Control Center',
+    '/admin/collections': 'Collections Control',
+    '/admin/salesforce': 'Salesforce Control',
+    '/admin/inventory': 'Inventory Control',
+    '/admin/compliance': 'Compliance Control',
 };
 
 export const AdminLayout = ({ children }: { children?: React.ReactNode }) => {

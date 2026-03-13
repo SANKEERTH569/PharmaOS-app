@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
   RotateCcw, Plus, Clock, CheckCircle, XCircle, Building2,
   ChevronDown, ChevronRight, Package, Calendar, Search,
@@ -27,10 +28,18 @@ interface SelectedReturnItem {
 }
 
 export const RetailerReturnsPage = () => {
+  const [searchParams] = useSearchParams();
   const { returns, fetchReturns, submitReturn, orders, fetchOrders, stockComplaints, fetchStockComplaints, submitStockComplaint } = useDataStore();
   const { retailer } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<'RETURNS' | 'COMPLAINTS'>('RETURNS');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'complaints') {
+      setActiveTab('COMPLAINTS');
+    }
+  }, [searchParams]);
 
   // ── Return form state ──────────────────────────────────────────────────
   const [showForm, setShowForm] = useState(false);
@@ -55,9 +64,9 @@ export const RetailerReturnsPage = () => {
   const [expandedComplaint, setExpandedComplaint] = useState<string | null>(null);
   const [complaintFilter, setComplaintFilter] = useState<'ALL' | 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'>('ALL');
 
-  interface ComplaintItem { medicine_name: string; ordered_qty: number; received_qty: number; unit_price: number; }
+  interface ComplaintItem { order_item_key: string; medicine_name: string; ordered_qty: number; received_qty: number; unit_price: number; }
   const [complaintItems, setComplaintItems] = useState<ComplaintItem[]>([
-    { medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 },
+    { order_item_key: '', medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 },
   ]);
 
   useEffect(() => {
@@ -155,7 +164,8 @@ export const RetailerReturnsPage = () => {
 
   const handleSubmitComplaint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!complaintWholesaler || complaintItems.some(i => !i.medicine_name.trim())) return;
+    const selectedComplaintItems = complaintItems.filter(i => i.order_item_key && i.medicine_name.trim());
+    if (!complaintWholesaler || !complaintOrderId || selectedComplaintItems.length === 0) return;
     setSubmittingComplaint(true);
     try {
       await submitStockComplaint({
@@ -163,12 +173,17 @@ export const RetailerReturnsPage = () => {
         order_id: complaintOrderId || undefined,
         complaint_type: complaintType,
         notes: complaintNotes || undefined,
-        items: complaintItems.filter(i => i.medicine_name.trim()),
+        items: selectedComplaintItems.map(({ medicine_name, ordered_qty, received_qty, unit_price }) => ({
+          medicine_name,
+          ordered_qty,
+          received_qty,
+          unit_price,
+        })),
       });
       setShowComplaintForm(false);
       setComplaintNotes('');
       setComplaintOrderId('');
-      setComplaintItems([{ medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 }]);
+      setComplaintItems([{ order_item_key: '', medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 }]);
     } catch (err: any) {
       alert(err?.response?.data?.error || 'Failed to submit complaint');
     } finally {
@@ -181,6 +196,23 @@ export const RetailerReturnsPage = () => {
     if (!complaintWholesaler || !retailer) return [];
     return orders.filter(o => o.wholesaler_id === complaintWholesaler && o.retailer_id === retailer.id && o.status === 'DELIVERED');
   }, [complaintWholesaler, orders, retailer]);
+
+  const complaintOrderItems = useMemo(() => {
+    if (!complaintOrderId) return [];
+    const selectedOrder = complaintOrders.find(o => o.id === complaintOrderId);
+    if (!selectedOrder?.items?.length) return [];
+
+    return selectedOrder.items.map((item: any, idx: number) => ({
+      key: `${item.medicine_id || item.medicine_name}-${idx}`,
+      medicine_name: item.medicine_name || '',
+      ordered_qty: Number(item.qty) || 0,
+      unit_price: Number(item.unit_price) || 0,
+    }));
+  }, [complaintOrderId, complaintOrders]);
+
+  useEffect(() => {
+    setComplaintItems([{ order_item_key: '', medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 }]);
+  }, [complaintOrderId]);
 
   const myComplaints = stockComplaints.filter(c => c.retailer_id === retailer?.id);
   const filteredComplaints = complaintFilter === 'ALL' ? myComplaints : myComplaints.filter(c => c.status === complaintFilter);
@@ -439,16 +471,16 @@ export const RetailerReturnsPage = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Supplier</label>
-                        <select value={complaintWholesaler} onChange={e => setComplaintWholesaler(e.target.value)}
+                        <select value={complaintWholesaler} onChange={e => { setComplaintWholesaler(e.target.value); setComplaintOrderId(''); }}
                           className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none">
                           {agencies.map((a: any) => <option key={a.wholesaler_id} value={a.wholesaler_id}>{a.wholesaler?.name || 'Agency'}</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Order (optional)</label>
+                        <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Order Invoice</label>
                         <select value={complaintOrderId} onChange={e => setComplaintOrderId(e.target.value)}
-                          className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none">
-                          <option value="">— Select order —</option>
+                          className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:ring-2 focus:ring-rose-100 focus:border-rose-400 outline-none" required>
+                          <option value="">— Select invoice —</option>
                           {complaintOrders.map((o: any) => (
                             <option key={o.id} value={o.id}>
                               #{o.invoice_no || o.id.slice(-6).toUpperCase()} · {new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
@@ -480,8 +512,12 @@ export const RetailerReturnsPage = () => {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Items</label>
-                        <button type="button" onClick={() => setComplaintItems(prev => [...prev, { medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 }])}
-                          className="text-[10px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setComplaintItems(prev => [...prev, { order_item_key: '', medicine_name: '', ordered_qty: 0, received_qty: 0, unit_price: 0 }])}
+                          disabled={!complaintOrderId || complaintOrderItems.length === 0}
+                          className="text-[10px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5 disabled:text-slate-300 disabled:cursor-not-allowed"
+                        >
                           <Plus size={11} /> Add Item
                         </button>
                       </div>
@@ -489,14 +525,40 @@ export const RetailerReturnsPage = () => {
                         {complaintItems.map((ci, idx) => (
                           <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-slate-50/60 rounded-xl p-2.5">
                             <div className="col-span-5">
-                              <input value={ci.medicine_name} onChange={e => setComplaintItems(prev => prev.map((x, i) => i === idx ? { ...x, medicine_name: e.target.value } : x))}
-                                placeholder="Medicine name" required
-                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-rose-200 focus:border-rose-300 outline-none bg-white" />
+                              <select
+                                value={ci.order_item_key}
+                                onChange={e => {
+                                  const selectedKey = e.target.value;
+                                  const pickedItem = complaintOrderItems.find(item => item.key === selectedKey);
+                                  setComplaintItems(prev => prev.map((x, i) => i === idx
+                                    ? {
+                                      ...x,
+                                      order_item_key: selectedKey,
+                                      medicine_name: pickedItem?.medicine_name || '',
+                                      ordered_qty: pickedItem?.ordered_qty || 0,
+                                      received_qty: pickedItem?.ordered_qty || 0,
+                                      unit_price: pickedItem?.unit_price || 0,
+                                    }
+                                    : x));
+                                }}
+                                required
+                                disabled={!complaintOrderId || complaintOrderItems.length === 0}
+                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-rose-200 focus:border-rose-300 outline-none bg-white disabled:bg-slate-100 disabled:text-slate-400"
+                              >
+                                <option value="">{complaintOrderId ? 'Select medicine' : 'Select invoice first'}</option>
+                                {complaintOrderItems
+                                  .filter(item => !complaintItems.some((x, i) => i !== idx && x.order_item_key === item.key))
+                                  .map(item => (
+                                    <option key={item.key} value={item.key}>
+                                      {item.medicine_name}
+                                    </option>
+                                  ))}
+                              </select>
                             </div>
                             <div className="col-span-2">
-                              <input type="number" min={0} value={ci.ordered_qty || ''} onChange={e => setComplaintItems(prev => prev.map((x, i) => i === idx ? { ...x, ordered_qty: +e.target.value } : x))}
+                              <input type="number" min={0} value={ci.ordered_qty || ''} readOnly
                                 placeholder="Ordered"
-                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-rose-200 focus:border-rose-300 outline-none bg-white" />
+                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none bg-slate-100 text-slate-600" />
                             </div>
                             <div className="col-span-2">
                               <input type="number" min={0} value={ci.received_qty || ''} onChange={e => setComplaintItems(prev => prev.map((x, i) => i === idx ? { ...x, received_qty: +e.target.value } : x))}
@@ -505,9 +567,9 @@ export const RetailerReturnsPage = () => {
                                   ci.received_qty < ci.ordered_qty && ci.ordered_qty > 0 ? "border-rose-300 focus:ring-rose-200 focus:border-rose-300 text-rose-700" : "border-slate-200 focus:ring-rose-200 focus:border-rose-300")} />
                             </div>
                             <div className="col-span-2">
-                              <input type="number" min={0} step="0.01" value={ci.unit_price || ''} onChange={e => setComplaintItems(prev => prev.map((x, i) => i === idx ? { ...x, unit_price: +e.target.value } : x))}
+                              <input type="number" min={0} step="0.01" value={ci.unit_price || ''} readOnly
                                 placeholder="₹ Price"
-                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 focus:ring-1 focus:ring-rose-200 focus:border-rose-300 outline-none bg-white" />
+                                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-2 outline-none bg-slate-100 text-slate-600" />
                             </div>
                             <div className="col-span-1 flex justify-center">
                               {complaintItems.length > 1 && (
@@ -532,7 +594,7 @@ export const RetailerReturnsPage = () => {
                       className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-100 focus:border-rose-300 outline-none resize-none" />
 
                     <div className="flex justify-end">
-                      <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={submittingComplaint || complaintItems.every(i => !i.medicine_name.trim())}
+                      <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={submittingComplaint || !complaintOrderId || complaintItems.every(i => !i.order_item_key)}
                         className="flex items-center gap-1.5 bg-gradient-to-r from-rose-500 to-rose-600 text-white px-5 py-2.5 rounded-xl text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-rose-500/25">
                         {submittingComplaint ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Submit Complaint
                       </motion.button>

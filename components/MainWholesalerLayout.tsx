@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, LogOut, Menu, X, Users, BookOpen, IndianRupee, FileText, Wallet, Settings, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Package, LogOut, Menu, X, Users, BookOpen, IndianRupee, FileText, Wallet, Settings, AlertTriangle, LifeBuoy } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { cn } from '../utils/cn';
 import api from '../utils/api';
@@ -44,6 +44,7 @@ const navGroups = [
   {
     label: 'Settings',
     items: [
+      { path: '/wholesaler/support-tickets', label: 'Support Tickets', icon: LifeBuoy, exact: true },
       { path: '/wholesaler/settings', label: 'Settings', icon: Settings, exact: true },
     ]
   }
@@ -61,6 +62,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/wholesaler/collection': 'Collection Management',
   '/wholesaler/settings': 'Settings',
   '/wholesaler/alerts': 'Alerts & Expiry Tracker',
+  '/wholesaler/support-tickets': 'Support Tickets',
 };
 
 export const MainWholesalerLayout = ({ children }: { children: React.ReactNode }) => {
