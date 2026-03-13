@@ -8,9 +8,20 @@ router.use(authenticate);
 // GET /api/notifications — Get notifications for this wholesaler or retailer
 router.get('/', async (req, res) => {
   try {
-    const where: any = req.user!.role === 'RETAILER'
-      ? { retailer_id: req.user!.retailer_id }
-      : { wholesaler_id: req.user!.wholesaler_id! };
+    let where: any;
+    if (req.user!.role === 'RETAILER') {
+      if (!req.user!.retailer_id) {
+        return res.status(401).json({ error: 'Retailer context missing in token' });
+      }
+      where = { retailer_id: req.user!.retailer_id };
+    } else if (req.user!.role === 'WHOLESALER' || req.user!.role === 'SALESMAN') {
+      if (!req.user!.wholesaler_id) {
+        return res.status(403).json({ error: 'No wholesaler linked to this account yet' });
+      }
+      where = { wholesaler_id: req.user!.wholesaler_id };
+    } else {
+      return res.status(403).json({ error: 'Forbidden for this role' });
+    }
 
     const notifications = await prisma.notification.findMany({
       where,
@@ -39,9 +50,20 @@ router.patch('/:id/read', async (req, res) => {
 // PATCH /api/notifications/read-all — Mark all as read
 router.patch('/read-all', async (req, res) => {
   try {
-    const where: any = req.user!.role === 'RETAILER'
-      ? { retailer_id: req.user!.retailer_id, is_read: false }
-      : { wholesaler_id: req.user!.wholesaler_id!, is_read: false };
+    let where: any;
+    if (req.user!.role === 'RETAILER') {
+      if (!req.user!.retailer_id) {
+        return res.status(401).json({ error: 'Retailer context missing in token' });
+      }
+      where = { retailer_id: req.user!.retailer_id, is_read: false };
+    } else if (req.user!.role === 'WHOLESALER' || req.user!.role === 'SALESMAN') {
+      if (!req.user!.wholesaler_id) {
+        return res.status(403).json({ error: 'No wholesaler linked to this account yet' });
+      }
+      where = { wholesaler_id: req.user!.wholesaler_id, is_read: false };
+    } else {
+      return res.status(403).json({ error: 'Forbidden for this role' });
+    }
 
     await prisma.notification.updateMany({ where, data: { is_read: true } });
     res.json({ ok: true });

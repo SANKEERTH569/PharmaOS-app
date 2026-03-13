@@ -57,13 +57,19 @@ router.get('/', async (req, res) => {
     const { status, retailer_id } = req.query as Record<string, string>;
     let where: any = {};
 
-    // Retailer can only see their own orders
     if (req.user!.role === 'RETAILER') {
+      if (!req.user!.retailer_id) {
+        return res.status(401).json({ error: 'Retailer context missing in token' });
+      }
       where.retailer_id = req.user!.retailer_id;
-    } else {
-      // Wholesaler sees orders for their wholesaler_id
+    } else if (req.user!.role === 'WHOLESALER' || req.user!.role === 'SALESMAN') {
+      if (!req.user!.wholesaler_id) {
+        return res.status(403).json({ error: 'No wholesaler linked to this account yet' });
+      }
       where.wholesaler_id = req.user!.wholesaler_id;
       if (retailer_id) where.retailer_id = retailer_id;
+    } else {
+      return res.status(403).json({ error: 'Forbidden for this role' });
     }
 
     if (status && status !== 'ALL') where.status = status;
@@ -101,7 +107,19 @@ router.get('/:id', async (req, res) => {
       include: { items: true, retailer: true },
     });
     if (!order) return res.status(404).json({ error: 'Order not found' });
-    if (order.wholesaler_id !== req.user!.wholesaler_id) return res.status(403).json({ error: 'Forbidden' });
+
+    if (req.user!.role === 'RETAILER') {
+      if (order.retailer_id !== req.user!.retailer_id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    } else if (req.user!.role === 'WHOLESALER' || req.user!.role === 'SALESMAN') {
+      if (!req.user!.wholesaler_id || order.wholesaler_id !== req.user!.wholesaler_id) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Forbidden for this role' });
+    }
+
     res.json(order);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
