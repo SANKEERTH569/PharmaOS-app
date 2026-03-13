@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -46,6 +46,7 @@ export const CollectionPage = () => {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [justPaid, setJustPaid] = useState<string | null>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   // ── Per-retailer payment history from store ────────────────────────────
   const myPayments = useMemo(
@@ -87,6 +88,32 @@ export const CollectionPage = () => {
   const selectedRetailer = selectedRetailerId
     ? retailers.find(r => r.id === selectedRetailerId)
     : null;
+
+  const openCollectModal = (retailerId: string) => {
+    setSelected(retailerId);
+    setAmount('');
+    setMethod('CASH');
+    setNotes('');
+  };
+
+  useEffect(() => {
+    if (!selectedRetailerId) return;
+    document.body.style.overflow = 'hidden';
+
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null);
+    };
+    window.addEventListener('keydown', onEsc);
+
+    // Wait for modal paint, then focus amount for quick entry.
+    const t = window.setTimeout(() => amountInputRef.current?.focus(), 0);
+
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onEsc);
+      window.clearTimeout(t);
+    };
+  }, [selectedRetailerId]);
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,7 +298,7 @@ export const CollectionPage = () => {
                             </button>
                           )}
                           <button
-                            onClick={() => { setSelected(retailer.id); setAmount(String(retailer.current_balance || '')); }}
+                            onClick={() => openCollectModal(retailer.id)}
                             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 ${isCleared
                                 ? 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                                 : 'bg-[#0D2B5E] text-white hover:bg-[#0a2147]'
@@ -364,25 +391,29 @@ export const CollectionPage = () => {
                 <div className="relative">
                   <IndianRupee className="absolute left-4 top-3.5 text-slate-400 w-4 h-4" />
                   <input
+                    ref={amountInputRef}
                     type="number"
                     min="1"
                     step="0.01"
+                    inputMode="decimal"
                     value={amount}
                     onChange={e => setAmount(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-lg text-slate-900"
                     placeholder="0.00"
                     required
-                    autoFocus
                   />
                 </div>
                 {selectedRetailer.current_balance > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setAmount(String(selectedRetailer.current_balance))}
-                    className="mt-1.5 text-xs font-bold text-blue-600 hover:underline"
-                  >
-                    Use full due amount (₹{selectedRetailer.current_balance.toLocaleString('en-IN')})
-                  </button>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAmount(String(selectedRetailer.current_balance))}
+                      className="text-xs font-bold text-blue-600 hover:underline"
+                    >
+                      Use full due amount
+                    </button>
+                    <span className="text-[11px] text-slate-400">₹{selectedRetailer.current_balance.toLocaleString('en-IN')}</span>
+                  </div>
                 )}
               </div>
 

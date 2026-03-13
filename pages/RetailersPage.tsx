@@ -45,7 +45,7 @@ export const RetailersPage = () => {
     name: '',
     shop_name: '',
     phone: '',
-    credit_limit: 50000,
+    credit_limit: '50000',
     address: '',
     gstin: '',
   });
@@ -89,9 +89,14 @@ export const RetailersPage = () => {
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addRetailer(formData);
+    const creditLimit = parseInt(formData.credit_limit, 10);
+    if (!Number.isFinite(creditLimit)) {
+      alert('Please enter a valid credit limit.');
+      return;
+    }
+    addRetailer({ ...formData, credit_limit: creditLimit });
     setShowAddModal(false);
-    setFormData({ name: '', shop_name: '', phone: '', credit_limit: 50000, address: '', gstin: '' });
+    setFormData({ name: '', shop_name: '', phone: '', credit_limit: '50000', address: '', gstin: '' });
   };
 
   return (
@@ -408,7 +413,7 @@ export const RetailersPage = () => {
                       type="number" required
                       className="w-full pl-12 pr-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
                       value={formData.credit_limit}
-                      onChange={(e) => setFormData({ ...formData, credit_limit: parseInt(e.target.value) || 0 })}
+                      onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                     />
                   </div>
                 </div>

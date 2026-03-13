@@ -13,9 +13,9 @@ import { Medicine, Retailer, Order } from '../types';
 
 interface SaleItem {
   medicine: Medicine;
-  qty: number;
-  unit_price: number;
-  discount_percent: number;
+  qty: number | '';
+  unit_price: number | '';
+  discount_percent: number | '';
 }
 
 export const QuickSalePage = () => {
@@ -80,10 +80,12 @@ export const QuickSalePage = () => {
 
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
 
-  const updateItem = (idx: number, field: keyof SaleItem, value: number) => {
+  const updateItem = (idx: number, field: keyof SaleItem, value: number | '') => {
     setItems((prev) => {
       const newItems = [...prev];
       const item = { ...newItems[idx], [field]: value };
+      const qty = Number(item.qty || 0);
+      const unitPrice = Number(item.unit_price || 0);
 
       // Re-evaluate schemes if qty changed
       if (field === 'qty') {
@@ -92,20 +94,20 @@ export const QuickSalePage = () => {
         // Prioritize BOGO, then HALF_SCHEME. Assuming only one applies at a time for simplicity.
         const scheme = activeSchemes.find(s => s.type === 'BOGO' || s.type === 'HALF_SCHEME');
 
-        if (scheme && scheme.min_qty && scheme.free_qty && item.qty >= scheme.min_qty) {
+        if (scheme && scheme.min_qty && scheme.free_qty && qty >= scheme.min_qty && unitPrice > 0) {
           if (scheme.type === 'BOGO') {
             // Give full value of 'free_qty' items as a discount.
             // e.g. Buy 10, Free 1. Qty = 10. Discount Amount = 1 * unit_price
-            const times = Math.floor(item.qty / scheme.min_qty);
+            const times = Math.floor(qty / scheme.min_qty);
             // We apply this as a discount percent so it maps to the UI cleanly
-            const freeValue = times * scheme.free_qty * item.unit_price;
-            const grossValue = item.qty * item.unit_price;
+            const freeValue = times * scheme.free_qty * unitPrice;
+            const grossValue = qty * unitPrice;
             item.discount_percent = parseFloat(((freeValue / grossValue) * 100).toFixed(2));
           } else if (scheme.type === 'HALF_SCHEME') {
             // Buy X, get Y equivalent monetary discount
-            const times = Math.floor(item.qty / scheme.min_qty);
-            const discountEquivalent = times * scheme.free_qty * item.unit_price;
-            const grossValue = item.qty * item.unit_price;
+            const times = Math.floor(qty / scheme.min_qty);
+            const discountEquivalent = times * scheme.free_qty * unitPrice;
+            const grossValue = qty * unitPrice;
             item.discount_percent = parseFloat(((discountEquivalent / grossValue) * 100).toFixed(2));
           }
         } else {
@@ -124,8 +126,11 @@ export const QuickSalePage = () => {
   const totals = useMemo(() => {
     let subTotal = 0, taxTotal = 0, discTotal = 0;
     items.forEach(item => {
-      const gross = item.unit_price * item.qty;
-      const discountAmt = gross * (item.discount_percent / 100);
+      const qty = Number(item.qty || 0);
+      const unitPrice = Number(item.unit_price || 0);
+      const discountPct = Number(item.discount_percent || 0);
+      const gross = unitPrice * qty;
+      const discountAmt = gross * (discountPct / 100);
       const taxable = gross - discountAmt;
       const gstRate = parseFloat(item.medicine.gst_rate as any) || 12;
       const tax = taxable * (gstRate / 100);
@@ -163,6 +168,14 @@ export const QuickSalePage = () => {
     if (!selectedRetailer) { setError('Please select a retailer'); return; }
     if (items.length === 0) { setError('Please add at least one medicine'); return; }
     setError('');
+    for (const [idx, item] of items.entries()) {
+      const qty = Number(item.qty);
+      const unitPrice = Number(item.unit_price);
+      const discountPct = Number(item.discount_percent || 0);
+      if (!Number.isFinite(qty) || qty <= 0) { setError(`Item ${idx + 1}: enter a valid quantity`); return; }
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) { setError(`Item ${idx + 1}: enter a valid unit price`); return; }
+      if (!Number.isFinite(discountPct) || discountPct < 0 || discountPct > 100) { setError(`Item ${idx + 1}: discount must be between 0 and 100`); return; }
+    }
     setSubmitting(true);
     try {
       const order = await createQuickSale({
@@ -173,17 +186,20 @@ export const QuickSalePage = () => {
         payment_terms: totals.cashDiscountAmount > 0 ? `Includes ${totals.cashDiscountPct}% Cash Discount` : undefined,
         items: items.map(i => {
           const globalCashDiscount = totals.cashDiscountPct > 0 ? totals.cashDiscountPct : 0;
-          const finalDiscountPct = Math.min(100, i.discount_percent + globalCashDiscount);
+          const qty = Number(i.qty);
+          const unitPrice = Number(i.unit_price);
+          const discountPct = Number(i.discount_percent || 0);
+          const finalDiscountPct = Math.min(100, discountPct + globalCashDiscount);
           return {
             medicine_id: i.medicine.id,
             medicine_name: i.medicine.name,
-            qty: i.qty,
+            qty,
             mrp: i.medicine.mrp,
-            unit_price: i.unit_price,
+            unit_price: unitPrice,
             gst_rate: parseFloat(i.medicine.gst_rate as any) || 12,
             hsn_code: i.medicine.hsn_code || '3004',
             discount_percent: finalDiscountPct,
-            discount_amount: i.unit_price * i.qty * (finalDiscountPct / 100),
+            discount_amount: unitPrice * qty * (finalDiscountPct / 100),
           };
         }),
       });
@@ -461,13 +477,16 @@ export const QuickSalePage = () => {
 
               <div className="divide-y divide-slate-100/60">
                 {items.map((item, idx) => {
-                  const gross = item.unit_price * item.qty;
-                  const discAmt = gross * (item.discount_percent / 100);
+                  const qty = Number(item.qty || 0);
+                  const unitPrice = Number(item.unit_price || 0);
+                  const discountPct = Number(item.discount_percent || 0);
+                  const gross = unitPrice * qty;
+                  const discAmt = gross * (discountPct / 100);
                   const taxable = gross - discAmt;
                   const gstRate = parseFloat(item.medicine.gst_rate as any) || 12;
                   const tax = taxable * (gstRate / 100);
                   const lineTotal = taxable + tax;
-                  const isOverStock = item.qty > item.medicine.stock_qty;
+                  const isOverStock = qty > item.medicine.stock_qty;
 
                   return (
                     <div key={item.medicine.id} className={`px-5 py-3.5 hover:bg-slate-50/50 transition-colors ${isOverStock ? 'bg-rose-50/30' : ''}`}>
@@ -487,16 +506,24 @@ export const QuickSalePage = () => {
 
                         <div className="col-span-2 flex items-center justify-center">
                           <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-                            <button onClick={() => updateItem(idx, 'qty', Math.max(1, item.qty - 1))}
+                            <button onClick={() => updateItem(idx, 'qty', Math.max(1, Number(item.qty || 0) - 1))}
                               className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                               <Minus size={12} />
                             </button>
                             <input
                               type="number" min={1} max={item.medicine.stock_qty} value={item.qty}
-                              onChange={e => updateItem(idx, 'qty', Math.max(1, Math.min(item.medicine.stock_qty, parseInt(e.target.value) || 1)))}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  updateItem(idx, 'qty', '');
+                                  return;
+                                }
+                                const nextQty = Math.max(1, Math.min(item.medicine.stock_qty, parseInt(raw, 10)));
+                                updateItem(idx, 'qty', nextQty);
+                              }}
                               className="w-12 text-center py-1 text-sm font-bold bg-white border-x border-slate-200 outline-none"
                             />
-                            <button onClick={() => updateItem(idx, 'qty', Math.min(item.medicine.stock_qty, item.qty + 1))}
+                            <button onClick={() => updateItem(idx, 'qty', Math.min(item.medicine.stock_qty, Number(item.qty || 0) + 1))}
                               className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
                               <Plus size={12} />
                             </button>
@@ -508,7 +535,10 @@ export const QuickSalePage = () => {
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-medium">₹</span>
                             <input
                               type="number" step={0.01} min={0} value={item.unit_price}
-                              onChange={e => updateItem(idx, 'unit_price', Math.max(0, parseFloat(e.target.value) || 0))}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                updateItem(idx, 'unit_price', raw === '' ? '' : Math.max(0, parseFloat(raw)));
+                              }}
                               className="w-24 text-center pl-6 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
                             />
                           </div>
@@ -518,7 +548,10 @@ export const QuickSalePage = () => {
                           <div className="relative">
                             <input
                               type="number" step={0.5} min={0} max={100} value={item.discount_percent}
-                              onChange={e => updateItem(idx, 'discount_percent', Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                updateItem(idx, 'discount_percent', raw === '' ? '' : Math.max(0, Math.min(100, parseFloat(raw))));
+                              }}
                               className="w-14 text-center pr-4 py-1.5 border border-slate-200 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500/20 outline-none"
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">%</span>
@@ -536,7 +569,7 @@ export const QuickSalePage = () => {
 
                         <div className="col-span-1 flex justify-end">
                           <div className="flex flex-col items-end gap-1">
-                            {item.discount_percent > 0 && schemes.some(s => s.medicine_id === item.medicine.id && s.is_active && item.qty >= (s.min_qty || 999)) && (
+                            {Number(item.discount_percent || 0) > 0 && schemes.some(s => s.medicine_id === item.medicine.id && s.is_active && qty >= (s.min_qty || 999)) && (
                               <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 mb-1">Scheme Applied</span>
                             )}
                             <button onClick={() => removeItem(idx)}
@@ -566,22 +599,31 @@ export const QuickSalePage = () => {
                           <div>
                             <label className="text-[10px] font-semibold text-slate-400 mb-1 block">Qty</label>
                             <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-                              <button onClick={() => updateItem(idx, 'qty', Math.max(1, item.qty - 1))} className="p-1.5 text-slate-400"><Minus size={11} /></button>
-                              <input type="number" min={1} value={item.qty} onChange={e => updateItem(idx, 'qty', Math.max(1, parseInt(e.target.value) || 1))}
+                              <button onClick={() => updateItem(idx, 'qty', Math.max(1, Number(item.qty || 0) - 1))} className="p-1.5 text-slate-400"><Minus size={11} /></button>
+                              <input type="number" min={1} value={item.qty} onChange={e => {
+                                const raw = e.target.value;
+                                updateItem(idx, 'qty', raw === '' ? '' : Math.max(1, parseInt(raw, 10)));
+                              }}
                                 className="w-full text-center py-1 text-sm font-bold bg-white border-x border-slate-200 outline-none" />
-                              <button onClick={() => updateItem(idx, 'qty', Math.min(item.medicine.stock_qty, item.qty + 1))} className="p-1.5 text-slate-400"><Plus size={11} /></button>
+                              <button onClick={() => updateItem(idx, 'qty', Math.min(item.medicine.stock_qty, Number(item.qty || 0) + 1))} className="p-1.5 text-slate-400"><Plus size={11} /></button>
                             </div>
                           </div>
                           <div>
                             <label className="text-[10px] font-semibold text-slate-400 mb-1 block">Rate ₹</label>
                             <input type="number" step={0.01} min={0} value={item.unit_price}
-                              onChange={e => updateItem(idx, 'unit_price', Math.max(0, parseFloat(e.target.value) || 0))}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                updateItem(idx, 'unit_price', raw === '' ? '' : Math.max(0, parseFloat(raw)));
+                              }}
                               className="w-full text-center py-1.5 border border-slate-200 rounded-lg text-sm font-semibold outline-none" />
                           </div>
                           <div>
                             <label className="text-[10px] font-semibold text-slate-400 mb-1 block">Disc %</label>
                             <input type="number" step={0.5} min={0} max={100} value={item.discount_percent}
-                              onChange={e => updateItem(idx, 'discount_percent', Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                updateItem(idx, 'discount_percent', raw === '' ? '' : Math.max(0, Math.min(100, parseFloat(raw))));
+                              }}
                               className="w-full text-center py-1.5 border border-slate-200 rounded-lg text-sm font-semibold outline-none" />
                           </div>
                         </div>
@@ -596,7 +638,7 @@ export const QuickSalePage = () => {
 
               {/* Items footer */}
               <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <p className="text-xs text-slate-400">{items.reduce((s, i) => s + i.qty, 0)} total units</p>
+                <p className="text-xs text-slate-400">{items.reduce((s, i) => s + Number(i.qty || 0), 0)} total units</p>
                 <p className="text-sm font-extrabold text-slate-800">Subtotal: ₹{totals.subTotal.toFixed(2)}</p>
               </div>
             </div>

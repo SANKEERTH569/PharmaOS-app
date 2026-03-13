@@ -11,15 +11,15 @@ import { MainWholesalerMedicine } from '../types';
 interface NewPOItem {
     medicine_id: string;
     medicine_name: string;
-    qty_ordered: number;
-    unit_cost: number;
+    qty_ordered: number | '';
+    unit_cost: number | '';
 }
 
 const emptyPOLine = (): NewPOItem => ({
     medicine_id: '',
     medicine_name: '',
-    qty_ordered: 0,
-    unit_cost: 0,
+    qty_ordered: '',
+    unit_cost: '',
 });
 
 export const CreatePurchaseOrderPage = () => {
@@ -114,21 +114,29 @@ export const CreatePurchaseOrderPage = () => {
         const effectiveSupplierName = linkToMW && selectedMW ? selectedMW.name : supplierName.trim();
         if (!effectiveSupplierName) return setError(linkToMW ? 'Please select a wholesaler from the platform.' : 'Supplier name is required.');
         for (const [i, item] of items.entries()) {
+            const qty = Number(item.qty_ordered);
+            const unitCost = Number(item.unit_cost);
             if (!item.medicine_name.trim()) return setError(`Row ${i + 1}: medicine name is required.`);
-            if (item.qty_ordered <= 0) return setError(`Row ${i + 1}: quantity must be > 0.`);
+            if (!Number.isFinite(qty) || qty <= 0) return setError(`Row ${i + 1}: quantity must be > 0.`);
+            if (!Number.isFinite(unitCost) || unitCost < 0) return setError(`Row ${i + 1}: unit price must be >= 0.`);
         }
 
         if (items.length === 0) return setError('Please add at least one item to the order.');
 
         setSaving(true);
         try {
+            const normalizedItems = items.map((item) => ({
+                ...item,
+                qty_ordered: Number(item.qty_ordered),
+                unit_cost: Number(item.unit_cost),
+            }));
             await createPurchaseOrder({
                 supplier_name: effectiveSupplierName,
                 supplier_phone: (linkToMW && selectedMW ? selectedMW.phone : supplierPhone.trim()) || undefined,
                 supplier_gstin: supplierGstin.trim() || undefined,
                 notes: notes.trim() || undefined,
                 main_wholesaler_id: linkToMW && selectedMW ? selectedMW.id : undefined,
-                items,
+                items: normalizedItems,
             });
             navigate('/purchase-orders');
         } catch (e: any) {
@@ -137,7 +145,7 @@ export const CreatePurchaseOrderPage = () => {
         }
     };
 
-    const totalValue = items.reduce((s, i) => s + i.qty_ordered * i.unit_cost, 0);
+    const totalValue = items.reduce((s, i) => s + Number(i.qty_ordered || 0) * Number(i.unit_cost || 0), 0);
 
     return (
         <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6 pb-24">
@@ -411,7 +419,10 @@ export const CreatePurchaseOrderPage = () => {
                                                         type="number"
                                                         min="1"
                                                         value={item.qty_ordered || ''}
-                                                        onChange={(e) => updateItem(idx, 'qty_ordered', parseInt(e.target.value) || 0)}
+                                                        onChange={(e) => {
+                                                            const raw = e.target.value;
+                                                            updateItem(idx, 'qty_ordered', raw === '' ? '' : parseInt(raw, 10));
+                                                        }}
                                                         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                                                     />
                                                 </td>
@@ -421,13 +432,16 @@ export const CreatePurchaseOrderPage = () => {
                                                         min="0"
                                                         step="0.01"
                                                         value={item.unit_cost || ''}
-                                                        onChange={(e) => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)}
+                                                        onChange={(e) => {
+                                                            const raw = e.target.value;
+                                                            updateItem(idx, 'unit_cost', raw === '' ? '' : parseFloat(raw));
+                                                        }}
                                                         className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3 text-right align-top pt-5">
                                                     <span className="font-medium text-slate-800">
-                                                        {(item.qty_ordered * item.unit_cost).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        {(Number(item.qty_ordered || 0) * Number(item.unit_cost || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                     </span>
                                                 </td>
                                                 <td className="px-2 py-3 text-center align-top pt-4">

@@ -70,7 +70,31 @@ const MONTHS = [
   { value: '11', label: 'November' }, { value: '12', label: 'December' },
 ];
 const EXP_YEARS = Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() + i));
-const emptyForm = () => ({
+type MedicineFormState = {
+  name: string;
+  salt: string;
+  brand: string;
+  unit: string;
+  mrp: number | '';
+  price: number | '';
+  gst_rate: number;
+  hsn_code: string;
+  stock_qty: number | '';
+  is_active: boolean;
+  expiry_date: string;
+  rack_location: string;
+};
+
+type ImportFormState = {
+  mrp: number | '';
+  price: number | '';
+  stock_qty: number | '';
+  gst_rate: number;
+  hsn_code: string;
+  rack_location: string;
+};
+
+const emptyForm = (): MedicineFormState => ({
   name: '', salt: '', brand: '', unit: 'strip',
   mrp: 0, price: 0, gst_rate: 12, hsn_code: '3004', stock_qty: 0, is_active: true,
   expiry_date: '', rack_location: '',
@@ -89,7 +113,7 @@ export const MedicinesPage = () => {
   const [showCatalog, setShowCatalog] = useState(false);
   const [editingMed, setEditingMed] = useState<Medicine | null>(null);
   const [batchModalMed, setBatchModalMed] = useState<Medicine | null>(null);
-  const [formData, setFormData] = useState(emptyForm());
+  const [formData, setFormData] = useState<MedicineFormState>(emptyForm());
   const [activeAlertFilter, setActiveAlertFilter] = useState<'all' | 'low_stock' | 'expiring'>('all');
 
   // ── Catalog state ─────────────────────────────────────────────────────────
@@ -102,7 +126,7 @@ export const MedicinesPage = () => {
 
   // ── Import configure state ────────────────────────────────────────────────
   const [importItem, setImportItem] = useState<CatalogMedicine | null>(null);
-  const [importForm, setImportForm] = useState({ mrp: 0, price: 0, stock_qty: 100, gst_rate: 12, hsn_code: '3004', rack_location: '' });
+  const [importForm, setImportForm] = useState<ImportFormState>({ mrp: 0, price: 0, stock_qty: 100, gst_rate: 12, hsn_code: '3004', rack_location: '' });
   const [importLoading, setImportLoading] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
   const [importExpiry, setImportExpiry] = useState('');
@@ -184,10 +208,22 @@ export const MedicinesPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wholesaler) return;
+    const mrp = Number(formData.mrp);
+    const price = Number(formData.price);
+    const stockQty = Number(formData.stock_qty);
+    if (!Number.isFinite(mrp) || mrp < 0) return alert('Please enter a valid MRP.');
+    if (!Number.isFinite(price) || price < 0) return alert('Please enter a valid price.');
+    if (!Number.isFinite(stockQty) || stockQty < 0) return alert('Please enter a valid stock quantity.');
     setSubmitting(true);
     try {
       const expiryIso = formData.expiry_date ? new Date(formData.expiry_date + '-01').toISOString() : null;
-      const payload = { ...formData, expiry_date: expiryIso };
+      const payload = {
+        ...formData,
+        mrp,
+        price,
+        stock_qty: stockQty,
+        expiry_date: expiryIso,
+      };
       if (editingMed) { await updateMedicine(editingMed.id, payload); }
       else { await addMedicine({ ...payload, wholesaler_id: wholesaler.id }); }
       setShowAddModal(false);
@@ -208,11 +244,25 @@ export const MedicinesPage = () => {
   const handleImport = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!importItem) return;
+    const mrp = Number(importForm.mrp);
+    const price = Number(importForm.price);
+    const stockQty = Number(importForm.stock_qty);
+    if (!Number.isFinite(mrp) || mrp < 0) return alert('Please enter a valid MRP.');
+    if (!Number.isFinite(price) || price < 0) return alert('Please enter a valid price.');
+    if (!Number.isFinite(stockQty) || stockQty < 0) return alert('Please enter a valid opening stock.');
     setImportLoading(true);
     try {
       const expiry = importExpiry ? new Date(importExpiry + '-01').toISOString() : undefined;
       const { rack_location: rl, ...restImport } = importForm;
-      const res = await api.post('/medicines/import', { catalog_id: importItem.id, ...restImport, rack_location: rl || undefined, expiry_date: expiry });
+      const res = await api.post('/medicines/import', {
+        catalog_id: importItem.id,
+        ...restImport,
+        mrp,
+        price,
+        stock_qty: stockQty,
+        rack_location: rl || undefined,
+        expiry_date: expiry,
+      });
       addMedicineToStore(res.data);
       setImportSuccess(importItem.name);
       setImportItem(null);
@@ -703,7 +753,7 @@ export const MedicinesPage = () => {
                   <input type="number" required step="0.01" min="0"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white text-sm font-bold"
                     value={importForm.mrp}
-                    onChange={e => setImportForm(f => ({ ...f, mrp: parseFloat(e.target.value) || 0 }))}
+                    onChange={e => setImportForm(f => ({ ...f, mrp: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -711,11 +761,11 @@ export const MedicinesPage = () => {
                   <input type="number" required step="0.01" min="0"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white text-sm font-bold text-blue-600"
                     value={importForm.price}
-                    onChange={e => setImportForm(f => ({ ...f, price: parseFloat(e.target.value) || 0 }))}
+                    onChange={e => setImportForm(f => ({ ...f, price: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                   />
-                  {importForm.mrp > 0 && importForm.price > 0 && (
+                  {Number(importForm.mrp) > 0 && Number(importForm.price) > 0 && (
                     <p className="text-[10px] text-emerald-600 mt-1 font-bold">
-                      {(((importForm.mrp - importForm.price) / importForm.mrp) * 100).toFixed(1)}% margin
+                      {(((Number(importForm.mrp) - Number(importForm.price)) / Number(importForm.mrp)) * 100).toFixed(1)}% margin
                     </p>
                   )}
                 </div>
@@ -726,7 +776,7 @@ export const MedicinesPage = () => {
                   <input type="number" required min="0"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-slate-50 focus:bg-white text-sm font-medium"
                     value={importForm.stock_qty}
-                    onChange={e => setImportForm(f => ({ ...f, stock_qty: parseInt(e.target.value) || 0 }))}
+                    onChange={e => setImportForm(f => ({ ...f, stock_qty: e.target.value === '' ? '' : parseInt(e.target.value, 10) }))}
                   />
                 </div>
                 <div>
@@ -844,14 +894,14 @@ export const MedicinesPage = () => {
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">MRP (₹)</label>
                   <input type="number" required step="0.01"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-bold"
-                    value={formData.mrp} onChange={e => setFormData({ ...formData, mrp: parseFloat(e.target.value) })}
+                    value={formData.mrp} onChange={e => setFormData({ ...formData, mrp: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Your Price (₹)</label>
                   <input type="number" required step="0.01"
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-bold text-blue-600"
-                    value={formData.price} onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                    value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value === '' ? '' : parseFloat(e.target.value) })}
                   />
                 </div>
                 <div>
@@ -906,7 +956,7 @@ export const MedicinesPage = () => {
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">Initial Stock</label>
                     <input type="number" required min="0"
                       className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-slate-50 focus:bg-white text-sm font-medium"
-                      value={formData.stock_qty} onChange={e => setFormData({ ...formData, stock_qty: parseInt(e.target.value) || 0 })}
+                      value={formData.stock_qty} onChange={e => setFormData({ ...formData, stock_qty: e.target.value === '' ? '' : parseInt(e.target.value, 10) })}
                     />
                   </div>
                 ) : (

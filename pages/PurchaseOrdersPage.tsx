@@ -15,9 +15,9 @@ import api from '../utils/api';
 
 interface StockItem {
   medicine_name: string;
-  qty_received: number;
-  unit_cost: number;
-  mrp: number;
+  qty_received: number | '';
+  unit_cost: number | '';
+  mrp: number | '';
   batch_no: string;
   expiry_date: string;
 }
@@ -50,7 +50,13 @@ const UpdateStockModal: React.FC<{ po: PurchaseOrder; onClose: () => void; onDon
     setError('');
     setSaving(true);
     try {
-      await api.post(`/purchase-orders/${po.id}/receive-stock`, { items });
+      const normalizedItems = items.map((item) => ({
+        ...item,
+        qty_received: Number(item.qty_received),
+        unit_cost: Number(item.unit_cost),
+        mrp: Number(item.mrp),
+      }));
+      await api.post(`/purchase-orders/${po.id}/receive-stock`, { items: normalizedItems });
       onDone();
       onClose();
     } catch (e: any) {
@@ -93,7 +99,7 @@ const UpdateStockModal: React.FC<{ po: PurchaseOrder; onClose: () => void; onDon
                   <input
                     type="number" min="0"
                     value={item.qty_received}
-                    onChange={e => updateItem(idx, 'qty_received', Number(e.target.value))}
+                    onChange={e => updateItem(idx, 'qty_received', e.target.value === '' ? '' : Number(e.target.value))}
                     className="mt-1 w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 bg-white"
                   />
                 </div>
@@ -102,7 +108,7 @@ const UpdateStockModal: React.FC<{ po: PurchaseOrder; onClose: () => void; onDon
                   <input
                     type="number" min="0" step="0.01"
                     value={item.unit_cost}
-                    onChange={e => updateItem(idx, 'unit_cost', Number(e.target.value))}
+                    onChange={e => updateItem(idx, 'unit_cost', e.target.value === '' ? '' : Number(e.target.value))}
                     className="mt-1 w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 bg-white"
                   />
                 </div>
@@ -111,7 +117,7 @@ const UpdateStockModal: React.FC<{ po: PurchaseOrder; onClose: () => void; onDon
                   <input
                     type="number" min="0" step="0.01"
                     value={item.mrp}
-                    onChange={e => updateItem(idx, 'mrp', Number(e.target.value))}
+                    onChange={e => updateItem(idx, 'mrp', e.target.value === '' ? '' : Number(e.target.value))}
                     className="mt-1 w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400/30 bg-white"
                   />
                 </div>

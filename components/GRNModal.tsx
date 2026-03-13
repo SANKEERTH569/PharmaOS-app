@@ -49,6 +49,8 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [medicineSearch, setMedicineSearch] = useState<Record<number, string>>({});
+  const [activeMedicineRow, setActiveMedicineRow] = useState<number | null>(null);
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState<Record<number, number>>({});
 
   const updateItem = <K extends keyof GRNLineItem>(
     idx: number,
@@ -112,7 +114,7 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[94vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2">
@@ -183,7 +185,7 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-slate-50">
-                    <th className="text-left text-xs font-semibold text-slate-500 px-3 py-2 rounded-tl-lg w-48">
+                    <th className="text-left text-xs font-semibold text-slate-500 px-3 py-2 rounded-tl-lg w-72">
                       Medicine
                     </th>
                     <th className="text-left text-xs font-semibold text-slate-500 px-3 py-2 w-28">
@@ -207,21 +209,27 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                 <tbody>
                   {items.map((item, idx) => {
                     const search = medicineSearch[idx] ?? '';
+                    const normalizedSearch = search.trim().toLowerCase();
                     const suggestions =
-                      search.length >= 2
+                      normalizedSearch.length >= 2
                         ? activeMedicines
                             .filter(
                               (m) =>
-                                m.name.toLowerCase().includes(search.toLowerCase()) ||
-                                (m.brand ?? '').toLowerCase().includes(search.toLowerCase())
+                                m.name.toLowerCase().includes(normalizedSearch) ||
+                                (m.brand ?? '').toLowerCase().includes(normalizedSearch)
                             )
-                            .slice(0, 6)
+                            .slice(0, 5)
                         : [];
+                    const showSuggestions =
+                      !item.medicine_id &&
+                      activeMedicineRow === idx &&
+                      normalizedSearch.length >= 2;
+                    const highlightedIdx = highlightedSuggestion[idx] ?? 0;
 
                     return (
                       <tr key={idx} className="border-b border-slate-100 last:border-0">
                         {/* Medicine */}
-                        <td className="px-2 py-2 relative">
+                        <td className="px-2 py-2 align-top">
                           {item.medicine_id ? (
                             <div className="flex items-center gap-1">
                               <span className="text-xs text-slate-700 font-medium truncate max-w-[140px]">
@@ -231,6 +239,8 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                                 onClick={() => {
                                   updateItem(idx, 'medicine_id', '');
                                   updateItem(idx, 'medicine_name', '');
+                                  setMedicineSearch((prev) => ({ ...prev, [idx]: '' }));
+                                  setActiveMedicineRow(idx);
                                 }}
                                 className="text-slate-400 hover:text-rose-500"
                               >
@@ -238,39 +248,97 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                               </button>
                             </div>
                           ) : (
-                            <div className="relative">
+                            <div>
                               <input
                                 type="text"
                                 value={search}
-                                placeholder="Search medicine…"
-                                onChange={(e) =>
+                                placeholder="Search medicine (min 2 letters)"
+                                onFocus={() => setActiveMedicineRow(idx)}
+                                onBlur={() => {
+                                  window.setTimeout(() => {
+                                    setActiveMedicineRow((prev) => (prev === idx ? null : prev));
+                                  }, 120);
+                                }}
+                                onChange={(e) => {
+                                  const value = e.target.value;
                                   setMedicineSearch((prev) => ({
                                     ...prev,
-                                    [idx]: e.target.value,
-                                  }))
-                                }
+                                    [idx]: value,
+                                  }));
+                                  setActiveMedicineRow(idx);
+                                  setHighlightedSuggestion((prev) => ({ ...prev, [idx]: 0 }));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Escape') {
+                                    setActiveMedicineRow(null);
+                                    return;
+                                  }
+                                  if (!showSuggestions || suggestions.length === 0) return;
+
+                                  if (e.key === 'ArrowDown') {
+                                    e.preventDefault();
+                                    setHighlightedSuggestion((prev) => ({
+                                      ...prev,
+                                      [idx]: Math.min(highlightedIdx + 1, suggestions.length - 1),
+                                    }));
+                                  }
+
+                                  if (e.key === 'ArrowUp') {
+                                    e.preventDefault();
+                                    setHighlightedSuggestion((prev) => ({
+                                      ...prev,
+                                      [idx]: Math.max(highlightedIdx - 1, 0),
+                                    }));
+                                  }
+
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const pick = suggestions[highlightedIdx];
+                                    if (pick) {
+                                      selectMedicine(idx, pick);
+                                      setActiveMedicineRow(null);
+                                    }
+                                  }
+                                }}
                                 className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                               />
-                              {suggestions.length > 0 && (
-                                <ul className="absolute z-30 left-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                                  {suggestions.map((m) => (
-                                    <li
-                                      key={m.id}
-                                      onClick={() => selectMedicine(idx, m)}
-                                      className="px-3 py-1.5 text-xs cursor-pointer hover:bg-emerald-50"
-                                    >
-                                      <span className="font-medium text-slate-700">{m.name}</span>
-                                      <span className="text-slate-400 ml-1">({m.brand})</span>
-                                    </li>
-                                  ))}
-                                </ul>
+                              {showSuggestions && suggestions.length > 0 && (
+                                <div className="mt-1 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                                  <div className="px-2.5 py-1.5 border-b border-slate-100 text-[10px] font-semibold text-slate-500 uppercase tracking-wide bg-slate-50">
+                                    {suggestions.length} match{suggestions.length !== 1 ? 'es' : ''}
+                                  </div>
+                                  <ul>
+                                    {suggestions.map((m, suggestionIdx) => (
+                                      <li
+                                        key={m.id}
+                                        onMouseDown={() => {
+                                          selectMedicine(idx, m);
+                                          setActiveMedicineRow(null);
+                                        }}
+                                        className={`px-3 py-2 text-xs cursor-pointer border-b border-slate-50 last:border-0 ${
+                                          suggestionIdx === highlightedIdx ? 'bg-emerald-50' : 'hover:bg-emerald-50/70'
+                                        }`}
+                                      >
+                                        <p className="font-semibold text-slate-800 truncate">{m.name}</p>
+                                        <p className="text-[11px] text-slate-500 truncate">
+                                          {m.brand || 'No brand'} · MRP ₹{m.mrp} · Cost ₹{m.price}
+                                        </p>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {showSuggestions && suggestions.length === 0 && (
+                                <div className="mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-[11px] text-slate-500">
+                                  No medicines found for "{search}".
+                                </div>
                               )}
                             </div>
                           )}
                         </td>
 
                         {/* Batch */}
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-2 align-top">
                           <input
                             type="text"
                             value={item.batch_no}
@@ -281,24 +349,20 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                         </td>
 
                         {/* Expiry */}
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-2 align-top">
                           <input
                             type="month"
                             value={item.expiry_date ? item.expiry_date.substring(0, 7) : ''}
                             onChange={(e) => {
                               const val = e.target.value;
-                              updateItem(
-                                idx,
-                                'expiry_date',
-                                val ? `${val}-01` : ''
-                              );
+                              updateItem(idx, 'expiry_date', val ? `${val}-01` : '');
                             }}
                             className="w-full border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-400"
                           />
                         </td>
 
                         {/* Qty */}
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-2 align-top">
                           <input
                             type="number"
                             min="1"
@@ -311,7 +375,7 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                         </td>
 
                         {/* Unit cost */}
-                        <td className="px-2 py-2">
+                        <td className="px-2 py-2 align-top">
                           <input
                             type="number"
                             min="0"
@@ -325,7 +389,7 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                         </td>
 
                         {/* Total */}
-                        <td className="px-3 py-2 text-right text-xs text-slate-700 font-medium">
+                        <td className="px-3 py-2 text-right text-xs text-slate-700 font-medium align-top">
                           ₹{(item.qty_received * item.unit_cost).toLocaleString('en-IN', {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
@@ -333,7 +397,7 @@ export const GRNModal = ({ onClose, linkedPO }: Props) => {
                         </td>
 
                         {/* Remove */}
-                        <td className="px-1 py-2">
+                        <td className="px-1 py-2 align-top">
                           {items.length > 1 && (
                             <button
                               onClick={() => removeLine(idx)}
