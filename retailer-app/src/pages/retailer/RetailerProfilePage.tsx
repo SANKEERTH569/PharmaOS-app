@@ -20,6 +20,7 @@ export const RetailerProfilePage = () => {
     phone: retailer?.phone || '',
     address: retailer?.address || '',
     gstin: retailer?.gstin || '',
+    drug_license_number: retailer?.drug_license_number || '',
   });
 
   const handleSave = (e: React.FormEvent) => {
@@ -51,23 +52,29 @@ export const RetailerProfilePage = () => {
       )}
 
       {/* Profile Header */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xl font-bold shadow-md">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 h-20 relative">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
+        </div>
+        <div className="px-5 pb-5 -mt-8 relative">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-extrabold shadow-lg shadow-blue-500/30 border-4 border-white">
             {retailer.shop_name?.charAt(0) || retailer.name?.charAt(0) || 'R'}
           </div>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-slate-800">{retailer.shop_name || 'My Shop'}</h2>
-            <p className="text-xs text-slate-500">{retailer.name} · {retailer.phone}</p>
-            {retailer.gstin && <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1"><Shield size={10} /> GSTIN: {retailer.gstin}</p>}
+          <div className="mt-3">
+            <h2 className="text-xl font-extrabold text-slate-800">{retailer.shop_name || 'My Shop'}</h2>
+            <p className="text-sm text-slate-500 font-medium">{retailer.name} · {retailer.phone}</p>
+            {retailer.gstin && <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-semibold"><Shield size={10} className="text-emerald-500" /> GSTIN: {retailer.gstin}</p>}
+            {retailer.drug_license_number && <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-semibold"><FileText size={10} className="text-blue-500" /> DL: {retailer.drug_license_number}</p>}
+            {!retailer.drug_license_number && <p className="text-[10px] text-amber-500 mt-0.5 flex items-center gap-1 font-semibold"><FileText size={10} /> Drug License missing — please update</p>}
           </div>
         </div>
       </motion.div>
 
       {/* Credit Card */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-        className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white relative overflow-hidden shadow-xl shadow-blue-600/20">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
         <div className="relative">
           <div className="flex items-center gap-2 mb-3">
@@ -101,11 +108,11 @@ export const RetailerProfilePage = () => {
 
       {/* Profile Form */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-800">Business Details</h3>
+        className="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-slate-100/60">
+          <h3 className="text-sm font-bold text-slate-800">Business Details</h3>
           {!editMode && (
-            <button onClick={() => setEditMode(true)} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Edit</button>
+            <button onClick={() => setEditMode(true)} className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all">Edit</button>
           )}
         </div>
 
@@ -117,11 +124,12 @@ export const RetailerProfilePage = () => {
               { label: 'Phone', key: 'phone', icon: Phone, placeholder: 'Phone number' },
               { label: 'Address', key: 'address', icon: MapPin, placeholder: 'Business address' },
               { label: 'GSTIN', key: 'gstin', icon: FileText, placeholder: 'GST Identification Number' },
+              { label: 'Drug License Number', key: 'drug_license_number', icon: Shield, placeholder: 'MH-MUM-123456' },
             ].map(field => {
               const Icon = field.icon;
               return (
                 <div key={field.key}>
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.15em] mb-1.5 flex items-center gap-1.5">
                     <Icon size={10} /> {field.label}
                   </label>
                   {editMode ? (
@@ -129,10 +137,11 @@ export const RetailerProfilePage = () => {
                       value={(formData as any)[field.key]}
                       onChange={e => setFormData(prev => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
-                      className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-shadow"
+                      className="w-full text-sm border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all hover:border-slate-300"
+                      required={field.key === 'drug_license_number'}
                     />
                   ) : (
-                    <p className="text-sm text-slate-700 py-2.5">{(formData as any)[field.key] || <span className="text-slate-300">Not set</span>}</p>
+                    <p className="text-sm text-slate-700 py-3 font-medium">{(formData as any)[field.key] || <span className="text-slate-300 italic">Not set</span>}</p>
                   )}
                 </div>
               );
@@ -140,12 +149,12 @@ export const RetailerProfilePage = () => {
           </div>
 
           {editMode && (
-            <div className="flex gap-2 mt-5">
-              <button type="button" onClick={() => { setEditMode(false); setFormData({ name: retailer.name, shop_name: retailer.shop_name, phone: retailer.phone, address: retailer.address || '', gstin: retailer.gstin || '' }); }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
-              <button type="submit" className="flex-1 flex items-center justify-center gap-1.5 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-semibold hover:bg-blue-700 transition-colors">
+            <div className="flex gap-2 mt-6">
+              <button type="button" onClick={() => { setEditMode(false); setFormData({ name: retailer.name, shop_name: retailer.shop_name, phone: retailer.phone, address: retailer.address || '', gstin: retailer.gstin || '', drug_license_number: retailer.drug_license_number || '' }); }}
+                className="flex-1 py-3 rounded-xl text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+              <motion.button whileTap={{ scale: 0.97 }} type="submit" className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-xl text-xs font-bold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/20">
                 <Save size={14} /> Save Changes
-              </button>
+              </motion.button>
             </div>
           )}
         </form>
@@ -153,17 +162,17 @@ export const RetailerProfilePage = () => {
 
       {/* Quick Links */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-        className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        className="bg-white rounded-2xl border border-slate-100/80 shadow-sm overflow-hidden">
         {[
           { label: 'My Agencies', path: '/shop/setup-agencies', icon: Store },
           { label: 'Order History', path: '/shop/orders', icon: FileText },
         ].map((link, idx) => {
           const Icon = link.icon;
           return (
-            <a key={idx} href={`#${link.path}`} className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center"><Icon size={14} className="text-slate-500" /></div>
-              <span className="text-sm font-medium text-slate-700 flex-1">{link.label}</span>
-              <ChevronRight size={16} className="text-slate-400" />
+            <a key={idx} href={`#${link.path}`} className="flex items-center gap-3 px-4 py-4 border-b border-slate-50 last:border-0 hover:bg-blue-50/30 transition-all group">
+              <div className="w-9 h-9 rounded-xl bg-slate-50 group-hover:bg-blue-50 flex items-center justify-center transition-colors"><Icon size={14} className="text-slate-500 group-hover:text-blue-600 transition-colors" /></div>
+              <span className="text-sm font-semibold text-slate-700 flex-1 group-hover:text-slate-800">{link.label}</span>
+              <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
             </a>
           );
         })}
@@ -172,7 +181,7 @@ export const RetailerProfilePage = () => {
       {/* Logout */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <button onClick={() => { logout(); window.location.hash = '/'; }}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-rose-200 text-rose-600 text-sm font-medium hover:bg-rose-50 transition-colors">
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border border-rose-200 text-rose-600 text-sm font-bold hover:bg-rose-50 transition-all">
           <LogOut size={16} /> Sign Out
         </button>
       </motion.div>

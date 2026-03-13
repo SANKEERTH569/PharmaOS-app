@@ -43,13 +43,20 @@ export const SalesmenPage = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const normalized = {
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        username: form.username.trim(),
+        password: form.password,
+      };
+
       if (editTarget) {
-        const payload: any = { name: form.name, phone: form.phone };
-        if (form.password) payload.password = form.password;
+        const payload: any = { name: normalized.name, phone: normalized.phone };
+        if (normalized.password) payload.password = normalized.password;
         const { data } = await api.patch(`/salesmen/${editTarget.id}`, payload);
         setSalesmen(prev => prev.map(s => s.id === editTarget.id ? { ...s, ...data } : s));
       } else {
-        const { data } = await api.post('/salesmen', form);
+        const { data } = await api.post('/salesmen', normalized);
         setSalesmen(prev => [data, ...prev]);
       }
       setShowModal(false);

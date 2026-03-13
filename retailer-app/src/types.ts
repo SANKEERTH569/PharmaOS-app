@@ -39,9 +39,15 @@ export interface AppNotification {
   created_at: string;
 }
 
-export type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN';
+export type UserRole = 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER' | 'SALESMAN';
 
-export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'DISPATCHED' | 'DELIVERED' | 'REJECTED' | 'CANCELLED';
+export type OrderStatus = 'PENDING_RETAILER'
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'DISPATCHED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'REJECTED';
 
 export interface Retailer {
   id: string;
@@ -55,6 +61,9 @@ export interface Retailer {
   last_payment_date?: string;
   address?: string;
   gstin?: string;
+  notes?: string;
+  invoice_no?: string;
+  salesman?: { name: string; phone: string; company_name?: string | null };
 }
 
 export interface RetailerAgency {
@@ -103,6 +112,7 @@ export interface Medicine {
   side_effects?: string;
   uses?: string;
   is_discontinued?: boolean;
+  rack_location?: string;
   is_active: boolean;
   wholesaler?: { id: string; name: string; phone: string };
 }
@@ -168,6 +178,7 @@ export interface Order {
   tax_total: number;
   total_amount: number;
   items: OrderItem[];
+  salesman?: { id: string; name: string; phone: string; company_name?: string | null };
   created_at: string;
   updated_at: string;
   payment_terms?: string;
@@ -232,6 +243,33 @@ export interface ReturnRequest {
   wholesaler?: { id: string; name: string; phone: string };
 }
 
+export type ComplaintType = 'SHORT_DELIVERY' | 'WRONG_ITEM' | 'MISSING_ITEM';
+export type ComplaintStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+
+export interface StockComplaintItem {
+  id: string;
+  medicine_name: string;
+  ordered_qty: number;
+  received_qty: number;
+  unit_price: number;
+}
+
+export interface StockComplaint {
+  id: string;
+  wholesaler_id: string;
+  retailer_id: string;
+  order_id?: string;
+  complaint_type: ComplaintType;
+  status: ComplaintStatus;
+  notes?: string;
+  resolution_note?: string;
+  created_at: string;
+  updated_at: string;
+  items: StockComplaintItem[];
+  retailer?: { id: string; name: string; shop_name: string; phone: string };
+  wholesaler?: { id: string; name: string; phone: string };
+}
+
 export interface StatCardProps {
   title: string;
   value: string;
@@ -241,7 +279,7 @@ export interface StatCardProps {
   color: 'blue' | 'green' | 'red' | 'orange';
 }
 
-export type SchemeType = 'BOGO' | 'HALF_SCHEME' | 'CASH_DISCOUNT';
+export type SchemeType = 'BOGO' | 'CASH_DISCOUNT' | 'HALF_SCHEME';
 
 export interface Scheme {
   id: string;
@@ -252,7 +290,211 @@ export interface Scheme {
   free_qty: number | null;
   discount_pct: number | null;
   medicine_id: string | null;
-  medicine?: { id: string; name: string; brand: string; mrp: number; price: number };
   is_active: boolean;
   created_at: string;
+  updated_at: string;
+  medicine?: {
+    id: string;
+    name: string;
+  };
+}
+
+// ── Purchase Orders & GRN ──────────────────────────────────────────────────
+
+export type POStatus = 'DRAFT' | 'SENT' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+
+export interface POItem {
+  id: string;
+  po_id: string;
+  medicine_id: string | null;
+  medicine_name: string;
+  qty_ordered: number;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  wholesaler_id: string;
+  main_wholesaler_id?: string | null;
+  supplier_name: string;
+  supplier_phone?: string | null;
+  supplier_gstin?: string | null;
+  status: POStatus;
+  notes?: string | null;
+  items: POItem[];
+  grns?: { id: string; grn_number: string; created_at: string }[];
+  supply_order?: { id: string; so_number: string; status: SupplyOrderStatus } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GRNItem {
+  id: string;
+  grn_id: string;
+  medicine_id: string;
+  medicine_name: string;
+  batch_no: string;
+  expiry_date: string;
+  qty_received: number;
+  unit_cost: number;
+}
+
+export interface GoodsReceiptNote {
+  id: string;
+  grn_number: string;
+  wholesaler_id: string;
+  po_id?: string | null;
+  po?: { id: string; po_number: string; supplier_name: string } | null;
+  supplier_name: string;
+  notes?: string | null;
+  items: GRNItem[];
+  created_at: string;
+}
+
+// ── Main Wholesaler Types ──────────────────────────────────────────────────
+
+export interface MainWholesaler {
+  id: string;
+  username: string;
+  name: string;
+  phone: string;
+  address?: string | null;
+  gstin?: string | null;
+  dl_number?: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface MainWholesalerMedicine {
+  id: string;
+  main_wholesaler_id: string;
+  medicine_name: string;
+  brand?: string | null;
+  mrp?: number | null;
+  price: number;
+  stock_qty?: number | null;
+  expiry_date?: string | null;
+  gst_rate: number;
+  hsn_code: string;
+  unit_type: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type SupplyOrderStatus = 'PENDING' | 'ACCEPTED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED';
+
+export interface SupplyOrderItem {
+  id: string;
+  so_id: string;
+  medicine_name: string;
+  qty_ordered: number;
+  unit_cost: number;
+  total_price: number;
+}
+
+export interface SupplyOrder {
+  id: string;
+  so_number: string;
+  wholesaler_id: string;
+  wholesaler?: { id: string; name: string; phone: string; address?: string | null; gstin?: string | null };
+  main_wholesaler_id: string;
+  purchase_order_id?: string | null;
+  purchase_order?: { id: string; po_number: string } | null;
+  status: SupplyOrderStatus;
+  notes?: string | null;
+  total_amount: number;
+  dispatch_date?: string | null;
+  delivered_date?: string | null;
+  items: SupplyOrderItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MainWholesalerScheme {
+  id: string;
+  main_wholesaler_id: string;
+  name: string;
+  type: SchemeType;
+  min_qty: number | null;
+  free_qty: number | null;
+  discount_pct: number | null;
+  medicine_id: string | null;
+  medicine?: MainWholesalerMedicine;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ── Sales Force Management ─────────────────────────────────────────────────
+
+export interface Salesman {
+  id: string;
+  wholesaler_id: string;
+  name: string;
+  phone: string;
+  username: string;
+  company_name?: string | null;
+  employee_id?: string | null;
+  territory?: string | null;
+  is_active: boolean;
+  created_at: string;
+  beat_routes?: { id: string; name: string }[];
+}
+
+export type CallOutcome = 'ORDER_TAKEN' | 'NO_ORDER' | 'PAYMENT_COLLECTED' | 'NOT_VISITED';
+
+export interface DailyCallReport {
+  id: string;
+  wholesaler_id: string;
+  salesman_id: string;
+  retailer_id: string;
+  visit_date: string;
+  outcome: CallOutcome;
+  order_id?: string | null;
+  payment_amount?: number | null;
+  notes?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  salesman?: { id: string; name: string };
+  retailer?: { id: string; name: string; shop_name: string; phone: string; address?: string };
+  created_at: string;
+}
+
+export interface BeatRetailerEntry {
+  retailer_id: string;
+  retailer: { id: string; name: string; shop_name: string; phone: string; address?: string };
+}
+
+export interface BeatRoute {
+  id: string;
+  wholesaler_id: string;
+  salesman_id?: string | null;
+  name: string;
+  description?: string | null;
+  salesman?: { id: string; name: string; phone: string } | null;
+  retailers: BeatRetailerEntry[];
+  created_at: string;
+}
+
+export interface SalesmanTarget {
+  id: string;
+  salesman_id: string;
+  month: number;
+  year: number;
+  order_target: number;
+  collection_target: number;
+  new_retailers_target: number;
+}
+
+export interface SalesmanPerformance {
+  salesman: Salesman;
+  target: SalesmanTarget | null;
+  orders_value: number;
+  collections_value: number;
+  new_retailers: number;
+  visits_total: number;
+  visits_with_order: number;
+  visits_no_order: number;
 }

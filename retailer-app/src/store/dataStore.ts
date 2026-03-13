@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import api from '../utils/api';
 import { getSocket } from '../utils/socket';
-import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme } from '../types';
+import { Order, Retailer, Medicine, LedgerEntry, Payment, PaymentMethod, OrderStatus, AppNotification, ReturnRequest, ReturnReason, Scheme, PurchaseOrder, POStatus, GoodsReceiptNote, StockComplaint, ComplaintType } from '../types';
 
 
 interface DataState {
@@ -12,10 +12,13 @@ interface DataState {
   ledgerEntries: LedgerEntry[];
   payments: Payment[];
   notifications: AppNotification[];
-  schemes: Scheme[];
   retailerLedgerSummary: { global_credit_limit: number, global_current_balance: number, agencies: any[] } | null;
   retailerLedgerHistory: Record<string, LedgerEntry[]>;
   returns: ReturnRequest[];
+  stockComplaints: StockComplaint[];
+  schemes: Scheme[];
+  purchaseOrders: PurchaseOrder[];
+  grns: GoodsReceiptNote[];
   isLoading: boolean;
 
   // Init
@@ -31,22 +34,39 @@ interface DataState {
   fetchRetailerLedgerSummary: () => Promise<void>;
   fetchRetailerLedgerHistory: (wholesalerId: string) => Promise<void>;
   fetchReturns: () => Promise<void>;
+  fetchStockComplaints: () => Promise<void>;
+  fetchSchemes: () => Promise<void>;
   setSchemes: (schemes: Scheme[]) => void;
+  fetchPurchaseOrders: () => Promise<void>;
+  fetchGRNs: () => Promise<void>;
+  createPurchaseOrder: (data: { supplier_name: string; supplier_phone?: string; supplier_gstin?: string; notes?: string; main_wholesaler_id?: string; items: { medicine_id?: string; medicine_name: string; qty_ordered: number; unit_cost: number }[] }) => Promise<PurchaseOrder>;
+  updatePOStatus: (id: string, status: POStatus, main_wholesaler_id?: string) => Promise<void>;
+  deletePurchaseOrder: (id: string) => Promise<void>;
+  createGRN: (data: { po_id?: string; supplier_name: string; notes?: string; items: { medicine_id: string; medicine_name: string; batch_no: string; expiry_date: string; qty_received: number; unit_cost: number }[] }) => Promise<GoodsReceiptNote>;
 
   // Mutations
   updateOrderStatus: (orderId: string, status: OrderStatus, wholesalerId: string, paymentData?: { amount: number; method: PaymentMethod } | null) => Promise<void>;
   addRetailer: (retailer: Omit<Retailer, 'id' | 'current_balance' | 'is_active'>) => Promise<void>;
   updateRetailer: (id: string, updates: Partial<Retailer>) => Promise<void>;
   recordPayment: (retailerId: string, amount: number, method: PaymentMethod, wholesalerId: string, notes?: string) => Promise<void>;
+  addOpeningBalance: (retailerId: string, amount: number, notes?: string) => Promise<void>;
   addMedicine: (medicine: Omit<Medicine, 'id'>) => Promise<void>;
+  addMedicineToStore: (medicine: Medicine) => void;
   updateMedicine: (id: string, updates: Partial<Medicine>) => Promise<void>;
   toggleMedicineStatus: (id: string) => Promise<void>;
   placeOrder: (order: Omit<Order, 'id' | 'invoice_no' | 'created_at' | 'updated_at'>) => Promise<void>;
+  createQuickSale: (data: { retailer_id: string; items: any[]; notes?: string; payment_terms?: string }) => Promise<any>;
   cancelOrder: (orderId: string) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: (wholesalerId: string) => Promise<void>;
   submitReturn: (data: { wholesaler_id: string; reason: ReturnReason; notes?: string; items: any[] }) => Promise<void>;
   updateReturnStatus: (returnId: string, status: 'APPROVED' | 'REJECTED', rejection_note?: string) => Promise<void>;
+  submitStockComplaint: (data: { wholesaler_id: string; order_id?: string; complaint_type: ComplaintType; notes?: string; items: { medicine_name: string; ordered_qty: number; received_qty: number; unit_price: number }[] }) => Promise<void>;
+  updateComplaintStatus: (complaintId: string, status: 'ACKNOWLEDGED' | 'RESOLVED', resolution_note?: string) => Promise<void>;
+  removeMedicine: (id: string) => Promise<void>;
+  removeOrderItem: (orderId: string, itemId: string) => Promise<void>;
+  createScheme: (data: Omit<Scheme, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  deleteScheme: (id: string) => Promise<void>;
 
   // Getters
   getRetailer: (id: string) => Retailer | undefined;
@@ -60,10 +80,13 @@ export const useDataStore = create<DataState>()((set, get) => ({
   ledgerEntries: [],
   payments: [],
   notifications: [],
-  schemes: [],
   retailerLedgerSummary: null,
   retailerLedgerHistory: {},
   returns: [],
+  stockComplaints: [],
+  schemes: [],
+  purchaseOrders: [],
+  grns: [],
   isLoading: false,
 
   // ─── Init ──────────────────────────────────────────────────────────────
@@ -71,21 +94,22 @@ export const useDataStore = create<DataState>()((set, get) => ({
     set({ isLoading: true });
     try {
       if (role === 'RETAILER') {
-        // Retailers only need their own orders — other endpoints require WHOLESALER role
         const [o, n] = await Promise.all([
-          api.get('/orders'),
+          api.get('/orders').catch(() => ({ data: [] })),
           api.get('/notifications').catch(() => ({ data: [] })),
         ]);
         set({ orders: o.data, notifications: n.data, isLoading: false });
       } else {
-        // Wholesaler — fetch all relevant data
-        const [r, m, o, l, p, n] = await Promise.all([
-          api.get('/retailers'),
-          api.get('/medicines'),
-          api.get('/orders'),
-          api.get('/ledger'),
-          api.get('/payments'),
-          api.get('/notifications'),
+        // Wholesaler — fetch all relevant data; each call catches independently
+        const [r, m, o, l, p, n, s, pos] = await Promise.all([
+          api.get('/retailers').catch(() => ({ data: [] })),
+          api.get('/medicines').catch(() => ({ data: [] })),
+          api.get('/orders').catch(() => ({ data: [] })),
+          api.get('/ledger').catch(() => ({ data: [] })),
+          api.get('/payments').catch(() => ({ data: [] })),
+          api.get('/notifications').catch(() => ({ data: [] })),
+          api.get('/schemes').catch(() => ({ data: [] })),
+          api.get('/purchase-orders').catch(() => ({ data: [] })),
         ]);
         set({
           retailers: r.data,
@@ -94,6 +118,8 @@ export const useDataStore = create<DataState>()((set, get) => ({
           ledgerEntries: l.data,
           payments: p.data,
           notifications: n.data,
+          schemes: s.data,
+          purchaseOrders: pos.data,
           isLoading: false,
         });
       }
@@ -131,11 +157,7 @@ export const useDataStore = create<DataState>()((set, get) => ({
   // ─── Fetchers ──────────────────────────────────────────────────────────
   fetchRetailers: async () => { const { data } = await api.get('/retailers'); set({ retailers: data }); },
   fetchOrders: async () => { const { data } = await api.get('/orders'); set({ orders: data }); },
-  fetchMedicines: async () => {
-    // This is primarily for Wholesalers. Retailers use the specific marketplace endpoint.
-    const { data } = await api.get('/medicines');
-    set({ medicines: data });
-  },
+  fetchMedicines: async () => { const { data } = await api.get('/medicines'); set({ medicines: data }); },
   fetchLedger: async (retailerId) => {
     const url = retailerId ? `/ledger?retailer_id=${retailerId}` : '/ledger';
     const { data } = await api.get(url);
@@ -155,7 +177,53 @@ export const useDataStore = create<DataState>()((set, get) => ({
     const { data } = await api.get('/returns');
     set({ returns: data });
   },
+  fetchStockComplaints: async () => {
+    const { data } = await api.get('/stock-complaints');
+    set({ stockComplaints: data });
+  },
+  fetchSchemes: async () => {
+    const { data } = await api.get('/schemes');
+    set({ schemes: data });
+  },
   setSchemes: (schemes) => set({ schemes }),
+
+  fetchPurchaseOrders: async () => {
+    const { data } = await api.get('/purchase-orders');
+    set({ purchaseOrders: data });
+  },
+
+  fetchGRNs: async () => {
+    const { data } = await api.get('/purchase-orders/grns/list');
+    set({ grns: data });
+  },
+
+  createPurchaseOrder: async (poData) => {
+    const { data: created } = await api.post('/purchase-orders', poData);
+    set((s) => ({ purchaseOrders: [created, ...s.purchaseOrders] }));
+    return created;
+  },
+
+  updatePOStatus: async (id, status, main_wholesaler_id?) => {
+    const payload: any = { status };
+    if (main_wholesaler_id !== undefined) payload.main_wholesaler_id = main_wholesaler_id;
+    const { data: updated } = await api.patch(`/purchase-orders/${id}`, payload);
+    set((s) => ({ purchaseOrders: s.purchaseOrders.map(p => p.id === id ? updated : p) }));
+  },
+
+  deletePurchaseOrder: async (id) => {
+    await api.delete(`/purchase-orders/${id}`);
+    set((s) => ({ purchaseOrders: s.purchaseOrders.filter(p => p.id !== id) }));
+  },
+
+  createGRN: async (grnData) => {
+    const { data: created } = await api.post('/purchase-orders/grns', grnData);
+    set((s) => ({ grns: [created, ...s.grns] }));
+    // Refresh medicines stock after GRN
+    get().fetchMedicines();
+    // Refresh POs if linked
+    if (grnData.po_id) get().fetchPurchaseOrders();
+    return created;
+  },
 
   // ─── Mutations ─────────────────────────────────────────────────────────
   updateOrderStatus: async (orderId, status, _wholesalerId, paymentData) => {
@@ -201,9 +269,23 @@ export const useDataStore = create<DataState>()((set, get) => ({
     }));
   },
 
-  addMedicine: async (data) => {
+  addOpeningBalance: async (retailerId, amount, notes) => {
+    const { data } = await api.post('/ledger/opening-balance', { retailer_id: retailerId, amount, notes });
+    set((s) => ({
+      ledgerEntries: [data.ledgerEntry, ...s.ledgerEntries],
+      retailers: s.retailers.map(r =>
+        r.id === retailerId ? { ...r, current_balance: r.current_balance + amount } : r
+      ),
+    }));
+  },
+
+  addMedicine: async (data: any) => {
     const { data: created } = await api.post('/medicines', data);
     set((s) => ({ medicines: [created, ...s.medicines] }));
+  },
+
+  addMedicineToStore: (medicine: Medicine) => {
+    set((s) => ({ medicines: [medicine, ...s.medicines] }));
   },
 
   updateMedicine: async (id, updates) => {
@@ -216,9 +298,20 @@ export const useDataStore = create<DataState>()((set, get) => ({
     set((s) => ({ medicines: s.medicines.map(m => m.id === id ? updated : m) }));
   },
 
+  removeMedicine: async (id) => {
+    await api.delete(`/medicines/${id}`);
+    set((s) => ({ medicines: s.medicines.filter(m => m.id !== id) }));
+  },
+
   placeOrder: async (order) => {
     const { data: created } = await api.post('/orders', order);
     set((s) => ({ orders: [created, ...s.orders] }));
+  },
+
+  createQuickSale: async (data) => {
+    const { data: created } = await api.post('/orders/quick-sale', data);
+    set((s) => ({ orders: [created, ...s.orders] }));
+    return created;
   },
 
   cancelOrder: async (orderId) => {
@@ -249,6 +342,41 @@ export const useDataStore = create<DataState>()((set, get) => ({
       get().fetchLedger();
       get().fetchRetailers();
     }
+  },
+
+  submitStockComplaint: async (complaintData) => {
+    const { data: created } = await api.post('/stock-complaints', complaintData);
+    set((s) => ({ stockComplaints: [created, ...s.stockComplaints] }));
+  },
+
+  updateComplaintStatus: async (complaintId, status, resolution_note) => {
+    const { data: updated } = await api.patch(`/stock-complaints/${complaintId}/status`, { status, resolution_note });
+    set((s) => ({ stockComplaints: s.stockComplaints.map(c => c.id === complaintId ? updated : c) }));
+  },
+
+  removeOrderItem: async (orderId, itemId) => {
+    const { data: updatedOrder } = await api.post(`/orders/${orderId}/remove-item`, { item_id: itemId });
+
+    set((s) => {
+      // If the order was cancelled because it was the last item, data returned might reflect that
+      // Just update the order in the list
+      return { orders: s.orders.map(o => o.id === orderId ? updatedOrder : o) };
+    });
+
+    // If order was ACCEPTED, fetch medicines to reflect restored stock
+    if (updatedOrder.status === 'ACCEPTED' || updatedOrder.status === 'CANCELLED') {
+      get().fetchMedicines();
+    }
+  },
+
+  createScheme: async (data) => {
+    const { data: created } = await api.post('/schemes', data);
+    set((s) => ({ schemes: [created, ...s.schemes] }));
+  },
+
+  deleteScheme: async (id) => {
+    await api.delete(`/schemes/${id}`);
+    set((s) => ({ schemes: s.schemes.filter(sc => sc.id !== id) }));
   },
 
   // ─── Getters ───────────────────────────────────────────────────────────

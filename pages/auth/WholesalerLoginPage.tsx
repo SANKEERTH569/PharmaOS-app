@@ -9,11 +9,9 @@ import {
 import { cn } from '../../utils/cn';
 
 type Mode = 'LOGIN' | 'REGISTER';
-type LoginTab = 'WHOLESALER' | 'SALESMAN';
 
 export const WholesalerLoginPage = () => {
     const [mode, setMode] = useState<Mode>('LOGIN');
-    const [loginTab, setLoginTab] = useState<LoginTab>('WHOLESALER');
     const [loading, setLoading] = useState(false);
     const [showPass, setShowPass] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -25,7 +23,7 @@ export const WholesalerLoginPage = () => {
         name: '', username: '', phone: '', email: '', address: '', password: '', confirm: '',
     });
 
-    const { loginWholesaler, loginSalesman, register, authError } = useAuthStore();
+    const { loginWholesaler, register, authError } = useAuthStore();
     const { initData } = useDataStore();
     const navigate = useNavigate();
 
@@ -33,15 +31,10 @@ export const WholesalerLoginPage = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            if (loginTab === 'SALESMAN') {
-                await loginSalesman(loginId.trim(), loginPass);
-                navigate('/salesman');
-            } else {
-                await loginWholesaler(loginId.trim(), loginPass);
-                const w = useAuthStore.getState().wholesaler;
-                initData(w?.id || '', 'WHOLESALER');
-                navigate('/');
-            }
+            await loginWholesaler(loginId.trim(), loginPass);
+            const w = useAuthStore.getState().wholesaler;
+            initData(w?.id || '', 'WHOLESALER');
+            navigate('/');
         } catch { } finally { setLoading(false); }
     };
 
@@ -145,28 +138,11 @@ export const WholesalerLoginPage = () => {
                         </p>
                     </div>
 
-                    {/* Login tab switcher */}
-                    {mode === 'LOGIN' && (
-                        <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
-                            {(['WHOLESALER', 'SALESMAN'] as LoginTab[]).map(tab => (
-                                <button key={tab} type="button"
-                                    onClick={() => { setLoginTab(tab); useAuthStore.setState({ authError: null }); }}
-                                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                                        loginTab === tab
-                                            ? 'bg-white text-indigo-700 shadow-sm'
-                                            : 'text-slate-500 hover:text-slate-700'
-                                    }`}>
-                                    {tab === 'WHOLESALER' ? '🏢 Distributor' : '👤 Sales Rep'}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     {/* ──── LOGIN ──── */}
                     {mode === 'LOGIN' && (
                         <form onSubmit={handleLogin} className="space-y-5">
                             <div>
-                                <label className={labelBase}>{loginTab === 'SALESMAN' ? 'Username' : 'Username / Business ID'}</label>
+                                <label className={labelBase}>Username / Business ID</label>
                                 <div className="relative">
                                     <User size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                                     <input type="text" value={loginId}

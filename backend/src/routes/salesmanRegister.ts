@@ -10,28 +10,40 @@ router.post('/salesman/register', async (req, res) => {
   try {
     const { name, phone, username, password, company_name, employee_id, territory } = req.body;
 
-    if (!name || !phone || !username || !password) {
+    const cleanName = name?.trim();
+    const cleanPhone = phone?.trim();
+    const cleanUsername = username?.trim();
+    const cleanPassword = password;
+    const cleanCompanyName = company_name?.trim() || null;
+    const cleanEmployeeId = employee_id?.trim() || null;
+    const cleanTerritory = territory?.trim() || null;
+
+    if (!cleanName || !cleanPhone || !cleanUsername || !cleanPassword) {
       return res.status(400).json({ error: 'name, phone, username, password are required' });
     }
 
-    const existingPhone = await prisma.salesman.findUnique({ where: { phone } });
+    if (cleanPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const existingPhone = await prisma.salesman.findUnique({ where: { phone: cleanPhone } });
     if (existingPhone) return res.status(409).json({ error: 'Phone number already registered' });
 
-    const existingUsername = await prisma.salesman.findUnique({ where: { username } });
+    const existingUsername = await prisma.salesman.findUnique({ where: { username: cleanUsername } });
     if (existingUsername) return res.status(409).json({ error: 'Username already taken' });
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(cleanPassword, 10);
 
     // Salesman is created with wholesaler_id = '' — will be linked when approved
     const salesman = await prisma.salesman.create({
       data: {
-        name,
-        phone,
-        username,
+        name: cleanName,
+        phone: cleanPhone,
+        username: cleanUsername,
         password_hash,
-        company_name: company_name || null,
-        employee_id: employee_id || null,
-        territory: territory || null,
+        company_name: cleanCompanyName,
+        employee_id: cleanEmployeeId,
+        territory: cleanTerritory,
         wholesaler_id: null,
         is_active: true,
       },

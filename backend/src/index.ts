@@ -4,7 +4,7 @@ import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './lib/prisma';
 
 import authRouter from './routes/auth';
 import retailersRouter from './routes/retailers';
@@ -37,7 +37,6 @@ import { startReminderCron } from './routes/reminderCron';
 
 const app = express();
 const httpServer = http.createServer(app);
-const prisma = new PrismaClient();
 // ── Socket.io ──────────────────────────────────────────────────────────────
 export const io = new SocketIOServer(httpServer, {
   cors: {

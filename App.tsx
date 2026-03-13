@@ -48,6 +48,7 @@ import { CreatePurchaseOrderPage } from './pages/CreatePurchaseOrderPage';
 import { WholesalerOrderPage } from './pages/WholesalerOrderPage';
 import { PurchaseOrderInvoicePage } from './pages/PurchaseOrderInvoicePage';
 import { MainWholesalerLoginPage } from './pages/auth/MainWholesalerLoginPage';
+import { SalesmanLoginPage } from './pages/auth/SalesmanLoginPage';
 import { MainWholesalerLayout } from './components/MainWholesalerLayout';
 import { WholesalerDashboard } from './pages/wholesaler/WholesalerDashboard';
 import { SupplyOrdersPage } from './pages/wholesaler/SupplyOrdersPage';
@@ -145,6 +146,7 @@ function App() {
         <Route path="/login/retailer" element={<RetailerLoginPage />} />
         <Route path="/login/admin" element={<AdminLoginPage />} />
         <Route path="/login/main-wholesaler" element={<MainWholesalerLoginPage />} />
+        <Route path="/login/salesman" element={<SalesmanLoginPage />} />
 
         {/* Main Wholesaler Routes */}
         <Route path="/wholesaler" element={

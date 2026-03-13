@@ -35,22 +35,27 @@ router.post('/', async (req, res) => {
       password: string;
     };
 
-    if (!name || !phone || !username || !password) {
+    const cleanName = name?.trim();
+    const cleanPhone = phone?.trim();
+    const cleanUsername = username?.trim();
+    const cleanPassword = password;
+
+    if (!cleanName || !cleanPhone || !cleanUsername || !cleanPassword) {
       return res.status(400).json({ error: 'name, phone, username and password are required' });
     }
-    if (password.length < 6) {
+    if (cleanPassword.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    const existingUsername = await prisma.salesman.findUnique({ where: { username } });
+    const existingUsername = await prisma.salesman.findUnique({ where: { username: cleanUsername } });
     if (existingUsername) return res.status(409).json({ error: 'Username already taken' });
 
-    const existingPhone = await prisma.salesman.findUnique({ where: { phone } });
+    const existingPhone = await prisma.salesman.findUnique({ where: { phone: cleanPhone } });
     if (existingPhone) return res.status(409).json({ error: 'Phone number already in use' });
 
-    const password_hash = await bcrypt.hash(password, 10);
+    const password_hash = await bcrypt.hash(cleanPassword, 10);
     const salesman = await prisma.salesman.create({
-      data: { wholesaler_id, name, phone, username, password_hash },
+      data: { wholesaler_id, name: cleanName, phone: cleanPhone, username: cleanUsername, password_hash },
     });
 
     const { password_hash: _pw, ...safe } = salesman;

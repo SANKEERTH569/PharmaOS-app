@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Store, ArrowRight, Building, Warehouse } from 'lucide-react';
+import { Briefcase, Store, ArrowRight, Building, Warehouse, UserRound } from 'lucide-react';
 
 const ROLES = [
     {
@@ -47,6 +47,21 @@ const ROLES = [
         glow: 'rgba(79,70,229,0.55)',
         accent: '#818CF8',
         path: '/login/wholesaler',
+    },
+    {
+        key: 'salesman',
+        label: 'Salesman (MR)',
+        sublabel: 'Field Force',
+        desc: 'Beat routes, order booking, collections & call reports',
+        icon: UserRound,
+        bg: 'linear-gradient(135deg,rgba(8,145,178,0.18),rgba(14,116,144,0.08))',
+        hoverBg: 'linear-gradient(135deg,rgba(8,145,178,0.32),rgba(14,116,144,0.18))',
+        border: 'rgba(8,145,178,0.25)',
+        hoverBorder: 'rgba(34,211,238,0.55)',
+        iconBg: 'linear-gradient(135deg,#0E7490,#0891B2)',
+        glow: 'rgba(8,145,178,0.55)',
+        accent: '#22D3EE',
+        path: '/login/salesman',
     },
     {
         key: 'retailer',
@@ -146,7 +161,7 @@ export const LoginSelectorPage = () => {
                 </p>
 
                 {/* ── Role cards ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 w-full">
                     {ROLES.map((role, idx) => {
                         const { key, label, sublabel, desc, icon: Icon, bg, hoverBg, border, hoverBorder, iconBg, glow, accent, comingSoon } = role;
                         const path = 'path' in role ? role.path : undefined;

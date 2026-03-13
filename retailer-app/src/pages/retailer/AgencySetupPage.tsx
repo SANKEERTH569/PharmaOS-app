@@ -83,20 +83,20 @@ export const AgencySetupPage = () => {
   const hasActive = agencies.some(a => a.status === 'ACTIVE');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-start justify-center px-4 py-8 sm:py-14">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-start justify-center px-4 py-8 sm:py-14">
       <div className="w-full max-w-lg space-y-5">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
-            <Store size={24} className="text-white" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-500/25">
+            <Store size={26} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">Connect Agencies</h1>
+          <h1 className="text-2xl font-extrabold text-slate-800">Connect Agencies</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">Search and link wholesale agencies to start ordering</p>
         </motion.div>
 
         {/* Search */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
-          className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+          className="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-4 space-y-3">
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             {searching && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-500 animate-spin" />}
@@ -111,21 +111,21 @@ export const AgencySetupPage = () => {
                 {searchResults.map(w => {
                   const alreadyAdded = agencies.some(a => a.wholesaler_id === w.id);
                   return (
-                    <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <div key={w.id} className="flex items-center gap-3 p-3 bg-slate-50/80 rounded-xl hover:bg-slate-100/50 transition-colors">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shrink-0 border border-blue-100/50">
                         <Building2 size={16} className="text-blue-600" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{w.name}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">{w.business_name || w.name}</p>
                         {w.phone && <p className="text-[10px] text-slate-400 flex items-center gap-1"><Phone size={9} />{w.phone}</p>}
                       </div>
                       {alreadyAdded ? (
                         <span className="text-[10px] font-medium text-emerald-600 flex items-center gap-1"><CheckCircle size={12} /> Added</span>
                       ) : (
-                        <button onClick={() => handleAddAgency(w)} disabled={adding === w.id}
-                          className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAddAgency(w)} disabled={adding === w.id}
+                          className="flex items-center gap-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3.5 py-1.5 rounded-lg text-[10px] font-bold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 transition-all shadow-sm">
                           {adding === w.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Add
-                        </button>
+                        </motion.button>
                       )}
                     </div>
                   );
@@ -141,31 +141,33 @@ export const AgencySetupPage = () => {
 
         {/* Connected Agencies */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
+          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">
             Connected Agencies ({agencies.length})
           </h3>
 
           {loadingAgencies ? (
             <div className="text-center py-8"><Loader2 size={20} className="text-blue-500 animate-spin mx-auto" /></div>
           ) : agencies.length === 0 ? (
-            <div className="text-center py-10 bg-white rounded-2xl border border-slate-100">
-              <Building2 size={28} className="text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-medium text-slate-500">No agencies connected yet</p>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-12 bg-white rounded-2xl border border-slate-100/80 shadow-sm">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <Building2 size={24} className="text-slate-300" />
+              </div>
+              <p className="text-sm font-semibold text-slate-600">No agencies connected yet</p>
               <p className="text-xs text-slate-400 mt-1">Search above to find and add wholesalers</p>
-            </div>
+            </motion.div>
           ) : (
             <div className="space-y-2">
               {agencies.map(agency => (
-                <motion.div key={agency.wholesaler_id} layout className="bg-white rounded-xl border border-slate-100 shadow-sm p-4">
+                <motion.div key={agency.wholesaler_id} layout className="bg-white rounded-2xl border border-slate-100/80 shadow-sm p-4 hover:shadow-md transition-all">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center shrink-0 border border-blue-100/50">
                       <Building2 size={16} className="text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-slate-800 truncate">{agency.wholesaler?.name || 'Agency'}</p>
+                        <p className="text-sm font-semibold text-slate-800 truncate">{agency.wholesaler?.name || 'Agency'}</p>
                         {agency.is_primary && (
-                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg flex items-center gap-0.5 border border-amber-200/50">
                             <Star size={8} fill="currentColor" /> Primary
                           </span>
                         )}
@@ -197,10 +199,10 @@ export const AgencySetupPage = () => {
         {/* Continue Button */}
         {hasActive && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <button onClick={() => navigate('/shop')}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-3 rounded-2xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm">
+            <motion.button whileTap={{ scale: 0.98 }} onClick={() => navigate('/shop')}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-2xl text-sm font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-600/25">
               Continue to Marketplace <ArrowRight size={16} />
-            </button>
+            </motion.button>
           </motion.div>
         )}
       </div>

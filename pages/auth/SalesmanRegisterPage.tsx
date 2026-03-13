@@ -39,10 +39,18 @@ export const SalesmanRegisterPage = () => {
     setLoading(true);
 
     try {
-      await salesmanRegister(formData);
+      await salesmanRegister({
+        ...formData,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        username: formData.username.trim(),
+        company_name: formData.company_name.trim(),
+        employee_id: formData.employee_id.trim(),
+        territory: formData.territory.trim(),
+      });
       navigate('/salesman/connect');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
