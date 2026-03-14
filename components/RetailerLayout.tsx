@@ -22,13 +22,13 @@ const getGreeting = () => {
 
 const SidebarItem: React.FC<{ item: SideNavItem; active: boolean }> = ({ item, active }) => (
   <Link to={item.path} className="block">
-    <motion.div whileHover={{ x: 3 }} whileTap={{ scale: 0.97 }}
+      <motion.div whileHover={{ x: 3 }} whileTap={{ scale: 0.97 }}
       className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 relative",
-        active ? "text-teal-700 shadow-sm" : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900")}
-      style={active ? { background: 'linear-gradient(90deg, #CCFBF1 0%, #F0FDFB 100%)', border: '1px solid rgba(20,184,166,0.18)' } : {}}>
-      {active && <motion.div layoutId="sidebar-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full" style={{ background: 'linear-gradient(180deg, #14B8A6, #059669)' }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
+        active ? "text-primary shadow-sm" : "text-slate-600 hover:bg-slate-50/80 hover:text-slate-900")}
+      style={active ? { background: 'linear-gradient(90deg, #EEF2FF 0%, #F8FAFC 100%)', border: '1px solid rgba(79,70,229,0.18)' } : {}}>
+      {active && <motion.div layoutId="sidebar-indicator" className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full" style={{ background: 'linear-gradient(180deg, #4F46E5, #3730A3)' }} transition={{ type: 'spring', stiffness: 500, damping: 30 }} />}
       <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200", active ? "text-white shadow-md" : "bg-slate-100 text-slate-500")}
-        style={active ? { background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.30)' } : {}}>
+        style={active ? { background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)', boxShadow: '0 4px 10px rgba(79,70,229,0.30)' } : {}}>
         <item.icon size={16} strokeWidth={active ? 2.2 : 1.8} />
       </div>
       <span className={cn(active && "font-semibold")}>{item.label}</span>
@@ -102,8 +102,8 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
             <Pill size={18} className="text-white" />
           </div>
           <div>
-            <p className="text-[15px] font-bold text-slate-900 leading-none tracking-tight">PharmaConnect</p>
-            <p className="text-[10px] font-semibold mt-0.5 tracking-wide uppercase" style={{ color: '#0D9488' }}>Retail Portal</p>
+            <p className="text-[15px] font-bold text-slate-900 leading-none tracking-tight">Pharma Head</p>
+            <p className="text-[10px] font-semibold mt-0.5 tracking-wide uppercase" style={{ color: '#4F46E5' }}>Retail Portal</p>
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-hide">
@@ -178,8 +178,8 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
               style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.28)' }}
             ><Pill size={16} className="text-white" /></div>
             <div>
-              <span className="text-[14px] font-bold text-slate-900 tracking-tight block leading-tight">PharmaConnect</span>
-              <span className="text-[9px] font-semibold tracking-wide uppercase" style={{ color: '#0D9488' }}>{getGreeting()}</span>
+              <span className="text-[14px] font-bold text-slate-900 tracking-tight block leading-tight">Pharma Head</span>
+              <span className="text-[9px] font-semibold tracking-wide uppercase" style={{ color: '#4F46E5' }}>{getGreeting()}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">

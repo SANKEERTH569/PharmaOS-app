@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     Search, Users, Filter, ChevronDown, ToggleLeft, ToggleRight,
-    Store, ShoppingCart, IndianRupee,
+    Store, ShoppingCart, IndianRupee, Edit, X, Save,
 } from 'lucide-react';
 import api from '../../utils/api';
 import { cn } from '../../utils/cn';
@@ -19,6 +19,9 @@ export const RetailerManagement = () => {
     const [statusFilter, setStatusFilter] = useState('');
     const [showFilters, setShowFilters] = useState(false);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
+    const [editModal, setEditModal] = useState<{ open: boolean; retailer: any }>({ open: false, retailer: null });
+    const [editForm, setEditForm] = useState({ name: '', shop_name: '', phone: '', address: '', gstin: '', dl_number: '' });
+    const [saving, setSaving] = useState(false);
 
     const fetchData = () => {
         const params = new URLSearchParams();
@@ -39,6 +42,32 @@ export const RetailerManagement = () => {
             setRetailers(prev => prev.map(r => r.id === id ? { ...r, is_active: !current } : r));
         } catch (err) { console.error(err); }
         finally { setUpdatingId(null); }
+    };
+
+    const openEdit = (r: any) => {
+        setEditForm({
+            name: r.name || '',
+            shop_name: r.shop_name || '',
+            phone: r.phone || '',
+            address: r.address || '',
+            gstin: r.gstin || '',
+            dl_number: r.dl_number || '',
+        });
+        setEditModal({ open: true, retailer: r });
+    };
+
+    const saveEdit = async () => {
+        if (!editModal.retailer) return;
+        setSaving(true);
+        try {
+            const { data } = await api.patch(`/admin/retailers/${editModal.retailer.id}`, editForm);
+            setRetailers(prev => prev.map(r => r.id === editModal.retailer.id ? { ...r, ...data } : r));
+            setEditModal({ open: false, retailer: null });
+        } catch (err: any) {
+            alert(err?.response?.data?.error || 'Failed to update');
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (loading) {
@@ -166,14 +195,23 @@ export const RetailerManagement = () => {
                                         </span>
                                     </td>
                                     <td className="text-center px-4 py-3.5">
-                                        <button
-                                            disabled={updatingId === r.id}
-                                            onClick={() => toggleActive(r.id, r.is_active)}
-                                            className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40"
-                                            title={r.is_active ? 'Deactivate' : 'Activate'}
-                                        >
-                                            {r.is_active ? <ToggleRight size={22} className="text-emerald-500" /> : <ToggleLeft size={22} className="text-slate-400" />}
-                                        </button>
+                                        <div className="flex items-center justify-center gap-1">
+                                            <button
+                                                onClick={() => openEdit(r)}
+                                                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors text-slate-500 hover:text-blue-600"
+                                                title="Edit profile"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                            <button
+                                                disabled={updatingId === r.id}
+                                                onClick={() => toggleActive(r.id, r.is_active)}
+                                                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-40"
+                                                title={r.is_active ? 'Deactivate' : 'Activate'}
+                                            >
+                                                {r.is_active ? <ToggleRight size={22} className="text-emerald-500" /> : <ToggleLeft size={22} className="text-slate-400" />}
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -189,6 +227,43 @@ export const RetailerManagement = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Edit retailer profile modal */}
+            {editModal.open && editModal.retailer && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => !saving && setEditModal({ open: false, retailer: null })}>
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                            <h3 className="text-base font-bold text-slate-800">Edit retailer profile</h3>
+                            <button onClick={() => !saving && setEditModal({ open: false, retailer: null })} className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"><X size={18} /></button>
+                        </div>
+                        <div className="p-4 space-y-3">
+                            {[
+                                { key: 'name', label: 'Full name' },
+                                { key: 'shop_name', label: 'Shop name' },
+                                { key: 'phone', label: 'Phone' },
+                                { key: 'address', label: 'Address' },
+                                { key: 'gstin', label: 'GSTIN' },
+                                { key: 'dl_number', label: 'Drug license number' },
+                            ].map(({ key, label }) => (
+                                <div key={key}>
+                                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{label}</label>
+                                    <input
+                                        value={(editForm as any)[key]}
+                                        onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                                        className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-300 outline-none"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 border-t border-slate-100 flex gap-2">
+                            <button type="button" onClick={() => setEditModal({ open: false, retailer: null })} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50" disabled={saving}>Cancel</button>
+                            <button type="button" onClick={saveEdit} disabled={saving} className="flex-1 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                {saving ? 'Saving…' : <><Save size={16} /> Save</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

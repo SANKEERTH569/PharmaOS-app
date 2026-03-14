@@ -176,7 +176,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
 
   const pageTitle = Object.entries(PAGE_TITLES).find(
     ([p]) => location.pathname === p
-  )?.[1] ?? 'PharmaOS';
+  )?.[1] ?? 'Pharma Head';
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -247,24 +247,24 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
       {/* ══ SIDEBAR ══ */}
       <aside className={cn(
         'fixed lg:static inset-y-0 left-0 z-40 flex flex-col w-[260px] shrink-0 transition-transform duration-300',
-        'bg-gradient-to-b from-[#0F172A] via-[#111827] to-[#1E293B]',
+        'bg-surface border-r border-border',
         menuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       )}>
 
         {/* Brand */}
-        <div className="flex items-center justify-between px-5 h-[72px] border-b border-white/[0.06] shrink-0">
+        <div className="flex items-center justify-between px-5 h-[72px] border-b border-border shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
               <span className="text-white font-black text-lg leading-none">P</span>
             </div>
             <div>
-              <p className="text-[18px] font-extrabold text-white leading-none tracking-tight">PharmaOS</p>
-              <p className="text-[10px] text-slate-500 font-semibold mt-0.5 tracking-wider uppercase">Sub-Wholesale OS</p>
+              <p className="text-[18px] font-extrabold text-text-primary leading-none tracking-tight">Pharma Head</p>
+              <p className="text-[10px] text-text-muted font-semibold mt-0.5 tracking-wider uppercase">Sub-Wholesale OS</p>
             </div>
           </div>
           <button
             onClick={() => setMenuOpen(false)}
-            className="lg:hidden p-1.5 text-slate-500 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="lg:hidden p-1.5 text-text-muted hover:text-text-primary hover:bg-surface-alt rounded-lg transition-colors"
           >
             <X size={18} />
           </button>
@@ -274,7 +274,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
         <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-6 scrollbar-hide">
           {navGroups.map(group => (
             <div key={group.label}>
-              <p className="px-3 mb-2 text-[10px] font-bold text-slate-600 uppercase tracking-[0.2em]">
+              <p className="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -290,16 +290,16 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                       className={cn(
                         'flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group/nav',
                         active
-                          ? isProItem ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/10 text-amber-300' : 'bg-white/[0.08] text-white'
-                          : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                          ? isProItem ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-primary-light text-primary border border-primary-muted/40'
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-alt'
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <div className={cn(
                           'w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200',
                           active
-                            ? isProItem ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shadow-amber-500/20' : 'bg-gradient-to-br from-indigo-500 to-blue-600 shadow-md shadow-indigo-500/20'
-                            : 'bg-white/[0.05] group-hover/nav:bg-white/[0.08]'
+                            ? isProItem ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-md shadow-amber-500/20' : 'bg-gradient-to-br from-primary to-primary-dark shadow-md shadow-indigo-500/20'
+                            : 'bg-surface-alt group-hover/nav:bg-primary-light text-text-secondary'
                         )}>
                           <Icon size={15} strokeWidth={active ? 2.2 : 1.8} />
                         </div>
@@ -312,8 +312,8 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
                         <span className={cn(
                           'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center leading-tight',
                           active
-                            ? 'bg-white/20 text-white'
-                            : 'bg-rose-500/20 text-rose-400'
+                            ? 'bg-primary text-white'
+                            : 'bg-rose-100 text-rose-700'
                         )}>
                           {badge}
                         </span>
@@ -326,36 +326,36 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
           ))}
         </nav>
 
-        {/* PharmaOS branding card */}
-        <div className="mx-3 mb-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4">
+        {/* Pharma Head branding card */}
+        <div className="mx-3 mb-3 rounded-xl bg-white border border-border p-4">
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-sm shrink-0">
               <span className="text-white font-black text-sm leading-none">P</span>
             </div>
-            <p className="text-[14px] font-bold text-white leading-none tracking-tight">PharmaOS</p>
+            <p className="text-[14px] font-bold text-text-primary leading-none tracking-tight">Pharma Head</p>
           </div>
-          <p className="text-[11px] text-slate-500 font-medium leading-snug mb-2">
+            <p className="text-[11px] text-text-muted font-medium leading-snug mb-2">
             Digital operating system for pharma sub-wholesalers in India.
           </p>
-          <p className="text-[10px] text-slate-600 font-medium">
-            A product of <span className="text-indigo-400 font-bold">leeep dev →</span>
+            <p className="text-[10px] text-text-muted font-medium">
+              A product of <span className="text-primary font-bold">leeep dev →</span>
           </p>
         </div>
 
         {/* User */}
-        <div className="p-3 border-t border-white/[0.06] shrink-0">
+          <div className="p-3 border-t border-border shrink-0">
           <div className="flex items-center gap-2.5 px-2 py-2 mb-1">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-sm">
               {wholesaler?.name?.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-white truncate leading-tight">{wholesaler?.name}</p>
-              <p className="text-[10px] text-slate-500 truncate mt-0.5">{wholesaler?.phone}</p>
+              <p className="text-xs font-semibold text-text-primary truncate leading-tight">{wholesaler?.name}</p>
+              <p className="text-[10px] text-text-muted truncate mt-0.5">{wholesaler?.phone}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-slate-500 hover:text-rose-400 hover:bg-white/[0.04] rounded-lg transition-all duration-200"
+            className="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-text-muted hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all duration-200"
           >
             <LogOut size={13} />
             Sign Out

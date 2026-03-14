@@ -413,7 +413,7 @@ export const SupplyOrderInvoicePage: React.FC = () => {
 
           {/* ══ DOCUMENT FOOTER BAND ══ */}
           <div className="px-6 py-3 flex items-center justify-between" style={{ backgroundColor: ACCENT }}>
-            <span className="text-[8px] text-emerald-200 font-bold">PharmaOS B2B Platform · Supply Order Document</span>
+            <span className="text-[8px] text-emerald-200 font-bold">Pharma Head B2B Platform · Supply Order Document</span>
             <span className="text-[8px] text-white font-black font-mono">{order.so_number}</span>
             <span className="text-[8px] text-emerald-200 font-bold">Generated: {fmtDate(new Date().toISOString())}</span>
           </div>

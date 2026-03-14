@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Store, ArrowRight, Building, Warehouse, UserRound } from 'lucide-react';
+import { PremiumAnimatedLogo } from '../../components/ui/PremiumAnimatedLogo';
 
 const ROLES = [
     {
@@ -9,8 +10,8 @@ const ROLES = [
         sublabel: 'Regional Hub',
         desc: 'Large-scale distribution hub for regional supply chains',
         icon: Warehouse,
-        bg: 'linear-gradient(135deg,rgba(124,58,237,0.18),rgba(109,40,217,0.08))',
-        hoverBg: 'linear-gradient(135deg,rgba(124,58,237,0.32),rgba(109,40,217,0.18))',
+        bg: 'linear-gradient(135deg,rgba(124,58,237,0.10),rgba(109,40,217,0.04))',
+        hoverBg: 'linear-gradient(135deg,rgba(124,58,237,0.18),rgba(109,40,217,0.10))',
         border: 'rgba(124,58,237,0.25)',
         hoverBorder: 'rgba(167,139,250,0.55)',
         iconBg: 'linear-gradient(135deg,#7C3AED,#6D28D9)',
@@ -24,8 +25,8 @@ const ROLES = [
         sublabel: 'Distribution OS',
         desc: 'Manage catalog, supply orders & sub-wholesaler network',
         icon: Building,
-        bg: 'linear-gradient(135deg,rgba(37,99,235,0.18),rgba(29,78,216,0.08))',
-        hoverBg: 'linear-gradient(135deg,rgba(37,99,235,0.32),rgba(29,78,216,0.18))',
+        bg: 'linear-gradient(135deg,rgba(37,99,235,0.10),rgba(29,78,216,0.04))',
+        hoverBg: 'linear-gradient(135deg,rgba(37,99,235,0.18),rgba(29,78,216,0.10))',
         border: 'rgba(37,99,235,0.25)',
         hoverBorder: 'rgba(96,165,250,0.55)',
         iconBg: 'linear-gradient(135deg,#1D4ED8,#2563EB)',
@@ -39,8 +40,8 @@ const ROLES = [
         sublabel: 'Business OS',
         desc: 'Orders, inventory, retailers, payments & GST — all in one',
         icon: Briefcase,
-        bg: 'linear-gradient(135deg,rgba(79,70,229,0.18),rgba(67,56,202,0.08))',
-        hoverBg: 'linear-gradient(135deg,rgba(79,70,229,0.32),rgba(67,56,202,0.18))',
+        bg: 'linear-gradient(135deg,rgba(79,70,229,0.10),rgba(67,56,202,0.04))',
+        hoverBg: 'linear-gradient(135deg,rgba(79,70,229,0.18),rgba(67,56,202,0.10))',
         border: 'rgba(79,70,229,0.25)',
         hoverBorder: 'rgba(129,140,248,0.55)',
         iconBg: 'linear-gradient(135deg,#4338CA,#4F46E5)',
@@ -54,8 +55,8 @@ const ROLES = [
         sublabel: 'Field Force',
         desc: 'Beat routes, order booking, collections & call reports',
         icon: UserRound,
-        bg: 'linear-gradient(135deg,rgba(8,145,178,0.18),rgba(14,116,144,0.08))',
-        hoverBg: 'linear-gradient(135deg,rgba(8,145,178,0.32),rgba(14,116,144,0.18))',
+        bg: 'linear-gradient(135deg,rgba(8,145,178,0.10),rgba(14,116,144,0.04))',
+        hoverBg: 'linear-gradient(135deg,rgba(8,145,178,0.18),rgba(14,116,144,0.10))',
         border: 'rgba(8,145,178,0.25)',
         hoverBorder: 'rgba(34,211,238,0.55)',
         iconBg: 'linear-gradient(135deg,#0E7490,#0891B2)',
@@ -69,8 +70,8 @@ const ROLES = [
         sublabel: 'Pharmacy Portal',
         desc: 'Browse 2.5L+ medicines, place orders & track deliveries',
         icon: Store,
-        bg: 'linear-gradient(135deg,rgba(5,150,105,0.18),rgba(4,120,87,0.08))',
-        hoverBg: 'linear-gradient(135deg,rgba(5,150,105,0.32),rgba(4,120,87,0.18))',
+        bg: 'linear-gradient(135deg,rgba(5,150,105,0.10),rgba(4,120,87,0.04))',
+        hoverBg: 'linear-gradient(135deg,rgba(5,150,105,0.18),rgba(4,120,87,0.10))',
         border: 'rgba(5,150,105,0.25)',
         hoverBorder: 'rgba(52,211,153,0.55)',
         iconBg: 'linear-gradient(135deg,#047857,#059669)',
@@ -92,36 +93,36 @@ export const LoginSelectorPage = () => {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden"
-            style={{ background: 'radial-gradient(ellipse at 50% 0%,#0f1729 0%,#070c18 55%,#030508 100%)' }}
+            style={{ background: 'linear-gradient(180deg,#ffffff 0%,#f8fafc 58%,#eef2ff 100%)' }}
         >
             {/* ── Background orbs ── */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute rounded-full" style={{
                     top: '-18%', left: '50%', transform: 'translateX(-50%)',
                     width: '1000px', height: '700px',
-                    background: 'radial-gradient(ellipse,rgba(79,70,229,0.13) 0%,rgba(37,99,235,0.05) 45%,transparent 70%)',
+                    background: 'radial-gradient(ellipse,rgba(79,70,229,0.14) 0%,rgba(37,99,235,0.08) 45%,transparent 70%)',
                     animation: 'orb1 9s ease-in-out infinite',
                 }} />
                 <div className="absolute rounded-full" style={{
                     bottom: '-20%', right: '-8%',
                     width: '700px', height: '600px',
-                    background: 'radial-gradient(ellipse,rgba(5,150,105,0.09) 0%,transparent 60%)',
+                    background: 'radial-gradient(ellipse,rgba(5,150,105,0.10) 0%,transparent 60%)',
                     animation: 'orb2 12s ease-in-out infinite 2s',
                 }} />
                 <div className="absolute rounded-full" style={{
                     top: '25%', left: '-10%',
                     width: '600px', height: '500px',
-                    background: 'radial-gradient(ellipse,rgba(124,58,237,0.08) 0%,transparent 60%)',
+                    background: 'radial-gradient(ellipse,rgba(124,58,237,0.10) 0%,transparent 60%)',
                     animation: 'orb2 14s ease-in-out infinite 5s',
                 }} />
                 {/* Dot grid */}
                 <div className="absolute inset-0" style={{
-                    backgroundImage: 'radial-gradient(rgba(255,255,255,0.035) 1px,transparent 1px)',
+                    backgroundImage: 'radial-gradient(rgba(15,23,42,0.06) 1px,transparent 1px)',
                     backgroundSize: '30px 30px',
                 }} />
-                {/* Noise vignette */}
+                {/* Soft vignette */}
                 <div className="absolute inset-0" style={{
-                    background: 'radial-gradient(ellipse at center,transparent 40%,rgba(3,5,8,0.6) 100%)',
+                    background: 'radial-gradient(ellipse at center,transparent 45%,rgba(15,23,42,0.08) 100%)',
                 }} />
             </div>
 
@@ -134,29 +135,13 @@ export const LoginSelectorPage = () => {
                 }}
             >
                 {/* ── Logo ── */}
-                <div className="mb-2 relative">
-                    <div className="absolute inset-0 rounded-[20px] blur-2xl opacity-60"
-                        style={{ background: 'linear-gradient(145deg,rgba(91,84,245,0.7),rgba(37,99,235,0.5))' }} />
-                    <div className="relative w-[64px] h-[64px] rounded-[20px] flex items-center justify-center"
-                        style={{
-                            background: 'linear-gradient(145deg,#5B54F5 0%,#2563EB 100%)',
-                            boxShadow: '0 0 0 1px rgba(91,84,245,0.5),0 16px 48px rgba(79,70,229,0.6),inset 0 1px 0 rgba(255,255,255,0.15)',
-                        }}
-                    >
-                        <span className="text-white font-black text-[28px] leading-none tracking-tighter">P</span>
-                    </div>
+                <div className="mb-6 px-5 py-3 rounded-2xl border border-border bg-white/90 shadow-soft backdrop-blur-md">
+                    <PremiumAnimatedLogo size="xl" autoPlay playDelay={400} />
                 </div>
-
-                {/* ── Brand name ── */}
-                <h1 className="text-[3.5rem] font-black text-white tracking-[-0.03em] leading-none mt-5 mb-2"
-                    style={{ textShadow: '0 0 60px rgba(99,102,241,0.35)' }}
-                >
-                    PharmaOS
-                </h1>
-                <p className="text-[15px] font-medium text-center mb-1" style={{ color: 'rgba(148,163,184,0.65)' }}>
+                <p className="text-[15px] font-medium text-center mb-1" style={{ color: 'rgba(71,85,105,0.85)' }}>
                     India's pharma distribution operating system
                 </p>
-                <p className="text-[13px] font-medium mb-10" style={{ color: 'rgba(100,116,139,0.6)' }}>
+                <p className="text-[13px] font-medium mb-10" style={{ color: 'rgba(100,116,139,0.8)' }}>
                     Choose your role to continue
                 </p>
 
@@ -180,8 +165,8 @@ export const LoginSelectorPage = () => {
                                     border: `1px solid ${isHov ? hoverBorder : border}`,
                                     transform: isHov ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
                                     boxShadow: isHov
-                                        ? `0 24px 60px rgba(0,0,0,0.5),0 0 0 1px ${hoverBorder},0 0 50px ${glow.replace('0.55','0.15')}`
-                                        : '0 4px 20px rgba(0,0,0,0.3)',
+                                        ? `0 18px 45px rgba(15,23,42,0.15),0 0 0 1px ${hoverBorder},0 0 30px ${glow.replace('0.55','0.12')}`
+                                        : '0 8px 24px rgba(15,23,42,0.08)',
                                     cursor: comingSoon ? 'not-allowed' : 'pointer',
                                     opacity: mounted ? (comingSoon ? 0.45 : 1) : 0,
                                     backdropFilter: 'blur(12px)',
@@ -193,7 +178,7 @@ export const LoginSelectorPage = () => {
                                 {/* Coming soon */}
                                 {comingSoon && (
                                     <span className="absolute top-4 right-4 text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full"
-                                        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        style={{ background: 'rgba(15,23,42,0.05)', color: 'rgba(71,85,105,0.65)', border: '1px solid rgba(148,163,184,0.3)' }}
                                     >Soon</span>
                                 )}
 
@@ -205,8 +190,8 @@ export const LoginSelectorPage = () => {
                                     )}
                                     <div className="relative w-[52px] h-[52px] rounded-2xl flex items-center justify-center"
                                         style={{
-                                            background: isHov ? iconBg : 'rgba(255,255,255,0.07)',
-                                            border: `1px solid ${isHov ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)'}`,
+                                            background: isHov ? iconBg : 'rgba(148,163,184,0.12)',
+                                            border: `1px solid ${isHov ? 'rgba(255,255,255,0.2)' : 'rgba(148,163,184,0.25)'}`,
                                             boxShadow: isHov ? `0 8px 28px ${glow}` : 'none',
                                             transform: isHov ? 'scale(1.08)' : 'scale(1)',
                                             transition: 'all 0.25s ease',
@@ -222,27 +207,27 @@ export const LoginSelectorPage = () => {
                                         style={{ color: isHov ? accent : `${accent}99` }}>
                                         {sublabel}
                                     </p>
-                                    <h3 className="text-[17px] font-extrabold text-white mb-2 tracking-tight leading-tight">
+                                    <h3 className="text-[17px] font-extrabold text-text-primary mb-2 tracking-tight leading-tight">
                                         {label}
                                     </h3>
                                     <p className="text-[12px] leading-relaxed"
-                                        style={{ color: isHov ? 'rgba(203,213,225,0.65)' : 'rgba(148,163,184,0.4)' }}>
+                                        style={{ color: isHov ? 'rgba(51,65,85,0.9)' : 'rgba(71,85,105,0.8)' }}>
                                         {desc}
                                     </p>
                                 </div>
 
                                 {/* CTA */}
                                 <div className="mt-5 pt-4 flex items-center justify-between"
-                                    style={{ borderTop: `1px solid ${isHov ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)'}` }}
+                                    style={{ borderTop: `1px solid ${isHov ? 'rgba(99,102,241,0.22)' : 'rgba(148,163,184,0.22)'}` }}
                                 >
                                     <span className="text-[12px] font-bold transition-colors duration-200"
-                                        style={{ color: comingSoon ? 'rgba(255,255,255,0.2)' : isHov ? accent : 'rgba(255,255,255,0.3)' }}>
+                                        style={{ color: comingSoon ? 'rgba(100,116,139,0.55)' : isHov ? accent : 'rgba(71,85,105,0.85)' }}>
                                         {comingSoon ? 'Coming soon' : 'Sign in'}
                                     </span>
                                     {!comingSoon && (
                                         <ArrowRight size={14}
                                             style={{
-                                                color: isHov ? accent : 'rgba(255,255,255,0.2)',
+                                                color: isHov ? accent : 'rgba(71,85,105,0.55)',
                                                 transform: isHov ? 'translateX(4px)' : 'translateX(0)',
                                                 transition: 'transform 0.2s ease, color 0.2s ease',
                                             }}
@@ -257,23 +242,23 @@ export const LoginSelectorPage = () => {
                 {/* ── Footer ── */}
                 <div className="mt-10 flex flex-col items-center gap-3">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: 'rgba(255,255,255,0.1)' }}>
-                            PharmaOS
+                        <div className="w-16 h-px" style={{ background: 'rgba(148,163,184,0.35)' }} />
+                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: 'rgba(100,116,139,0.85)' }}>
+                            Pharma Head
                         </span>
-                        <div className="w-16 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                        <div className="w-16 h-px" style={{ background: 'rgba(148,163,184,0.35)' }} />
                     </div>
-                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.15)' }}>
+                    <p className="text-[11px]" style={{ color: 'rgba(100,116,139,0.9)' }}>
                         A product of{' '}
-                        <span className="font-bold" style={{ color: 'rgba(99,102,241,0.55)' }}>leeep dev</span>
+                        <span className="font-bold" style={{ color: 'rgba(79,70,229,0.8)' }}>leeep dev</span>
                         {' '}· Digital OS for pharma India
                     </p>
                     <button
                         onClick={() => navigate('/login/admin')}
                         className="text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-all duration-150"
-                        style={{ color: 'rgba(255,255,255,0.18)', background: 'transparent' }}
+                        style={{ color: 'rgba(71,85,105,0.8)', background: 'transparent' }}
                         onMouseEnter={e => { e.currentTarget.style.color = '#F43F5E'; e.currentTarget.style.background = 'rgba(244,63,94,0.08)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.18)'; e.currentTarget.style.background = 'transparent'; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(71,85,105,0.8)'; e.currentTarget.style.background = 'transparent'; }}
                     >
                         Admin Access →
                     </button>

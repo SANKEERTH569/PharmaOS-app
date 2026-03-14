@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -356,13 +357,14 @@ export const CollectionPage = () => {
       </div>
 
       {/* ── Collect Payment Modal ── */}
-      {selectedRetailerId && selectedRetailer && (
+      {selectedRetailerId && selectedRetailer && createPortal(
         <div
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/40 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200"
+          style={{ zIndex: 99999 }}
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -467,7 +469,8 @@ export const CollectionPage = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

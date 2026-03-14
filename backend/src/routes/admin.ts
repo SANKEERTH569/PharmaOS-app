@@ -297,18 +297,33 @@ router.get('/retailers', requireAdmin, async (req, res) => {
 
 /**
  * PATCH /api/admin/retailers/:id
- * Toggle retailer is_active
+ * Update retailer: is_active (boolean) and/or profile fields (name, shop_name, phone, address, gstin, dl_number).
  */
 router.patch('/retailers/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { is_active } = req.body as { is_active?: boolean };
+        const body = req.body as {
+            is_active?: boolean;
+            name?: string;
+            shop_name?: string;
+            phone?: string;
+            address?: string;
+            gstin?: string;
+            dl_number?: string;
+        };
 
-        if (typeof is_active !== 'boolean') {
-            return res.status(400).json({ error: 'is_active (boolean) is required' });
+        const data: any = {};
+        if (typeof body.is_active === 'boolean') data.is_active = body.is_active;
+        const profileKeys = ['name', 'shop_name', 'phone', 'address', 'gstin', 'dl_number'] as const;
+        profileKeys.forEach((k) => {
+            if (body[k] !== undefined) data[k] = body[k];
+        });
+
+        if (Object.keys(data).length === 0) {
+            return res.status(400).json({ error: 'Provide at least one field: is_active, name, shop_name, phone, address, gstin, dl_number' });
         }
 
-        const updated = await prisma.retailer.update({ where: { id }, data: { is_active } });
+        const updated = await prisma.retailer.update({ where: { id }, data });
         const { password_hash: _pw, ...safe } = updated;
         res.json(safe);
     } catch (err: any) {

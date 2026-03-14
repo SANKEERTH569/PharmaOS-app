@@ -257,7 +257,7 @@ export const WholesalerOrderPage = () => {
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Order from Wholesaler</h1>
           <p className="text-slate-400 text-sm font-medium mt-1">
-            Browse & order medicines directly from main wholesalers on PharmaOS
+            Browse & order medicines directly from main wholesalers on Pharma Head
           </p>
         </div>
 

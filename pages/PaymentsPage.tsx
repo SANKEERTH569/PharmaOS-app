@@ -204,24 +204,26 @@ export const PaymentsPage = () => {
           </div>
         ))}
 
-        <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-100 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
           <Calendar size={14} className="text-slate-400 shrink-0" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">From:</span>
           <input
             type="date"
             value={dateFrom}
             onChange={e => setDateFrom(e.target.value)}
             className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
-            title="From date"
+            placeholder="Start date"
           />
         </div>
-        <div className="flex items-center gap-1.5 bg-slate-50/80 border border-slate-100 rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
           <Calendar size={14} className="text-slate-400 shrink-0" />
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">To:</span>
           <input
             type="date"
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
             className="bg-transparent outline-none text-sm text-slate-700 font-medium w-[130px]"
-            title="To date"
+            placeholder="End date"
           />
         </div>
 

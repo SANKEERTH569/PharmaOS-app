@@ -35,6 +35,7 @@ import performanceRouter from './routes/performance';
 import salesmanRegisterRouter from './routes/salesmanRegister';
 import salesmanLinksRouter from './routes/salesmanLinks';
 import supportTicketsRouter from './routes/supportTickets';
+import bulkImportRouter from './routes/bulkImport';
 import { startReminderCron } from './routes/reminderCron';
 
 const app = express();
@@ -123,6 +124,7 @@ app.use('/api/performance', performanceRouter);
 app.use('/api/auth', salesmanRegisterRouter);
 app.use('/api/salesman-links', salesmanLinksRouter);
 app.use('/api/support-tickets', supportTicketsRouter);
+app.use('/api/bulk-import', bulkImportRouter);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

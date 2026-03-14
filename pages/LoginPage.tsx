@@ -150,7 +150,7 @@ export const LoginPage = () => {
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
                     <span className="text-white font-black text-2xl leading-none">P</span>
                   </div>
-                  <p className="text-3xl font-extrabold text-white leading-none tracking-tight">PharmaOS</p>
+                  <p className="text-3xl font-extrabold text-white leading-none tracking-tight">Pharma Head</p>
                 </>
               ) : (
                 <h2 className="text-2xl font-extrabold text-white tracking-tight">

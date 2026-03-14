@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../utils/cn';
+import { PremiumAnimatedLogo } from '../../components/ui/PremiumAnimatedLogo';
 
 type Mode = 'LOGIN' | 'REGISTER';
 
@@ -80,11 +81,8 @@ export const MainWholesalerLoginPage = () => {
         <div className="absolute top-[40%] left-[20%] w-[25%] h-[25%] rounded-full bg-fuchsia-500/[0.06] blur-[80px]" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <span className="text-white font-black text-xl leading-none">P</span>
-            </div>
-            <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
+          <div style={{ '--color-text-primary': '#ffffff' } as React.CSSProperties}>
+            <PremiumAnimatedLogo size="lg" autoPlay playDelay={500} />
           </div>
           <p className="text-violet-300/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">
             Wholesale Distribution OS
@@ -128,10 +126,7 @@ export const MainWholesalerLoginPage = () => {
 
           {/* Mobile brand */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-700 flex items-center justify-center shadow-md">
-              <span className="text-white font-black text-lg leading-none">P</span>
-            </div>
-            <span className="text-slate-900 font-extrabold text-xl tracking-tight">PharmaOS</span>
+            <PremiumAnimatedLogo size="md" autoPlay playDelay={250} />
           </div>
 
           <div className="mb-8">
@@ -141,7 +136,7 @@ export const MainWholesalerLoginPage = () => {
             <p className="text-slate-400 text-sm font-medium mt-1.5">
               {mode === 'LOGIN'
                 ? 'Sign in to your wholesale dashboard'
-                : 'Register your wholesale business on PharmaOS'
+                : 'Register your wholesale business on Pharma Head'
               }
             </p>
           </div>

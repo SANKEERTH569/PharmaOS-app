@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 
 // For the mobile app, connect directly to the backend
 // Production: deployed Render backend
-const SOCKET_URL = 'https://pharmaos-app.onrender.com';
+const SOCKET_URL = 'https://pharmahead-app.onrender.com';
 
 export const getSocket = (): Socket => {
     if (!socket) {

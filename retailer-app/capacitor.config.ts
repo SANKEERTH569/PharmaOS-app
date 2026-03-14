@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
     appId: 'com.pharma.retailer',
-    appName: 'Pharma Retailer',
+    appName: 'Pharma Head',
     webDir: 'dist',
     server: {
         // For development, allow cleartext traffic to local backend

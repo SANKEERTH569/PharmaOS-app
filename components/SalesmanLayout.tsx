@@ -21,28 +21,28 @@ export const SalesmanLayout = ({ children }: { children: React.ReactNode }) => {
   const initials = (salesman?.name || 'F').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen bg-surface flex flex-col max-w-md mx-auto relative">
       {/* Dark top bar */}
-      <div className="shrink-0 bg-slate-900 px-5 pt-10 pb-5">
+      <div className="shrink-0 bg-white border-b border-border px-5 pt-10 pb-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-slate-400 text-xs font-medium tracking-wide">{greeting},</p>
-            <h1 className="text-white text-2xl font-bold tracking-tight leading-tight mt-0.5">
+            <p className="text-text-muted text-xs font-medium tracking-wide">{greeting},</p>
+            <h1 className="text-text-primary text-2xl font-bold tracking-tight leading-tight mt-0.5">
               {salesman?.name || 'Field Rep'}
             </h1>
             {salesman?.company_name && (
-              <p className="text-slate-500 text-xs mt-0.5 font-medium">{salesman.company_name}</p>
+              <p className="text-text-muted text-xs mt-0.5 font-medium">{salesman.company_name}</p>
             )}
           </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/30">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <span className="text-white font-bold text-base">{initials}</span>
             </div>
             <button
               onClick={handleLogout}
-              className="w-11 h-11 rounded-2xl bg-slate-800 hover:bg-rose-900/60 flex items-center justify-center transition-all border border-slate-700"
+              className="w-11 h-11 rounded-2xl bg-surface hover:bg-rose-50 flex items-center justify-center transition-all border border-border"
             >
-              <LogOut size={17} className="text-slate-400" />
+              <LogOut size={17} className="text-text-muted" />
             </button>
           </div>
         </div>

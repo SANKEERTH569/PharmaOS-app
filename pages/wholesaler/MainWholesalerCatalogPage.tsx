@@ -5,10 +5,11 @@ import {
   ChevronLeft, ChevronRight, X, Download, CheckCircle, Trash2,
   Loader2, Info, PackageSearch, AlertCircle, Package,
   FlaskConical, Syringe, Droplets, Wind, Package2,
-  TrendingUp, Calendar, AlertTriangle, BarChart2, Truck,
+  TrendingUp, Calendar, AlertTriangle, BarChart2, Truck, Upload, FileSpreadsheet,
 } from 'lucide-react';
 import { MainWholesalerMedicine, CatalogMedicine, CatalogPage } from '../../types';
 import api from '../../utils/api';
+import { BulkImportModal } from './BulkImportModal';
 
 // ── Medicine type helpers ─────────────────────────────────────────────────────
 type MedType = 'tablet' | 'syrup' | 'injection' | 'cream' | 'inhaler' | 'powder';
@@ -109,10 +110,21 @@ export const MainWholesalerCatalogPage = () => {
 
   // ── Import configure state ────────────────────────────────────────────────
   const [importItem, setImportItem] = useState<CatalogMedicine | null>(null);
-  const [importForm, setImportForm] = useState({ mrp: '', price: '', stock_qty: '', gst_rate: 12, hsn_code: '3004', unit_type: 'strip' });
+  const [importForm, setImportForm] = useState({ mrp: '', price: '', stock_qty: '', gst_rate: 5, hsn_code: '3004', unit_type: 'strip' });
   const [importExpiry, setImportExpiry] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+
+  // ── Bulk import state ──────────────────────────────────────────────────────
+  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkResults, setBulkResults] = useState<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: Array<{ row: number; medicine: string; error: string }>;
+  } | null>(null);
 
   const debouncedCatalogSearch = useDebounce(catalogSearch, 400);
 
@@ -318,6 +330,43 @@ export const MainWholesalerCatalogPage = () => {
     }
   };
 
+  // ── Bulk import handlers ──────────────────────────────────────────────────
+  const handleBulkImport = async () => {
+    if (!bulkFile) return;
+    setBulkUploading(true);
+    setBulkResults(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkFile);
+      const { data } = await api.post('/bulk-import/medicines', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setBulkResults(data);
+      if (data.success > 0) {
+        await fetchMedicines(); // Refresh the list
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Bulk import failed');
+    } finally {
+      setBulkUploading(false);
+    }
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const response = await api.get('/bulk-import/template', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'medicine_import_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to download template');
+    }
+  };
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-slide-up">
@@ -339,6 +388,15 @@ export const MainWholesalerCatalogPage = () => {
               value={search} onChange={e => setSearch(e.target.value)}
             />
           </div>
+          {/* Bulk import button */}
+          <button
+            onClick={() => { setShowBulkImport(true); setBulkFile(null); setBulkResults(null); }}
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:shadow-lg shadow-sm transition-all"
+            title="Bulk import medicines from Excel/CSV"
+          >
+            <Upload size={16} />
+            <span className="hidden sm:inline">Bulk Import</span>
+          </button>
           {/* Catalog import button */}
           <button
             onClick={() => { setShowCatalog(true); setImportSuccess(null); }}
@@ -1104,6 +1162,20 @@ export const MainWholesalerCatalogPage = () => {
           </div>
         </div>
         , document.body)}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          BULK IMPORT MODAL
+      ═══════════════════════════════════════════════════════════════════ */}
+      <BulkImportModal
+        show={showBulkImport}
+        onClose={() => setShowBulkImport(false)}
+        file={bulkFile}
+        setFile={setBulkFile}
+        uploading={bulkUploading}
+        results={bulkResults}
+        onImport={handleBulkImport}
+        onDownloadTemplate={downloadTemplate}
+      />
     </div>
   );
 };

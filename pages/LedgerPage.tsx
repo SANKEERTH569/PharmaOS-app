@@ -53,24 +53,26 @@ export const LedgerPage = () => {
             <Filter className="absolute right-3 top-2.5 text-slate-400 w-4 h-4 pointer-events-none" />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
             <Calendar size={14} className="text-slate-400 shrink-0" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">From:</span>
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
               className="outline-none text-sm text-slate-700 font-medium bg-transparent w-[130px]"
-              title="From date"
+              placeholder="Start date"
             />
           </div>
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
             <Calendar size={14} className="text-slate-400 shrink-0" />
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">To:</span>
             <input
               type="date"
               value={dateTo}
               onChange={e => setDateTo(e.target.value)}
               className="outline-none text-sm text-slate-700 font-medium bg-transparent w-[130px]"
-              title="To date"
+              placeholder="End date"
             />
           </div>
 

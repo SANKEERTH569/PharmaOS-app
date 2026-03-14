@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
@@ -442,9 +443,9 @@ export const OrdersPage = () => {
 
 
       {/* Delivery Confirmation Modal */}
-      {showDeliveryConfirm && deliveryOrder && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      {showDeliveryConfirm && deliveryOrder && createPortal(
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-lg flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 99999 }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="bg-white px-6 py-5 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <h3 className="text-xl font-bold text-slate-900">Confirm Delivery</h3>
@@ -530,7 +531,8 @@ export const OrdersPage = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

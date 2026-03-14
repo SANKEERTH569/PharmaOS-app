@@ -3,7 +3,7 @@ import { io, Socket } from 'socket.io-client';
 let socket: Socket | null = null;
 
 // Derive the Socket.io server URL from the API URL env var
-// e.g. "https://pharmaos-app.onrender.com/api" → "https://pharmaos-app.onrender.com"
+// e.g. "https://pharmahead-app.onrender.com/api" → "https://pharmahead-app.onrender.com"
 const apiUrl = import.meta.env.VITE_API_URL || '';
 const socketUrl = apiUrl.replace(/\/api\/?$/, '') || undefined; // undefined = same origin (local dev)
 

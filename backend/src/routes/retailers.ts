@@ -119,18 +119,9 @@ router.get('/:id/profile', async (req, res) => {
   }
 });
 
-// PATCH /api/retailers/:id/profile — Retailer updates their own profile
-router.patch('/:id/profile', requireRole('RETAILER'), async (req, res) => {
-  try {
-    if (req.user!.retailer_id !== req.params.id) return res.status(403).json({ error: 'Forbidden' });
-    const allowed = ['name', 'shop_name', 'address', 'gstin', 'dl_number'];
-    const data: any = {};
-    allowed.forEach((k) => { if (req.body[k] !== undefined) data[k] = req.body[k]; });
-    const updated = await prisma.retailer.update({ where: { id: req.params.id }, data });
-    res.json(updated);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
+// PATCH /api/retailers/:id/profile — Retailer profile updates disabled; contact admin to update via admin console
+router.patch('/:id/profile', requireRole('RETAILER'), async (_req, res) => {
+  return res.status(403).json({ error: 'Profile cannot be edited from the app. Please contact your admin to update your profile; they can do so from the admin console.' });
 });
 
 export default router;

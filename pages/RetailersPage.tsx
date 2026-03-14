@@ -102,67 +102,67 @@ export const RetailersPage = () => {
   return (
     <div className="space-y-6 animate-slide-up max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 pt-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 pt-4">
         <div>
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight mb-3">Retailers</h1>
-          <p className="text-slate-600 font-medium text-lg">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-2">Retailers</h1>
+          <p className="text-slate-600 font-medium text-sm">
             Manage your network of active pharmacy partners.
           </p>
         </div>
         <div className="w-full md:w-auto">
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-full md:w-auto flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-8 py-4 rounded-2xl text-lg font-bold transition-colors shadow-sm"
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm"
           >
-            <Plus size={24} strokeWidth={3} /> Add New Retailer
+            <Plus size={18} strokeWidth={2.5} /> Add New Retailer
           </button>
         </div>
       </div>
 
       {/* Tabs & Search Container */}
-      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-10">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 mb-6">
 
-        {/* Large Accessible Tabs */}
-        <div className="flex flex-col sm:flex-row bg-slate-100 p-2 rounded-3xl w-full xl:w-auto gap-2 border-2 border-slate-200">
+        {/* Tabs */}
+        <div className="flex flex-col sm:flex-row bg-slate-100 p-1 rounded-xl w-full xl:w-auto gap-1 border border-slate-200">
           <button
             onClick={() => setActiveTab('active')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-3 px-10 py-5 rounded-2xl text-lg font-bold transition-all ${activeTab === 'active'
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'active'
                 ? 'bg-white text-blue-700 shadow-sm border border-slate-200/50'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
           >
-            <Store size={22} className={activeTab === 'active' ? 'text-blue-600' : 'text-slate-500'} />
+            <Store size={16} className={activeTab === 'active' ? 'text-blue-600' : 'text-slate-500'} />
             Active
-            <span className={`px-3 py-1 rounded-full text-sm ${activeTab === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200 text-slate-700'}`}>
               {retailers.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('pending')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-3 px-10 py-5 rounded-2xl text-lg font-bold transition-all ${activeTab === 'pending'
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pending'
                 ? 'bg-white text-amber-700 shadow-sm border border-slate-200/50'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
               }`}
           >
-            <UserPlus size={22} className={activeTab === 'pending' ? 'text-amber-600' : 'text-slate-500'} />
+            <UserPlus size={16} className={activeTab === 'pending' ? 'text-amber-600' : 'text-slate-500'} />
             Pending Requests
             {pendingRequests.length > 0 && (
-              <span className={`px-3 py-1 rounded-full text-sm ${activeTab === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700'}`}>
                 {pendingRequests.length}
               </span>
             )}
           </button>
         </div>
 
-        {/* Large Search Input */}
+        {/* Search Input */}
         {activeTab === 'active' && (
-          <div className="relative w-full xl:w-1/3 min-w-[320px]">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-7 h-7" strokeWidth={2.5} />
+          <div className="relative w-full xl:w-1/3 min-w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" strokeWidth={2} />
             <input
               type="text"
               placeholder="Search by shop or owner name..."
-              className="w-full pl-16 pr-6 py-5 bg-white border-2 border-slate-300 rounded-3xl text-lg font-bold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all shadow-sm"
+              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -172,12 +172,12 @@ export const RetailersPage = () => {
 
       {/* ── Active Retailers Tab ── */}
       {activeTab === 'active' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredRetailers.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-32 bg-slate-50 rounded-[40px] border-4 border-dashed border-slate-200">
-              <Store size={64} className="text-slate-300 mb-6" strokeWidth={1.5} />
-              <p className="text-3xl font-black text-slate-800 mb-2">No retailers found</p>
-              <p className="text-lg font-medium text-slate-500">Try adjusting your search criteria or add a new retailer.</p>
+            <div className="col-span-full flex flex-col items-center justify-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+              <Store size={48} className="text-slate-300 mb-4" strokeWidth={1.5} />
+              <p className="text-xl font-bold text-slate-800 mb-1">No retailers found</p>
+              <p className="text-sm font-medium text-slate-500">Try adjusting your search criteria or add a new retailer.</p>
             </div>
           )}
 
@@ -198,63 +198,63 @@ export const RetailersPage = () => {
 
             return (
               <Link to={`/retailers/${retailer.id}`} key={retailer.id} className="block group">
-                <div className="bg-white rounded-[32px] border-2 border-slate-200 p-8 hover:border-blue-500 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col shadow-sm">
+                <div className="bg-white rounded-xl border border-slate-200 p-4 hover:border-blue-500 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 h-full flex flex-col shadow-sm">
 
                   {/* Shop Name Header */}
-                  <div className="flex justify-between items-start mb-8 gap-4">
+                  <div className="flex justify-between items-start mb-4 gap-3">
                     <div className="min-w-0">
-                      <h3 className="font-black text-2xl sm:text-3xl text-slate-900 leading-tight mb-2 truncate group-hover:text-blue-700 transition-colors">
+                      <h3 className="font-bold text-base sm:text-lg text-slate-900 leading-tight mb-1 truncate group-hover:text-blue-700 transition-colors">
                         {retailer.shop_name}
                       </h3>
-                      <p className="text-slate-500 text-lg font-bold flex items-center gap-2">
-                        <Users size={18} /> {retailer.name}
+                      <p className="text-slate-500 text-sm font-medium flex items-center gap-1.5">
+                        <Users size={14} /> {retailer.name}
                       </p>
                     </div>
-                    <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0 shadow-inner">
-                      <ChevronRight size={28} strokeWidth={3} />
+                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+                      <ChevronRight size={18} strokeWidth={2.5} />
                     </div>
                   </div>
 
-                  {/* Contact Info - High Contrast */}
-                  <div className="space-y-4 mb-10 flex-1">
-                    <div className="flex items-center text-slate-800 text-lg font-semibold bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <Phone size={22} className="text-blue-500 shrink-0 mr-4" />
+                  {/* Contact Info */}
+                  <div className="space-y-2 mb-4 flex-1">
+                    <div className="flex items-center text-slate-800 text-sm font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      <Phone size={16} className="text-blue-500 shrink-0 mr-2.5" />
                       <span className="truncate">{retailer.phone}</span>
                     </div>
-                    <div className="flex items-center text-slate-800 text-lg font-semibold bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <MapPin size={22} className="text-blue-500 shrink-0 mr-4" />
+                    <div className="flex items-center text-slate-800 text-sm font-medium bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                      <MapPin size={16} className="text-blue-500 shrink-0 mr-2.5" />
                       <span className="truncate">{retailer.address || 'Address not provided'}</span>
                     </div>
                   </div>
 
-                  {/* Balance / Credit Section - Text-based Status */}
-                  <div className={`rounded-3xl p-6 border-2 flex flex-col gap-3 ${statusColor === 'emerald' ? 'bg-emerald-50 border-emerald-200' :
+                  {/* Balance / Credit Section */}
+                  <div className={`rounded-xl p-3 border flex flex-col gap-2 ${statusColor === 'emerald' ? 'bg-emerald-50 border-emerald-200' :
                       statusColor === 'amber' ? 'bg-amber-50 border-amber-300' :
                         'bg-rose-50 border-rose-300'
                     }`}>
                     <div className="flex justify-between items-end">
-                      <span className={`text-sm font-black uppercase tracking-widest ${statusColor === 'emerald' ? 'text-emerald-700' :
+                      <span className={`text-xs font-bold uppercase tracking-wide ${statusColor === 'emerald' ? 'text-emerald-700' :
                           statusColor === 'amber' ? 'text-amber-800' :
                             'text-rose-700'
                         }`}>Current Balance</span>
-                      <span className="text-slate-600 font-bold text-sm uppercase tracking-widest">Credit Limit</span>
+                      <span className="text-slate-600 font-semibold text-xs uppercase tracking-wide">Credit Limit</span>
                     </div>
 
-                    <div className="flex justify-between items-end mb-2">
-                      <span className={`text-3xl font-black ${statusColor === 'emerald' ? 'text-emerald-800' :
+                    <div className="flex justify-between items-end mb-1">
+                      <span className={`text-lg font-bold ${statusColor === 'emerald' ? 'text-emerald-800' :
                           statusColor === 'amber' ? 'text-amber-900' :
                             'text-rose-800'
                         }`}>₹{myBalance.toLocaleString()}</span>
-                      <span className="text-slate-700 font-black text-xl">₹{retailer.credit_limit.toLocaleString()}</span>
+                      <span className="text-slate-700 font-bold text-base">₹{retailer.credit_limit.toLocaleString()}</span>
                     </div>
 
-                    <div className={`pt-3 border-t-2 flex items-center gap-2 ${statusColor === 'emerald' ? 'border-emerald-200/50' :
+                    <div className={`pt-2 border-t flex items-center gap-1.5 ${statusColor === 'emerald' ? 'border-emerald-200/50' :
                         statusColor === 'amber' ? 'border-amber-300/50' : 'border-rose-300/50'
                       }`}>
-                      <div className={`w-3 h-3 rounded-full animate-pulse ${statusColor === 'emerald' ? 'bg-emerald-500' :
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${statusColor === 'emerald' ? 'bg-emerald-500' :
                           statusColor === 'amber' ? 'bg-amber-500' : 'bg-rose-500'
                         }`} />
-                      <p className={`text-base font-bold ${statusColor === 'emerald' ? 'text-emerald-700' :
+                      <p className={`text-xs font-semibold ${statusColor === 'emerald' ? 'text-emerald-700' :
                           statusColor === 'amber' ? 'text-amber-800' :
                             'text-rose-700'
                         }`}>
@@ -271,77 +271,77 @@ export const RetailersPage = () => {
 
       {/* ── Pending Requests Tab ── */}
       {activeTab === 'pending' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {pendingLoading && (
-            <div className="col-span-full text-center py-24 text-slate-500 font-bold text-xl">
-              <div className="w-16 h-16 border-4 border-slate-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-6"></div>
+            <div className="col-span-full text-center py-12 text-slate-500 font-medium text-sm">
+              <div className="w-10 h-10 border-2 border-slate-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-3"></div>
               Loading connection requests...
             </div>
           )}
 
           {!pendingLoading && pendingRequests.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-32 bg-slate-50 rounded-[40px] border-4 border-dashed border-slate-200">
-              <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 mb-6">
-                <UserPlus size={40} className="text-slate-400" strokeWidth={2} />
+            <div className="col-span-full flex flex-col items-center justify-center py-16 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 mb-4">
+                <UserPlus size={28} className="text-slate-400" strokeWidth={2} />
               </div>
-              <p className="font-black text-slate-800 text-3xl mb-3">No pending requests</p>
-              <p className="text-lg text-slate-500 font-medium">New retailer connection requests will appear here.</p>
+              <p className="font-bold text-slate-800 text-lg mb-2">No pending requests</p>
+              <p className="text-sm text-slate-500 font-medium">New retailer connection requests will appear here.</p>
             </div>
           )}
 
           {pendingRequests.map((req) => (
             <div
               key={req.id}
-              className="bg-white rounded-[32px] border-2 border-amber-200 p-8 flex flex-col h-full shadow-lg shadow-amber-900/5"
+              className="bg-white rounded-xl border border-amber-200 p-4 flex flex-col h-full shadow-sm"
             >
-              <div className="flex items-start gap-6 mb-8">
-                <div className="w-20 h-20 rounded-3xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                  <Store size={40} strokeWidth={2} />
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                  <Store size={24} strokeWidth={2} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-slate-900 text-3xl mb-2 truncate">{req.retailer.shop_name}</h3>
-                  <p className="text-slate-600 text-xl font-bold mb-3 flex items-center gap-2">
-                    <Users size={20} /> {req.retailer.name}
+                  <h3 className="font-bold text-slate-900 text-base mb-1 truncate">{req.retailer.shop_name}</h3>
+                  <p className="text-slate-600 text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <Users size={14} /> {req.retailer.name}
                   </p>
-                  <span className="inline-flex items-center gap-2 text-sm uppercase tracking-widest bg-amber-50 text-amber-800 font-bold px-4 py-1.5 rounded-lg border border-amber-200">
-                    <Clock size={16} strokeWidth={2.5} /> Pending Review
+                  <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide bg-amber-50 text-amber-800 font-semibold px-2.5 py-1 rounded-md border border-amber-200">
+                    <Clock size={12} strokeWidth={2.5} /> Pending Review
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 text-lg text-slate-800 font-medium mb-10 flex-1">
-                <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <Phone size={24} className="text-amber-500 shrink-0" />
+              <div className="flex flex-col gap-2 text-sm text-slate-800 font-medium mb-4 flex-1">
+                <div className="flex items-center gap-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <Phone size={16} className="text-amber-500 shrink-0" />
                   <span>{req.retailer.phone}</span>
                 </div>
                 {req.retailer.address && (
-                  <div className="flex flex-start gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <MapPin size={24} className="text-amber-500 shrink-0 mt-0.5" />
+                  <div className="flex flex-start gap-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <MapPin size={16} className="text-amber-500 shrink-0 mt-0.5" />
                     <span className="leading-snug">{req.retailer.address}</span>
                   </div>
                 )}
                 {req.retailer.gstin && (
-                  <div className="flex flex-start gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                    <FileText size={24} className="text-amber-500 shrink-0 mt-0.5" />
-                    <span className="font-bold uppercase tracking-wider text-slate-900">GST: {req.retailer.gstin}</span>
+                  <div className="flex flex-start gap-2.5 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <FileText size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                    <span className="font-semibold uppercase tracking-wide text-slate-900 text-xs">GST: {req.retailer.gstin}</span>
                   </div>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-auto">
+              <div className="grid grid-cols-2 gap-2 mt-auto">
                 <button
                   disabled={respondingId === req.retailer_id}
                   onClick={() => handleRespond(req.retailer_id, 'REJECT')}
-                  className="w-full flex justify-center items-center gap-2 px-6 py-5 rounded-2xl border-2 border-rose-200 text-rose-700 font-black text-lg hover:bg-rose-50 hover:border-rose-300 transition-colors disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-200 text-rose-700 font-semibold text-sm hover:bg-rose-50 hover:border-rose-300 transition-colors disabled:opacity-50"
                 >
-                  <XCircle size={24} strokeWidth={2.5} /> Reject
+                  <XCircle size={16} strokeWidth={2.5} /> Reject
                 </button>
                 <button
                   disabled={respondingId === req.retailer_id}
                   onClick={() => handleRespond(req.retailer_id, 'ACCEPT')}
-                  className="w-full flex justify-center items-center gap-2 px-6 py-5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg transition-colors shadow-md disabled:opacity-50"
+                  className="w-full flex justify-center items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors shadow-sm disabled:opacity-50"
                 >
-                  <CheckCircle size={24} strokeWidth={2.5} /> Approve
+                  <CheckCircle size={16} strokeWidth={2.5} /> Approve
                 </button>
               </div>
             </div>
@@ -351,38 +351,38 @@ export const RetailersPage = () => {
 
       {/* ── Add Retailer Modal ── */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 pb-20 overflow-y-auto">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl border-4 border-slate-100 mt-[10vh] max-h-[85vh] overflow-y-auto">
-            <div className="px-10 py-8 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
               <div>
-                <h2 className="text-3xl font-black text-slate-900 mb-2">Add New Retailer</h2>
-                <p className="text-base font-bold text-slate-500 uppercase tracking-widest">Connect a pharmacy to your network</p>
+                <h2 className="text-xl font-bold text-slate-900 mb-1">Add New Retailer</h2>
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Connect a pharmacy to your network</p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="w-14 h-14 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 hover:border-slate-300 transition-all shadow-sm shrink-0"
+                className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 hover:border-slate-300 transition-all shrink-0"
               >
-                <span className="text-3xl leading-none">&times;</span>
+                <span className="text-xl leading-none">&times;</span>
               </button>
             </div>
 
-            <form onSubmit={handleAddSubmit} className="p-10 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <form onSubmit={handleAddSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-black text-slate-600 uppercase tracking-widest mb-3 pl-2">Owner Name*</label>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Owner Name*</label>
                   <input
                     type="text" required
-                    className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
                     value={formData.name}
                     placeholder="e.g., John Doe"
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-black text-slate-600 uppercase tracking-widest mb-3 pl-2">Shop Name*</label>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Shop Name*</label>
                   <input
                     type="text" required
-                    className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
                     value={formData.shop_name}
                     placeholder="e.g., City Pharmacy"
                     onChange={(e) => setFormData({ ...formData, shop_name: e.target.value })}
@@ -390,14 +390,14 @@ export const RetailersPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-black text-slate-600 uppercase tracking-widest mb-3 pl-2">Phone Number*</label>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Phone Number*</label>
                   <div className="relative">
-                    <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 w-6 h-6" strokeWidth={2.5} />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" strokeWidth={2} />
                     <input
                       type="tel" required maxLength={10}
-                      className="w-full pl-16 pr-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
                       placeholder="9999999999"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
@@ -406,12 +406,12 @@ export const RetailersPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-black text-slate-600 uppercase tracking-widest mb-3 pl-2">Credit Limit (₹)*</label>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Credit Limit (₹)*</label>
                   <div className="relative">
-                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 font-black text-xl">₹</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-semibold text-sm">₹</span>
                     <input
                       type="number" required
-                      className="w-full pl-12 pr-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm"
+                      className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all"
                       value={formData.credit_limit}
                       onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })}
                     />
@@ -420,9 +420,9 @@ export const RetailersPage = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-black text-slate-600 uppercase tracking-widest mb-3 pl-2">Full Address</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">Full Address</label>
                 <textarea
-                  className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-xl font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all shadow-sm resize-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:bg-white transition-all resize-none"
                   rows={3}
                   placeholder="Enter complete shop address..."
                   value={formData.address}
@@ -430,11 +430,11 @@ export const RetailersPage = () => {
                 />
               </div>
 
-              <div className="pt-8 border-t-2 border-slate-100 flex flex-col-reverse sm:flex-row gap-4">
-                <button type="button" onClick={() => setShowAddModal(false)} className="w-full sm:w-1/3 py-5 text-slate-600 font-black uppercase tracking-widest text-lg hover:bg-slate-100 border-2 border-transparent hover:border-slate-200 rounded-2xl transition-all">
+              <div className="pt-4 border-t border-slate-200 flex flex-col-reverse sm:flex-row gap-3">
+                <button type="button" onClick={() => setShowAddModal(false)} className="w-full sm:w-1/3 py-2 text-slate-600 font-semibold uppercase tracking-wide text-sm hover:bg-slate-100 border border-transparent hover:border-slate-200 rounded-lg transition-all">
                   Cancel
                 </button>
-                <button type="submit" className="w-full sm:w-2/3 py-5 bg-blue-600 text-white font-black uppercase tracking-widest text-lg hover:bg-blue-700 active:bg-blue-800 rounded-2xl shadow-lg transition-all">
+                <button type="submit" className="w-full sm:w-2/3 py-2 bg-blue-600 text-white font-semibold uppercase tracking-wide text-sm hover:bg-blue-700 active:bg-blue-800 rounded-lg shadow-sm transition-all">
                   Create Retailer
                 </button>
               </div>

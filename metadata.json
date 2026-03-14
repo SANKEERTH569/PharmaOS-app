@@ -1,6 +1,6 @@
 {
   "name": "Pharma B2B Dashboard",
-  "short_name": "PharmaOS",
+  "short_name": "Pharma Head",
   "description": "Premium B2B Operating System for Pharmaceutical Sub-Wholesalers.",
   "requestFramePermissions": [
     "camera",

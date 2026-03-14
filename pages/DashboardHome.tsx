@@ -343,7 +343,7 @@ export const DashboardHome = () => {
               <span className="text-white font-black text-base leading-none">P</span>
             </div>
             <div className="hidden sm:block">
-              <p className="text-[16px] font-extrabold text-slate-900 leading-none tracking-tight">PharmaOS</p>
+              <p className="text-[16px] font-extrabold text-slate-900 leading-none tracking-tight">Pharma Head</p>
               <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Sub-Wholesale OS</p>
             </div>
           </div>
@@ -542,7 +542,7 @@ export const DashboardHome = () => {
         {/* ── Footer brand ── */}
         <div className="mt-6 text-center pb-4">
           <p className="text-[11px] text-slate-300 font-medium">
-            Powered by <span className="text-indigo-400 font-bold">PharmaOS</span> · A product of <span className="text-indigo-400 font-bold">leeep dev</span>
+            Powered by <span className="text-indigo-400 font-bold">Pharma Head</span> · A product of <span className="text-indigo-400 font-bold">leeep dev</span>
           </p>
         </div>
 

@@ -1,7 +1,7 @@
 {
     "id": "/",
-    "name": "PharmaOS - B2B Dashboard",
-    "short_name": "PharmaOS",
+    "name": "Pharma Head - B2B Dashboard",
+    "short_name": "Pharma Head",
     "description": "Pharma B2B Dashboard for wholesale management",
     "start_url": "/",
     "scope": "/",

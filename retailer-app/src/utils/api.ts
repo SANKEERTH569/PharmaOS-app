@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // For the mobile app, use the absolute backend URL
 // Production: deployed Render backend
-const API_BASE_URL = 'https://pharmaos-app.onrender.com/api';
+const API_BASE_URL = 'https://pharmahead-app.onrender.com/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,

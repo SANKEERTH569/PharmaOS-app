@@ -419,7 +419,7 @@ export const PurchaseOrderInvoicePage: React.FC = () => {
 
           {/* ══ PLAIN FOOTER LINE ══ */}
           <div className="px-7 py-3 flex items-center justify-between" style={{ borderTop: `1px solid ${A}25` }}>
-            <span className="text-[7px] font-bold text-slate-400">PharmaOS B2B · Purchase Order · Buyer's Copy</span>
+            <span className="text-[7px] font-bold text-slate-400">Pharma Head B2B · Purchase Order · Buyer's Copy</span>
             <span className="text-[7px] font-black font-mono" style={{ color: A }}>{po.po_number}</span>
             <span className="text-[7px] text-slate-400 font-bold">Printed: {fmtDate(new Date().toISOString())}</span>
           </div>

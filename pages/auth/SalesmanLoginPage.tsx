@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ArrowRight, Lock, Eye, EyeOff, User, Briefcase } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { PremiumAnimatedLogo } from '../../components/ui/PremiumAnimatedLogo';
 
 export const SalesmanLoginPage = () => {
   const [loading, setLoading] = useState(false);
@@ -41,11 +42,8 @@ export const SalesmanLoginPage = () => {
         <div className="absolute bottom-[5%] right-[-5%] w-[45%] h-[45%] rounded-full bg-emerald-400/[0.10] blur-[100px]" />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-emerald-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
-              <span className="text-white font-black text-xl leading-none">P</span>
-            </div>
-            <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
+          <div style={{ '--color-text-primary': '#ffffff' } as React.CSSProperties}>
+            <PremiumAnimatedLogo size="lg" autoPlay playDelay={500} />
           </div>
           <p className="text-cyan-200/60 text-xs font-semibold tracking-[0.3em] uppercase mt-1">MR Field App</p>
         </div>
@@ -82,10 +80,7 @@ export const SalesmanLoginPage = () => {
       <div className="flex-1 flex items-center justify-center p-6 sm:p-10 bg-[#F8FAFC]">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-emerald-600 flex items-center justify-center shadow-md">
-              <span className="text-white font-black text-lg leading-none">P</span>
-            </div>
-            <span className="text-slate-900 font-extrabold text-xl tracking-tight">PharmaOS</span>
+            <PremiumAnimatedLogo size="md" autoPlay playDelay={250} />
           </div>
 
           <div className="mb-8">

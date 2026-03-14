@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Store, ShoppingCart, ClipboardList, RotateCcw, Wallet,
-  LogOut, Bell, CreditCard, Building2, Pill, AlertTriangle, ShieldAlert,
+  LogOut, Bell, CreditCard, Building2, AlertTriangle, ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
@@ -99,10 +99,10 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
             className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 12px rgba(20,184,166,0.30)' }}
           >
-            <Pill size={18} className="text-white" />
+            <span className="text-white text-[12px] font-extrabold tracking-[0.18em] leading-none pl-[1px]">PH</span>
           </div>
           <div>
-            <p className="text-[15px] font-bold text-slate-900 leading-none tracking-tight">PharmaConnect</p>
+            <p className="text-[15px] font-bold text-slate-900 leading-none tracking-tight">Pharma Head</p>
             <p className="text-[10px] font-semibold mt-0.5 tracking-wide uppercase" style={{ color: '#0D9488' }}>Retail Portal</p>
           </div>
         </div>
@@ -176,9 +176,9 @@ export const RetailerLayout = ({ children }: { children?: React.ReactNode }) => 
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #14B8A6 0%, #059669 100%)', boxShadow: '0 4px 10px rgba(20,184,166,0.28)' }}
-            ><Pill size={16} className="text-white" /></div>
+            ><span className="text-white text-[10px] font-extrabold tracking-[0.18em] leading-none pl-[1px]">PH</span></div>
             <div>
-              <span className="text-[14px] font-bold text-slate-900 tracking-tight block leading-tight">PharmaConnect</span>
+              <span className="text-[14px] font-bold text-slate-900 tracking-tight block leading-tight">Pharma Head</span>
               <span className="text-[9px] font-semibold tracking-wide uppercase" style={{ color: '#0D9488' }}>{getGreeting()}</span>
             </div>
           </div>

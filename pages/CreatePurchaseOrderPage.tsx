@@ -163,7 +163,7 @@ export const CreatePurchaseOrderPage = () => {
                         Create Purchase Order
                     </h1>
                     <p className="text-sm text-slate-500 mt-1">
-                        Order inventory from suppliers or other wholesalers on PharmaOS
+                        Order inventory from suppliers or other wholesalers on Pharma Head
                     </p>
                 </div>
             </div>
@@ -177,12 +177,12 @@ export const CreatePurchaseOrderPage = () => {
                             Supplier Details
                         </h2>
 
-                        {/* Link to PharmaOS Wholesaler (optional) */}
+                        {/* Link to Pharma Head Wholesaler (optional) */}
                         <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 mb-5">
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <div className="flex items-center gap-2">
                                     <Building size={15} className="text-blue-600" />
-                                    <span className="text-sm font-semibold text-slate-700">PharmaOS Network</span>
+                                    <span className="text-sm font-semibold text-slate-700">Pharma Head Network</span>
                                 </div>
                                 <button
                                     type="button"
@@ -250,7 +250,7 @@ export const CreatePurchaseOrderPage = () => {
                                 </div>
                             ) : (
                                 <p className="text-xs text-slate-500 leading-relaxed">
-                                    Toggle on to order directly from other wholesalers on the PharmaOS platform for automatic order syncing.
+                                    Toggle on to order directly from other wholesalers on the Pharma Head platform for automatic order syncing.
                                 </p>
                             )}
                         </div>

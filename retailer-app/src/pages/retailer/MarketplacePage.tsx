@@ -1,20 +1,42 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Filter, Pill, ShoppingCart, Plus, Minus, ChevronDown, ChevronUp,
-  Building2, Package, AlertTriangle, Sparkles, Clock, X, RefreshCw,
-  TrendingUp, CreditCard, ClipboardList, ArrowRight, Zap,
+  Search, Filter, ShoppingCart, Plus, Minus, ChevronDown, ChevronUp,
+  Building2, Package, AlertTriangle, Sparkles, RefreshCw, TrendingUp, ArrowRight, Zap,
+  LayoutGrid, List, LayoutList
 } from 'lucide-react';
 import api from '../../utils/api';
 import { useCartStore } from '../../store/cartStore';
 import { useDataStore } from '../../store/dataStore';
-import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../utils/cn';
+import { formatCurrency } from '../../utils/formatters';
 import { Medicine, MedicineWithAlternatives, RetailerAgency, Scheme } from '../../types';
 import { MedicineDetailSheet } from '../../components/MedicineDetailSheet';
 import { SearchCommand } from '../../components/SearchCommand';
 
-const CATEGORIES = ['All', 'Tablets', 'Syrups', 'Injections', 'Creams', 'Drops', 'Inhalers', 'Capsules'];
+const CATEGORIES = ['All', 'Tablets', 'Syrups', 'Injections', 'Creams', 'Drops', 'Inhalers', 'Capsules'] as const;
+const SEARCH_DEBOUNCE_MS = 400;
+const VIEW_MODE_STORAGE_KEY = 'pharma-marketplace-view-mode';
+const PAGE_SIZE = 48;
+
+/** Normalize search so "a250" matches "A 250" — backend also does this; sending normalized helps. */
+function normalizeSearchQuery(q: string): string {
+  const t = q.trim();
+  if (!t) return t;
+  return t.replace(/([a-zA-Z])(\d)/g, '$1 $2').replace(/(\d)([a-zA-Z])/g, '$1 $2');
+}
+
+type ViewMode = 'detailed' | 'grid' | 'compact';
+
+const getStoredViewMode = (): ViewMode => {
+  try {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (stored === 'detailed' || stored === 'grid' || stored === 'compact') return stored;
+  } catch {
+    // ignore
+  }
+  return 'detailed';
+};
 
 const getMedicineType = (name: string) => {
   const n = name.toLowerCase();
@@ -27,15 +49,18 @@ const getMedicineType = (name: string) => {
   return { label: 'Medicine', color: 'bg-slate-50 text-slate-500 border-slate-200' };
 };
 
-const MedicineCard: React.FC<{
+interface MedicineCardProps {
   med: MedicineWithAlternatives;
   cartQty: number;
   schemes: Scheme[];
+  viewMode: ViewMode;
   onAdd: () => void;
   onInc: () => void;
   onDec: () => void;
   onDetail: () => void;
-}> = ({ med, cartQty, schemes, onAdd, onInc, onDec, onDetail }) => {
+}
+
+const MedicineCardComponent: React.FC<MedicineCardProps> = ({ med, cartQty, schemes, viewMode, onAdd, onInc, onDec, onDetail }) => {
   const [showAlts, setShowAlts] = useState(false);
   const margin = med.mrp > 0 ? ((med.mrp - med.price) / med.mrp * 100) : 0;
   const typeInfo = getMedicineType(med.name);
@@ -47,6 +72,106 @@ const MedicineCard: React.FC<{
     (s.type === 'CASH_DISCOUNT' && s.wholesaler_id === med.wholesaler_id) ||
     (s.medicine_id === med.id && s.wholesaler_id === med.wholesaler_id)
   );
+
+
+  if (viewMode === 'compact') {
+    return (
+      <motion.div layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
+        className={cn("bg-white rounded-xl border border-slate-200/70 p-3 shadow-sm flex items-center gap-3 overflow-hidden", isOutOfStock && "opacity-75 bg-slate-50")}
+      >
+        <div className="flex-1 min-w-0" onClick={onDetail} style={{ cursor: 'pointer' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-bold text-slate-800 truncate">{med.name}</h3>
+            {isOutOfStock ? (
+              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded shrink-0">Out</span>
+            ) : isLow ? (
+              <span className="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">Low</span>
+            ) : null}
+            {applicableSchemes.length > 0 && <Sparkles size={10} className="text-indigo-500 shrink-0" />}
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-500 truncate">{med.brand}</span>
+            <span className="text-slate-300">•</span>
+            <span className="font-extrabold text-blue-700">{formatCurrency(med.price)}</span>
+            {margin > 15 && <span className="text-[10px] text-emerald-600 font-bold ml-1">{margin.toFixed(0)}% Margin</span>}
+          </div>
+        </div>
+        
+        <div className="shrink-0 flex items-center justify-end w-[90px]">
+          {cartQty > 0 ? (
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-1 w-full border border-blue-100/50">
+              <button onClick={onDec} className="w-6 h-6 flex items-center justify-center rounded bg-white text-blue-600 shadow-sm"><Minus size={12} /></button>
+              <span className="text-xs font-bold text-blue-700">{cartQty}</span>
+              <button onClick={onInc} className="w-6 h-6 flex items-center justify-center rounded bg-white text-blue-600 shadow-sm"><Plus size={12} /></button>
+            </div>
+          ) : (
+            <button
+              onClick={onAdd}
+              className={cn(
+                "w-full py-1.5 px-3 text-[11px] font-bold rounded-lg transition-colors border shadow-sm",
+                isOutOfStock ? "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200" : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              )}
+            >
+              {isOutOfStock ? 'Pre-order' : 'Add'}
+            </button>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (viewMode === 'grid') {
+    return (
+      <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        className={cn("bg-white rounded-2xl border border-slate-200/70 p-3 shadow-sm flex flex-col hover:shadow-md transition-shadow", isOutOfStock && "opacity-75")}
+      >
+        <div className="flex-1 cursor-pointer" onClick={onDetail}>
+          <div className="flex items-center justify-between mb-2">
+            <span className={cn("text-[9px] font-bold px-1.5 py-0.5 rounded border", typeInfo.color)}>{typeInfo.label}</span>
+            {isOutOfStock ? (
+              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">Out</span>
+            ) : applicableSchemes.length > 0 ? (
+               <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded flex items-center gap-0.5"><Sparkles size={8}/>Offer</span>
+            ) : null}
+          </div>
+          <h3 className="text-xs font-bold text-slate-800 leading-snug line-clamp-2 mb-1">{med.name}</h3>
+          <p className="text-[10px] text-slate-500 line-clamp-1">{med.brand}</p>
+          {med.wholesaler && (
+            <div className="flex items-center gap-1 mt-1">
+              <Building2 size={9} className="text-slate-400 shrink-0" />
+              <span className="text-[9px] text-slate-500 truncate" title={med.wholesaler.name}>{med.wholesaler.name}</span>
+            </div>
+          )}
+          <div className="mt-2 mb-3">
+             <span className="text-sm font-extrabold text-blue-700">{formatCurrency(med.price)}</span>
+             <span className="text-[9px] text-slate-400 line-through ml-1.5">{formatCurrency(med.mrp)}</span>
+          </div>
+        </div>
+        
+        <div className="mt-auto pt-2 border-t border-slate-100">
+          {cartQty > 0 ? (
+            <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-1 border border-blue-100/50">
+              <button onClick={onDec} className="w-7 h-7 flex items-center justify-center rounded bg-white text-blue-600 shadow-sm"><Minus size={12} /></button>
+              <span className="text-xs font-bold text-blue-700">{cartQty}</span>
+              <button onClick={onInc} className="w-7 h-7 flex items-center justify-center rounded bg-white text-blue-600 shadow-sm"><Plus size={12} /></button>
+            </div>
+          ) : (
+            <button
+              onClick={onAdd}
+              className={cn(
+                "w-full py-2 text-[11px] font-bold rounded-lg transition-colors border shadow-sm flex justify-center items-center gap-1",
+                isOutOfStock
+                  ? "text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200"
+                  : "bg-white text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              )}
+            >
+              <Plus size={12} /> {isOutOfStock ? 'Pre-order' : 'Add'}
+            </button>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -77,8 +202,8 @@ const MedicineCard: React.FC<{
         {/* Pricing */}
         <div className="flex items-end justify-between mt-4 pt-3 border-t border-slate-100/60">
           <div>
-            <span className="text-[11px] text-slate-400 line-through mr-2">₹{med.mrp.toFixed(0)}</span>
-            <span className="text-lg font-extrabold text-blue-700">₹{med.price.toFixed(2)}</span>
+            <span className="text-[11px] text-slate-400 line-through mr-2">{formatCurrency(med.mrp)}</span>
+            <span className="text-lg font-extrabold text-blue-700">{formatCurrency(med.price)}</span>
           </div>
           <div className="flex flex-col items-end gap-1.5">
             {margin > 15 && (
@@ -195,7 +320,7 @@ const MedicineCard: React.FC<{
                             <Building2 size={10} className="text-slate-400" />
                             {alt.wholesaler?.name}
                           </p>
-                          <p className="text-[11px] font-extrabold text-blue-700">₹{alt.price.toFixed(2)}</p>
+                          <p className="text-[11px] font-extrabold text-blue-700">{formatCurrency(alt.price)}</p>
                         </div>
                       </div>
                       <motion.button whileTap={{ scale: 0.95 }} onClick={() => addItem(alt, 1)} disabled={alt.stock_qty <= 0} className="text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40 disabled:bg-slate-300 ml-2 shrink-0 shadow-sm">
@@ -213,9 +338,16 @@ const MedicineCard: React.FC<{
   );
 };
 
+const MedicineCard = React.memo(MedicineCardComponent);
+MedicineCard.displayName = 'MedicineCard';
+
 export const MarketplacePage: React.FC = () => {
+  const [viewMode, setViewMode] = useState<ViewMode>(getStoredViewMode);
   const [medicines, setMedicines] = useState<MedicineWithAlternatives[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [agencies, setAgencies] = useState<RetailerAgency[]>([]);
@@ -226,55 +358,118 @@ export const MarketplacePage: React.FC = () => {
   const { items, addItem, updateQty, removeItem } = useCartStore();
   const { orders, schemes, setSchemes } = useDataStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const abortRef = useRef<AbortController | null>(null);
+  const loadMoreOffsetRef = useRef(0);
+  const searchRef = useRef(search);
+  searchRef.current = search;
+
+  // Persist view mode
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode);
+    } catch {
+      // ignore
+    }
+  }, [viewMode]);
 
   // Fetch agencies
   useEffect(() => {
     api.get('/retailer/agencies').then(r => {
       const active = (r.data || []).filter((a: RetailerAgency) => a.status === 'ACTIVE');
       setAgencies(active);
-    }).catch(() => { });
+    }).catch(() => {});
   }, []);
 
-  // Fetch medicines
-  const fetchMedicines = useCallback(async (q?: string) => {
-    setLoading(true);
+  // Fetch medicines with abort support. offset > 0 = append (load more).
+  // q = explicit search (e.g. from debounced input); when omitted we use searchRef for agency-only refetch.
+  const fetchMedicines = useCallback(async (q?: string, agencyOverride?: string, offset = 0) => {
+    const isLoadMore = offset > 0;
+    if (!isLoadMore) {
+      if (abortRef.current) abortRef.current.abort();
+      abortRef.current = new AbortController();
+      setLoading(true);
+      setFetchError(null);
+    } else {
+      loadMoreOffsetRef.current = offset;
+      setLoadingMore(true);
+    }
+    const signal = abortRef.current?.signal;
+    const agency = agencyOverride !== undefined ? agencyOverride : selectedAgency;
+    const searchVal = q !== undefined ? q : searchRef.current;
+    const searchParam = searchVal.trim() ? normalizeSearchQuery(searchVal) : undefined;
     try {
       const params = new URLSearchParams();
-      if (q) params.set('search', q);
-      if (selectedAgency) params.set('agency_id', selectedAgency);
-      const { data } = await api.get(`/marketplace/medicines?${params.toString()}`);
-      setMedicines(Array.isArray(data) ? data : data?.medicines || []);
-      if (data?.schemes) {
-        setSchemes(data.schemes);
+      if (searchParam) params.set('search', searchParam);
+      if (agency) params.set('agency', agency);
+      params.set('limit', String(PAGE_SIZE));
+      params.set('offset', String(offset));
+      const { data } = await api.get(`/marketplace/medicines?${params.toString()}`, { signal });
+      const list = Array.isArray(data) ? data : data?.medicines || [];
+      const total = typeof data?.total === 'number' ? data.total : list.length;
+      if (isLoadMore) {
+        const expectedOffset = loadMoreOffsetRef.current;
+        setMedicines((prev) => (prev.length !== expectedOffset ? prev : [...prev, ...list]));
+      } else {
+        setMedicines(list);
+        setTotalCount(total);
       }
-    } catch {
-      setMedicines([]);
-      if (schemes.length === 0) setSchemes([]);
+      if (data?.schemes) setSchemes(data.schemes);
+      else if (!isLoadMore) setSchemes([]);
+    } catch (err: unknown) {
+      const isAborted = (err as { code?: string; name?: string })?.code === 'ERR_CANCELED' || (err instanceof Error && err.name === 'AbortError');
+      if (isAborted) return;
+      if (!isLoadMore) {
+        setMedicines([]);
+        setTotalCount(0);
+        setSchemes([]);
+        const message = err && typeof err === 'object' && 'message' in err ? String((err as Error).message) : 'Failed to load medicines';
+        setFetchError(message);
+      }
+    } finally {
+      if (!isLoadMore) {
+        if (!signal?.aborted) setLoading(false);
+        abortRef.current = null;
+      } else {
+        setLoadingMore(false);
+      }
     }
-    setLoading(false);
-  }, [selectedAgency]);
+  }, [selectedAgency, setSchemes]);
 
-  useEffect(() => { fetchMedicines(); }, [selectedAgency]);
+  // Only refetch when agency changes (or mount). Do NOT refetch on every search change — that would cancel requests on each keystroke.
+  useEffect(() => {
+    fetchMedicines(searchRef.current, undefined, 0);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [selectedAgency, fetchMedicines]);
 
-  const handleSearch = (val: string) => {
+  const handleRetry = useCallback(() => {
+    setFetchError(null);
+    fetchMedicines(search);
+  }, [fetchMedicines, search]);
+
+  const handleSearch = useCallback((val: string) => {
     setSearch(val);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => fetchMedicines(val), 400);
-  };
+    debounceRef.current = setTimeout(() => fetchMedicines(val), SEARCH_DEBOUNCE_MS);
+  }, [fetchMedicines]);
 
-  // Category filter (client-side)
-  const filtered = category === 'All' ? medicines : medicines.filter(m => {
-    const n = m.name.toLowerCase();
+  // Category filter (client-side, memoized)
+  const filtered = useMemo(() => {
+    if (category === 'All') return medicines;
     const cat = category.toLowerCase();
-    if (cat === 'tablets') return n.includes('tab');
-    if (cat === 'syrups') return n.includes('syrup') || n.includes('suspension');
-    if (cat === 'injections') return n.includes('injection') || n.includes('vial');
-    if (cat === 'creams') return n.includes('cream') || n.includes('ointment') || n.includes('gel');
-    if (cat === 'drops') return n.includes('drop') || n.includes('eye') || n.includes('ear');
-    if (cat === 'inhalers') return n.includes('inhaler') || n.includes('rotacap');
-    if (cat === 'capsules') return n.includes('cap');
-    return true;
-  });
+    return medicines.filter(m => {
+      const n = m.name.toLowerCase();
+      if (cat === 'tablets') return n.includes('tab');
+      if (cat === 'syrups') return n.includes('syrup') || n.includes('suspension');
+      if (cat === 'injections') return n.includes('injection') || n.includes('vial');
+      if (cat === 'creams') return n.includes('cream') || n.includes('ointment') || n.includes('gel');
+      if (cat === 'drops') return n.includes('drop') || n.includes('eye') || n.includes('ear');
+      if (cat === 'inhalers') return n.includes('inhaler') || n.includes('rotacap');
+      if (cat === 'capsules') return n.includes('cap');
+      return true;
+    });
+  }, [medicines, category]);
 
   // Quick Reorder: derive recently ordered medicines
   const recentMedicines = React.useMemo(() => {
@@ -306,55 +501,66 @@ export const MarketplacePage: React.FC = () => {
 
   return (
     <div className="space-y-5">
-      {/* Welcome Banner */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 rounded-2xl p-5 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-1/2 w-32 h-32 bg-white/5 rounded-full translate-y-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={16} className="text-blue-200" />
-            <span className="text-xs font-semibold text-blue-200 uppercase tracking-wider">Marketplace</span>
-          </div>
-          <h2 className="text-lg font-bold mb-1">Order medicines from your agencies</h2>
-          <p className="text-blue-200 text-xs">Browse catalog, compare prices, and place orders effortlessly</p>
-          <div className="flex gap-3 mt-4">
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 border border-white/10">
-              <p className="text-[10px] text-blue-200 uppercase font-semibold">Active Orders</p>
-              <p className="text-lg font-bold">{orders.filter(o => ['PENDING', 'ACCEPTED', 'DISPATCHED'].includes(o.status)).length}</p>
-            </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 border border-white/10">
-              <p className="text-[10px] text-blue-200 uppercase font-semibold">In Cart</p>
-              <p className="text-lg font-bold">{cartCount}</p>
-            </div>
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2 border border-white/10">
-              <p className="text-[10px] text-blue-200 uppercase font-semibold">Agencies</p>
-              <p className="text-lg font-bold">{agencies.length}</p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Search Bar */}
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex gap-2">
-        <div className="flex-1 relative group" onClick={() => setSearchOpen(true)}>
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-          <input
-            value={search}
-            onChange={e => handleSearch(e.target.value)}
-            onClick={e => e.stopPropagation()}
-            placeholder="Search medicines, salts, brands..."
-            className="w-full pl-10 pr-16 py-3 text-sm bg-white border border-slate-200/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-slate-400 transition-all shadow-sm hover:shadow-md"
-          />
-          <kbd className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 items-center gap-0.5">⌘K</kbd>
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="flex flex-col sm:flex-row gap-3">
+        <div className="flex gap-2 flex-1">
+          <div className="flex-1 relative group min-w-0" onClick={() => setSearchOpen(true)}>
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+            <input
+              value={search}
+              onChange={e => handleSearch(e.target.value)}
+              onClick={e => e.stopPropagation()}
+              placeholder="Search medicines, salts, brands..."
+              className="w-full pl-10 pr-16 py-3 text-sm bg-white border border-slate-200/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 placeholder-slate-400 transition-all shadow-sm hover:shadow-md"
+            />
+            <kbd className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200 items-center gap-0.5">⌘K</kbd>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn("shrink-0 px-4 py-3 rounded-2xl border transition-all flex items-center gap-1.5 shadow-sm", showFilters ? "bg-blue-50 border-blue-200 text-blue-600 shadow-blue-100/50" : "bg-white border-slate-200/80 text-slate-500 hover:bg-slate-50 hover:shadow-md")}
+            aria-label={showFilters ? 'Hide filters' : 'Show filters'}
+            aria-expanded={showFilters}
+          >
+            <Filter size={16} />
+            <span className="text-xs font-semibold hidden sm:inline">Filters</span>
+          </motion.button>
         </div>
-        <motion.button whileTap={{ scale: 0.95 }}
-          onClick={() => setShowFilters(!showFilters)}
-          className={cn("px-4 py-3 rounded-2xl border transition-all flex items-center gap-1.5 shadow-sm", showFilters ? "bg-blue-50 border-blue-200 text-blue-600 shadow-blue-100/50" : "bg-white border-slate-200/80 text-slate-500 hover:bg-slate-50 hover:shadow-md")}
-        >
-          <Filter size={16} />
-          <span className="text-xs font-semibold hidden sm:inline">Filters</span>
-        </motion.button>
+        {/* Layout switcher: List (one per row) vs Grid (side by side) */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-semibold text-slate-500 hidden sm:inline">View:</span>
+          <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80" role="group" aria-label="Layout">
+            <button
+              onClick={() => setViewMode('detailed')}
+              className={cn("flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold transition-all", viewMode === 'detailed' ? "bg-white shadow-sm text-blue-600 border border-slate-200/60" : "text-slate-500 hover:text-slate-700")}
+              aria-pressed={viewMode === 'detailed'}
+              title="One per row (list)"
+            >
+              <LayoutList size={16} className="shrink-0" />
+              <span className="sm:hidden">List</span>
+              <span className="hidden sm:inline">One per row</span>
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn("flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold transition-all", viewMode === 'grid' ? "bg-white shadow-sm text-blue-600 border border-slate-200/60" : "text-slate-500 hover:text-slate-700")}
+              aria-pressed={viewMode === 'grid'}
+              title="Side by side (grid)"
+            >
+              <LayoutGrid size={16} className="shrink-0" />
+              <span className="sm:hidden">Grid</span>
+              <span className="hidden sm:inline">Side by side</span>
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={cn("flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-xs font-semibold transition-all", viewMode === 'compact' ? "bg-white shadow-sm text-blue-600 border border-slate-200/60" : "text-slate-500 hover:text-slate-700")}
+              aria-pressed={viewMode === 'compact'}
+              title="Compact list"
+            >
+              <List size={16} className="shrink-0" />
+              <span className="hidden md:inline">Compact</span>
+            </button>
+          </div>
+        </div>
       </motion.div>
 
       {/* Filters Panel */}
@@ -411,7 +617,7 @@ export const MarketplacePage: React.FC = () => {
                 <p className="text-xs font-semibold text-slate-700 line-clamp-2 group-hover:text-blue-700 transition-colors">{item.name}</p>
                 {item.medicine && (
                   <>
-                    <p className="text-base font-extrabold text-blue-700 mt-1.5">₹{item.medicine.price.toFixed(0)}</p>
+                    <p className="text-base font-extrabold text-blue-700 mt-1.5">{formatCurrency(item.medicine.price)}</p>
                     <motion.button whileTap={{ scale: 0.95 }} onClick={() => item.medicine && addItem(item.medicine, 1)} className="w-full mt-2.5 py-2 text-[10px] font-bold text-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 rounded-xl transition-all border border-blue-100/50">
                       + Add to Cart
                     </motion.button>
@@ -423,16 +629,54 @@ export const MarketplacePage: React.FC = () => {
         </motion.div>
       )}
 
-      {/* Results Count */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500 font-medium">{filtered.length} medicine{filtered.length !== 1 ? 's' : ''} found</p>
-        <motion.button whileTap={{ scale: 0.95 }} onClick={() => fetchMedicines(search)} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1.5 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-all"><RefreshCw size={12} />Refresh</motion.button>
-      </div>
+      {/* Results Count — hide when error so retry is the primary action */}
+      {!fetchError && (
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className="text-xs text-slate-500 font-medium">
+            {totalCount > 0 && medicines.length < totalCount
+              ? `Showing ${filtered.length} of ${totalCount.toLocaleString()} medicines`
+              : `${filtered.length} medicine${filtered.length !== 1 ? 's' : ''} found`}
+          </p>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={() => fetchMedicines(search, undefined, 0)} className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1.5 font-semibold bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-all" aria-label="Refresh medicine list"><RefreshCw size={12} />Refresh</motion.button>
+        </div>
+      )}
+
+      {/* Error state with retry */}
+      {fetchError && !loading && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-amber-200 bg-amber-50/80 p-6 text-center"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+              <AlertTriangle size={24} className="text-amber-600" aria-hidden />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Could not load medicines</p>
+              <p className="text-xs text-amber-700 mt-1 max-w-sm">{fetchError}</p>
+            </div>
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={handleRetry}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 text-white text-sm font-semibold hover:bg-amber-700 transition-colors shadow-sm"
+              aria-label="Retry loading medicines"
+            >
+              <RefreshCw size={16} />
+              Try again
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Medicine Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
+      {loading && !fetchError ? (
+        <div className={cn(
+          viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3" :
+          viewMode === 'compact' ? "flex flex-col gap-2" :
+          "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+        )}>
+          {[...Array(viewMode === 'compact' ? 10 : 6)].map((_, i) => (
             <div key={i} className="bg-white rounded-2xl border border-slate-100/80 p-4 animate-pulse">
               <div className="flex justify-between mb-3"><div className="w-16 h-6 bg-slate-100 rounded-lg" /><div className="w-16 h-5 bg-slate-100 rounded-lg" /></div>
               <div className="w-3/4 h-4 bg-slate-100 rounded-lg mb-2" />
@@ -442,22 +686,38 @@ export const MarketplacePage: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-20">
+      ) : fetchError ? null : filtered.length === 0 ? (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-16 sm:py-20" role="status" aria-live="polite">
           <div className="w-20 h-20 rounded-3xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-            <Package size={32} className="text-slate-300" />
+            <Package size={32} className="text-slate-300" aria-hidden />
           </div>
           <p className="text-base font-semibold text-slate-600">No medicines found</p>
-          <p className="text-sm text-slate-400 mt-1">Try a different search or filter</p>
+          <p className="text-sm text-slate-400 mt-1 max-w-xs mx-auto">
+            {search || selectedAgency ? 'Try a different search or clear filters to see more.' : 'No items match this category.'}
+          </p>
+          {(search || selectedAgency) && (
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { setSearch(''); setSelectedAgency(''); setCategory('All'); fetchMedicines('', '', 0); }}
+              className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-xl transition-colors"
+            >
+              Clear filters
+            </motion.button>
+          )}
         </motion.div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className={cn(
+          viewMode === 'grid' ? "grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3" :
+          viewMode === 'compact' ? "flex flex-col gap-2" :
+          "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4"
+        )}>
           {filtered.map((med, i) => {
             const cartItem = items.find(ci => ci.medicine.id === med.id);
             return (
               <MedicineCard
                 key={med.id}
                 med={med}
+                viewMode={viewMode}
                 cartQty={cartItem?.qty || 0}
                 schemes={schemes}
                 onAdd={() => addItem(med, 1)}
@@ -467,6 +727,20 @@ export const MarketplacePage: React.FC = () => {
               />
             );
           })}
+        </div>
+      )}
+
+      {/* Load more — when there are more results than currently loaded */}
+      {!fetchError && filtered.length > 0 && medicines.length < totalCount && (
+        <div className="flex justify-center pt-4 pb-2">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => fetchMedicines(search, undefined, medicines.length)}
+            disabled={loadingMore}
+            className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm border border-slate-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loadingMore ? 'Loading…' : `Load more (${totalCount - medicines.length} left)`}
+          </motion.button>
         </div>
       )}
 

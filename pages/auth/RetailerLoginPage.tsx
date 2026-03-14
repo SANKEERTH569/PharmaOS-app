@@ -7,6 +7,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useDataStore } from '../../store/dataStore';
 import { cn } from '../../utils/cn';
+import { PremiumAnimatedLogo } from '../../components/ui/PremiumAnimatedLogo';
 
 type Mode = 'LOGIN' | 'REGISTER';
 
@@ -78,14 +79,8 @@ export const RetailerLoginPage = () => {
         <div className="absolute bottom-[5%] right-[-5%] w-[45%] h-[45%] rounded-full blur-[100px]" style={{ background: 'rgba(16,185,129,0.10)' }} />
 
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(145deg, #14B8A6, #059669)', boxShadow: '0 8px 24px rgba(20,184,166,0.35)' }}
-            >
-              <span className="text-white font-black text-xl leading-none">P</span>
-            </div>
-            <span className="text-white font-extrabold text-2xl tracking-tight">PharmaOS</span>
+          <div style={{ '--color-text-primary': '#ffffff' } as React.CSSProperties}>
+            <PremiumAnimatedLogo size="lg" autoPlay playDelay={500} />
           </div>
           <p className="text-teal-300/50 text-xs font-semibold tracking-[0.3em] uppercase mt-1">
             Retailer Portal
@@ -132,10 +127,7 @@ export const RetailerLoginPage = () => {
 
           {/* Mobile brand */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(145deg, #14B8A6, #059669)', boxShadow: '0 6px 18px rgba(20,184,166,0.30)' }}>
-              <span className="text-white font-black text-lg leading-none">P</span>
-            </div>
-            <span className="text-slate-900 font-extrabold text-xl tracking-tight">PharmaOS</span>
+            <PremiumAnimatedLogo size="md" autoPlay playDelay={250} />
           </div>
 
           <div className="mb-8">
@@ -145,7 +137,7 @@ export const RetailerLoginPage = () => {
             <p className="text-slate-400 text-sm font-medium mt-1.5">
               {mode === 'LOGIN'
                 ? 'Sign in to your retailer account'
-                : 'Register your pharmacy on PharmaOS'
+                : 'Register your pharmacy on Pharma Head'
               }
             </p>
           </div>

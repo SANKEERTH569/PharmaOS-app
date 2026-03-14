@@ -6,6 +6,15 @@ const router = Router();
 router.use(authenticate);
 router.use(requireRole('RETAILER'));
 
+/** Normalize search so "a250" matches "A 250": add space between letters and numbers, then tokenize. */
+function normalizeSearch(search: string): string[] {
+  const trimmed = search.trim().toLowerCase();
+  if (!trimmed) return [];
+  // Insert space between letter and digit so "a250" -> "a 250"
+  const withSpaces = trimmed.replace(/([a-z])(\d)/gi, '$1 $2').replace(/(\d)([a-z])/gi, '$1 $2');
+  return withSpaces.split(/\s+/).filter(Boolean);
+}
+
 /**
  * GET /api/marketplace/medicines
  *
@@ -13,14 +22,18 @@ router.use(requireRole('RETAILER'));
  * Only medicines that the wholesaler explicitly added/imported (wholesaler_id != null).
  *
  * Query params:
- *   search  — filter by name/brand/salt
+ *   search  — filter by name/brand/salt (supports "a250" -> matches "A 250"; token AND match)
  *   agency  — filter by specific wholesaler_id ("ALL" = all linked)
+ *   limit   — max results (default 60, max 200)
+ *   offset  — skip N results for pagination
  */
 router.get('/medicines', async (req, res) => {
   try {
     const retailer_id = req.user!.retailer_id;
-    const search = ((req.query.search as string) || '').trim();
-    const agencyFilter = (req.query.agency as string) || 'ALL';
+    const rawSearch = ((req.query.search as string) || '').trim();
+    const agencyFilter = (req.query.agency as string) || (req.query.agency_id as string) || 'ALL';
+    const limit = Math.min(Math.max(1, parseInt(String(req.query.limit), 10) || 60), 200);
+    const offset = Math.max(0, parseInt(String(req.query.offset), 10) || 0);
 
     // 1. Get all linked active agencies
     const linkedAgencies = await prisma.retailerAgency.findMany({
@@ -36,7 +49,7 @@ router.get('/medicines', async (req, res) => {
     const linkedWholesalerIds = linkedAgencies.map((a) => a.wholesaler_id);
 
     if (linkedWholesalerIds.length === 0) {
-      return res.json({ medicines: [], agencies: [] });
+      return res.json({ medicines: [], total: 0, schemes: [], agencies: [] });
     }
 
     // 2. Filter to specific agency if requested
@@ -45,29 +58,37 @@ router.get('/medicines', async (req, res) => {
         ? linkedWholesalerIds
         : linkedWholesalerIds.filter((id) => id === agencyFilter);
 
-    // 3. Fetch medicines from those wholesalers' inventories (wholesaler_id != null)
+    // 3. Build where: base + search (token AND: each token must appear in name, brand, or salt)
     const whereClause: any = {
       wholesaler_id: { in: targetIds },
       is_active: true,
       is_discontinued: false,
     };
 
-    if (search) {
-      whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
-        { salt: { contains: search, mode: 'insensitive' } },
-      ];
+    const tokens = normalizeSearch(rawSearch);
+    if (tokens.length > 0) {
+      // Each token must match in at least one of name, brand, salt (AND across tokens)
+      whereClause.AND = tokens.map((token) => ({
+        OR: [
+          { name: { contains: token, mode: 'insensitive' as const } },
+          { brand: { contains: token, mode: 'insensitive' as const } },
+          { salt: { contains: token, mode: 'insensitive' as const } },
+        ],
+      }));
     }
 
-    const medicines = await prisma.medicine.findMany({
-      where: whereClause,
-      include: {
-        wholesaler: { select: { id: true, name: true, phone: true } },
-      },
-      orderBy: { name: 'asc' },
-      take: 500,
-    });
+    const [total, medicines] = await Promise.all([
+      prisma.medicine.count({ where: whereClause }),
+      prisma.medicine.findMany({
+        where: whereClause,
+        include: {
+          wholesaler: { select: { id: true, name: true, phone: true } },
+        },
+        orderBy: { name: 'asc' },
+        skip: offset,
+        take: limit,
+      }),
+    ]);
 
     // 4. Find alternatives: same salt from other linked wholesalers
     const saltSet = Array.from(new Set(medicines.map((m) => m.salt).filter(Boolean)));
@@ -134,7 +155,7 @@ router.get('/medicines', async (req, res) => {
       phone: a.wholesaler.phone,
     }));
 
-    res.json({ medicines: medicinesWithAlts, schemes, agencies: agenciesInfo });
+    res.json({ medicines: medicinesWithAlts, total, limit, offset, schemes, agencies: agenciesInfo });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message });

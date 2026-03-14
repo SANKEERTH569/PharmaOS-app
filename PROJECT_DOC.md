@@ -1,14 +1,14 @@
 # Pharma B2B Dashboard — Project Documentation
 
 **Version:** 0.1.4  
-**Internal name:** PharmaOS  
+**Internal name:** Pharma Head  
 **Tagline:** _Premium B2B Operating System for Pharmaceutical Sub-Wholesalers_
 
 ---
 
 ## 1. What This Project Is
 
-PharmaOS is a **full-stack B2B SaaS web application** that digitises the day-to-day operations of a **pharmaceutical sub-wholesaler** (distributor) and their network of **retailers** (chemists / medical shops).
+Pharma Head is a **full-stack B2B SaaS web application** that digitises the day-to-day operations of a **pharmaceutical sub-wholesaler** (distributor) and their network of **retailers** (chemists / medical shops).
 
 The platform removes the need for physical order books, manual ledgers, and offline payment tracking by providing a single, real-time web dashboard for both parties.
 
@@ -236,4 +236,4 @@ npm run dev
 
 ## 13. Summary
 
-PharmaOS is a production-oriented, full-stack pharma B2B platform that handles the complete order-to-payment cycle between a sub-wholesaler and their retailers. It combines a clean React dashboard, a RESTful Express API, a relational PostgreSQL database (via Prisma), and real-time Socket.IO updates — all typed end-to-end in TypeScript.
+Pharma Head is a production-oriented, full-stack pharma B2B platform that handles the complete order-to-payment cycle between a sub-wholesaler and their retailers. It combines a clean React dashboard, a RESTful Express API, a relational PostgreSQL database (via Prisma), and real-time Socket.IO updates — all typed end-to-end in TypeScript.

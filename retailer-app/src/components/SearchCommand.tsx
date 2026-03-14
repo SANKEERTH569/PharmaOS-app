@@ -25,6 +25,13 @@ const saveRecent = (term: string) => {
   localStorage.setItem(RECENT_KEY, JSON.stringify(arr.slice(0, 8)));
 };
 
+/** Normalize so "a250" matches "A 250" */
+const normalizeSearchQuery = (q: string): string => {
+  const t = q.trim();
+  if (!t) return t;
+  return t.replace(/([a-zA-Z])(\d)/g, '$1 $2').replace(/(\d)([a-zA-Z])/g, '$1 $2');
+};
+
 export const SearchCommand: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -56,8 +63,10 @@ export const SearchCommand: React.FC<{ isOpen: boolean; onClose: () => void }> =
     if (q.length < 2) { setResults([]); return; }
     setLoading(true);
     try {
-      const { data } = await api.get(`/marketplace/medicines?search=${encodeURIComponent(q)}&limit=8`);
-      const meds: SearchResult[] = (data || []).map((m: any) => ({
+      const searchParam = encodeURIComponent(normalizeSearchQuery(q));
+      const { data } = await api.get(`/marketplace/medicines?search=${searchParam}&limit=8&offset=0`);
+      const list = Array.isArray(data) ? data : data?.medicines || [];
+      const meds: SearchResult[] = list.map((m: any) => ({
         id: m.id, type: 'medicine' as const, title: m.name, subtitle: `${m.brand} · ₹${m.price}`,
       }));
       setResults(meds);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
+import { PremiumAnimatedLogo } from '../../components/ui/PremiumAnimatedLogo';
 
 export const AdminLoginPage = () => {
     const navigate = useNavigate();
@@ -48,8 +49,8 @@ export const AdminLoginPage = () => {
                 <div className="bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-3xl p-8 shadow-2xl">
                     {/* Brand */}
                     <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center shadow-xl shadow-rose-500/25">
-                            <Shield size={28} className="text-white" />
+                        <div style={{ '--color-text-primary': '#ffffff' } as React.CSSProperties}>
+                            <PremiumAnimatedLogo size="lg" autoPlay playDelay={350} />
                         </div>
                     </div>
                     <h1 className="text-2xl font-extrabold text-white text-center tracking-tight mb-1">Admin Console</h1>

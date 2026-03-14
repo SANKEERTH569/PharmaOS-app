@@ -513,7 +513,7 @@ export const WholesalerDashboard = () => {
       {/* Footer */}
       <div className="text-center pb-4">
         <p className="text-[11px] text-slate-300 font-medium">
-          Powered by <span className="text-violet-400 font-bold">PharmaOS</span> · Wholesaler Command Center
+          Powered by <span className="text-violet-400 font-bold">Pharma Head</span> · Wholesaler Command Center
         </p>
       </div>
     </div>

@@ -1,5 +1,5 @@
-// PharmaOS Service Worker – required for PWA installability
-const CACHE_NAME = 'pharmaos-v1';
+// Pharma Head Service Worker – required for PWA installability
+const CACHE_NAME = 'pharmahead-v1';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();

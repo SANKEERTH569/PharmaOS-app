@@ -1,6 +1,6 @@
-# PharmaOS — Product Requirements Document (PRD)
+# Pharma Head — Product Requirements Document (PRD)
 
-**Product Name:** PharmaOS  
+**Product Name:** Pharma Head  
 **Version:** 0.1.4  
 **Document Version:** 1.0  
 **Date:** March 11, 2026  
@@ -36,13 +36,13 @@
 
 ## 1. Executive Summary
 
-PharmaOS is a **full-stack B2B SaaS platform** that digitises the entire supply chain workflow of Indian pharmaceutical distribution — from the main wholesaler (super-distributor) through sub-wholesalers (distributors) down to retailers (chemist shops).
+Pharma Head is a **full-stack B2B SaaS platform** that digitises the entire supply chain workflow of Indian pharmaceutical distribution — from the main wholesaler (super-distributor) through sub-wholesalers (distributors) down to retailers (chemist shops).
 
 The platform replaces physical order books, manual ledgers, paper invoices, and offline payment tracking with a unified, real-time web dashboard that serves **four distinct user roles** across the pharma supply chain. It provides end-to-end coverage of inventory management, order lifecycle, financial ledger, GST compliance, payment collection, and promotional scheme management.
 
 **Key Metrics the Platform Aims to Impact:**
 
-| Metric | Without PharmaOS | With PharmaOS |
+| Metric | Without Pharma Head | With Pharma Head |
 |--------|-----------------|---------------|
 | Order placement time | 5–15 min (phone/visit) | < 2 min (digital) |
 | Invoice generation | Manual (15–30 min) | Instant (auto-generated) |
@@ -62,7 +62,7 @@ India's pharmaceutical distribution network operates on a three-tier structure:
 Manufacturer → Main Wholesaler (C&F / Super Stockist) → Sub-Wholesaler (Distributor) → Retailer (Chemist)
 ```
 
-At the **sub-wholesaler ↔ retailer** layer — the core focus of PharmaOS — business is still conducted largely through:
+At the **sub-wholesaler ↔ retailer** layer — the core focus of Pharma Head — business is still conducted largely through:
 
 - **Handwritten order books** and phone calls for order placement
 - **Manual ledger registers** for tracking credit and debit balances
@@ -139,7 +139,7 @@ At the **sub-wholesaler ↔ retailer** layer — the core focus of PharmaOS — 
 
 | Attribute | Detail |
 |-----------|--------|
-| **Who** | PharmaOS operations team |
+| **Who** | Pharma Head operations team |
 | **Daily tasks** | Monitor platform health, manage wholesaler plans, handle coupons, review activity |
 | **Key need** | Bird's-eye view of all wholesalers, retailers, orders, and revenue |
 
@@ -321,7 +321,7 @@ ADMIN (Platform)
 
 ### 7.2 Sub-Wholesaler (Distributor) Module
 
-This is the **primary module** of PharmaOS — the core dashboard for pharmaceutical distributors.
+This is the **primary module** of Pharma Head — the core dashboard for pharmaceutical distributors.
 
 #### F-WS-01: Dashboard Home
 
@@ -1381,7 +1381,7 @@ npm run dev
 | `JWT_SECRET` | `pharma-b2b-super-secret-jwt-key` | ✅ | Backend |
 | `PORT` | `3001` | ❌ | Backend |
 | `NODE_ENV` | `development` / `production` | ❌ | Backend |
-| `CLIENT_URL` | `https://pharmaos.vercel.app` | ❌ | Backend (CORS) |
+| `CLIENT_URL` | `https://pharmahead.vercel.app` | ❌ | Backend (CORS) |
 | `VITE_API_URL` | `https://pharma-backend.onrender.com/api` | ❌ | Frontend |
 
 ### 12.3 Production Deployment
@@ -1450,4 +1450,4 @@ npm run dev
 
 ---
 
-*This PRD is auto-generated from the PharmaOS v0.1.4 codebase and reflects the current state of implemented features.*
+*This PRD is auto-generated from the Pharma Head v0.1.4 codebase and reflects the current state of implemented features.*
