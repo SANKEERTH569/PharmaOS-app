@@ -40,12 +40,41 @@ import { startReminderCron } from './routes/reminderCron';
 
 const app = express();
 const httpServer = http.createServer(app);
+
+// Normalize and validate web origins for CORS/socket handshakes.
+const normalizeOrigin = (value?: string): string => (value || '').trim().replace(/\/$/, '');
+const localhostOriginPattern = /^https?:\/\/localhost:\d+$/;
+
+const configuredOrigins = [
+  process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || '').split(',').map((v) => v.trim()).filter(Boolean),
+];
+
+const staticAllowedOrigins = [
+  'https://pharma-os-app.vercel.app',
+  'https://pharmahead.app',
+  'https://www.pharmahead.app',
+  'capacitor://localhost',
+  'http://localhost',
+  'https://localhost',
+];
+
+const allowedOrigins = new Set(
+  [...configuredOrigins, ...staticAllowedOrigins]
+    .map((origin) => normalizeOrigin(origin))
+    .filter(Boolean)
+);
+
+const isAllowedOrigin = (origin?: string): boolean => {
+  if (!origin) return true; // mobile/native/non-browser requests
+  const normalizedOrigin = normalizeOrigin(origin);
+  return allowedOrigins.has(normalizedOrigin) || localhostOriginPattern.test(normalizedOrigin);
+};
 // ── Socket.io ──────────────────────────────────────────────────────────────
 export const io = new SocketIOServer(httpServer, {
   cors: {
     origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-      const allowedOrigins = [process.env.CLIENT_URL, 'capacitor://localhost', 'http://localhost', 'https://localhost'];
-      if (!origin || allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
       callback(null, false);
@@ -67,21 +96,9 @@ io.on('connection', (socket) => {
 });
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-// Create a function to handle multiple CORS origins dynamically
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'capacitor://localhost',
-  'http://localhost',
-  'https://localhost'
-];
-
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (like mobile apps sometimes send)
-    if (!origin) return callback(null, true);
-
-    // Check if the origin matches our allowed list or is localhost on any port
-    if (allowedOrigins.includes(origin) || /^http:\/\/localhost:\d+$/.test(origin)) {
+    if (isAllowedOrigin(origin)) {
       return callback(null, true);
     }
 
