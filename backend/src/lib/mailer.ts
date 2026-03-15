@@ -7,6 +7,8 @@ type MailPayload = {
   text?: string;
 };
 
+type EmailProvider = 'auto' | 'smtp' | 'resend';
+
 type SmtpConfig = {
   host: string;
   port: number;
@@ -41,6 +43,21 @@ function getSmtpConfig() {
     greetingTimeoutMs,
     socketTimeoutMs,
   } as SmtpConfig;
+}
+
+function getEmailProvider(): EmailProvider {
+  const provider = String(process.env.EMAIL_PROVIDER || 'auto').toLowerCase();
+  if (provider === 'smtp' || provider === 'resend' || provider === 'auto') {
+    return provider;
+  }
+  return 'auto';
+}
+
+function getResendConfig() {
+  const apiKey = process.env.RESEND_API_KEY || '';
+  const from = process.env.RESEND_FROM || process.env.SMTP_FROM || 'Pharma Head <noreply@pharmahead.app>';
+  const timeoutMs = Number(process.env.RESEND_TIMEOUT_MS || 10000);
+  return { apiKey, from, timeoutMs };
 }
 
 function parseFallbacks(base: SmtpConfig): SmtpConfig[] {
@@ -103,7 +120,47 @@ function shouldRetry(error: any) {
   );
 }
 
-export async function sendMail(payload: MailPayload) {
+async function sendViaResend(payload: MailPayload) {
+  const config = getResendConfig();
+  if (!config.apiKey) {
+    throw new Error('RESEND_API_KEY is required when using Resend provider.');
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        from: config.from,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`Resend API failed (${response.status}): ${body || response.statusText}`);
+    }
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Resend API request timed out.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function sendViaSmtp(payload: MailPayload) {
   const config = getSmtpConfig();
   if (!config.pass) {
     throw new Error('SMTP_PASS is required to send email verification links.');
@@ -135,4 +192,30 @@ export async function sendMail(payload: MailPayload) {
 
   const code = lastError?.code ? ` (${lastError.code})` : '';
   throw new Error(`Email delivery failed${code}. Check SMTP host/port and outbound network access from production.`);
+}
+
+export async function sendMail(payload: MailPayload) {
+  const provider = getEmailProvider();
+
+  if (provider === 'resend') {
+    await sendViaResend(payload);
+    return;
+  }
+
+  if (provider === 'smtp') {
+    await sendViaSmtp(payload);
+    return;
+  }
+
+  try {
+    await sendViaSmtp(payload);
+  } catch (smtpErr: any) {
+    // In auto mode, try HTTPS provider fallback if configured.
+    const resendConfig = getResendConfig();
+    if (resendConfig.apiKey) {
+      await sendViaResend(payload);
+      return;
+    }
+    throw smtpErr;
+  }
 }
