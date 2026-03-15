@@ -54,6 +54,8 @@ const staticAllowedOrigins = [
   'https://pharma-os-app.vercel.app',
   'https://pharmahead.app',
   'https://www.pharmahead.app',
+  'https://app.pharmahead.app',
+  'https://dashboard.pharmahead.app',
   'capacitor://localhost',
   'http://localhost',
   'https://localhost',
