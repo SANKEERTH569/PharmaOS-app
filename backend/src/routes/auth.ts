@@ -146,12 +146,21 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    await sendVerificationEmail({ email: normalizedEmail, role: 'WHOLESALER', token, name });
+    let emailSent = true;
+    try {
+      await sendVerificationEmail({ email: normalizedEmail, role: 'WHOLESALER', token, name });
+    } catch (emailErr: any) {
+      emailSent = false;
+      console.error('Failed to send verification email (WHOLESALER register):', emailErr?.message || emailErr);
+    }
 
     const { password_hash: _pw, ...safeWholesaler } = wholesaler;
     return res.status(201).json({
       requires_email_verification: true,
-      message: 'Registration successful. Please verify your email before login.',
+      email_sent: emailSent,
+      message: emailSent
+        ? 'Registration successful. Please verify your email before login.'
+        : 'Registration successful, but verification email could not be sent right now. Please use resend verification.',
       user: safeWholesaler,
       role: 'WHOLESALER',
     });
@@ -404,12 +413,21 @@ router.post('/register/main-wholesaler', async (req, res) => {
       },
     });
 
-    await sendVerificationEmail({ email: normalizedEmail, role: 'MAIN_WHOLESALER', token, name });
+    let emailSent = true;
+    try {
+      await sendVerificationEmail({ email: normalizedEmail, role: 'MAIN_WHOLESALER', token, name });
+    } catch (emailErr: any) {
+      emailSent = false;
+      console.error('Failed to send verification email (MAIN_WHOLESALER register):', emailErr?.message || emailErr);
+    }
 
     const { password_hash: _pw, ...safe } = mainWholesaler;
     return res.status(201).json({
       requires_email_verification: true,
-      message: 'Registration successful. Please verify your email before login.',
+      email_sent: emailSent,
+      message: emailSent
+        ? 'Registration successful. Please verify your email before login.'
+        : 'Registration successful, but verification email could not be sent right now. Please use resend verification.',
       user: safe,
       role: 'MAIN_WHOLESALER',
     });
@@ -503,6 +521,10 @@ router.post('/resend-verification', async (req, res) => {
         return res.status(400).json({ error: 'Email is already verified' });
       }
 
+      const previousTokenHash = wholesaler.email_verification_token_hash;
+      const previousExpiresAt = wholesaler.email_verification_expires_at;
+      const previousSentAt = wholesaler.email_verification_sent_at;
+
       await prisma.wholesaler.update({
         where: { id: wholesaler.id },
         data: {
@@ -512,12 +534,28 @@ router.post('/resend-verification', async (req, res) => {
         },
       });
 
-      await sendVerificationEmail({
-        email: wholesaler.email,
-        role: 'WHOLESALER',
-        token,
-        name: wholesaler.name,
-      });
+      try {
+        await sendVerificationEmail({
+          email: wholesaler.email,
+          role: 'WHOLESALER',
+          token,
+          name: wholesaler.name,
+        });
+      } catch (emailErr: any) {
+        // Restore previous token values so already-sent links are not invalidated on transient SMTP failures.
+        await prisma.wholesaler.update({
+          where: { id: wholesaler.id },
+          data: {
+            email_verification_token_hash: previousTokenHash,
+            email_verification_expires_at: previousExpiresAt,
+            email_verification_sent_at: previousSentAt,
+          },
+        });
+        return res.status(503).json({
+          error: emailErr?.message || 'Email service unavailable. Please try again in a minute.',
+          code: 'EMAIL_DELIVERY_FAILED',
+        });
+      }
     } else if (role === 'MAIN_WHOLESALER') {
       const mainWholesaler = await prisma.mainWholesaler.findFirst({
         where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
@@ -531,6 +569,10 @@ router.post('/resend-verification', async (req, res) => {
         return res.status(400).json({ error: 'Email is already verified' });
       }
 
+      const previousTokenHash = mainWholesaler.email_verification_token_hash;
+      const previousExpiresAt = mainWholesaler.email_verification_expires_at;
+      const previousSentAt = mainWholesaler.email_verification_sent_at;
+
       await prisma.mainWholesaler.update({
         where: { id: mainWholesaler.id },
         data: {
@@ -540,12 +582,28 @@ router.post('/resend-verification', async (req, res) => {
         },
       });
 
-      await sendVerificationEmail({
-        email: mainWholesaler.email,
-        role: 'MAIN_WHOLESALER',
-        token,
-        name: mainWholesaler.name,
-      });
+      try {
+        await sendVerificationEmail({
+          email: mainWholesaler.email,
+          role: 'MAIN_WHOLESALER',
+          token,
+          name: mainWholesaler.name,
+        });
+      } catch (emailErr: any) {
+        // Restore previous token values so already-sent links are not invalidated on transient SMTP failures.
+        await prisma.mainWholesaler.update({
+          where: { id: mainWholesaler.id },
+          data: {
+            email_verification_token_hash: previousTokenHash,
+            email_verification_expires_at: previousExpiresAt,
+            email_verification_sent_at: previousSentAt,
+          },
+        });
+        return res.status(503).json({
+          error: emailErr?.message || 'Email service unavailable. Please try again in a minute.',
+          code: 'EMAIL_DELIVERY_FAILED',
+        });
+      }
     } else {
       return res.status(400).json({ error: 'role must be WHOLESALER or MAIN_WHOLESALER' });
     }
