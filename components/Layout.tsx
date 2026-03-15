@@ -19,7 +19,7 @@ const navGroups = [
   {
     label: 'Main',
     items: [
-      { icon: Home, label: 'Home', path: '/' },
+      { icon: Home, label: 'Home', path: '/app' },
       { icon: FileText, label: 'Quick Sale', path: '/quick-sale' },
       { icon: ShoppingCart, label: 'Orders', path: '/orders' },
       { icon: Users, label: 'Retailers', path: '/retailers' },
@@ -60,7 +60,7 @@ const navGroups = [
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
+  '/app': 'Dashboard',
   '/quick-sale': 'Quick Sale',
   '/orders': 'Orders',
   '/retailers': 'Retailers',
@@ -172,7 +172,7 @@ export const Layout = ({ children }: { children?: React.ReactNode }) => {
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const isHome = location.pathname === '/';
+  const isHome = location.pathname === '/app';
 
   const pageTitle = Object.entries(PAGE_TITLES).find(
     ([p]) => location.pathname === p

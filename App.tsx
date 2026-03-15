@@ -80,6 +80,7 @@ import { SalesmanCollectPage } from './pages/salesman/SalesmanCollectPage';
 import { SalesmanRegisterPage } from './pages/auth/SalesmanRegisterPage';
 import { SalesmanConnectPage } from './pages/salesman/SalesmanConnectPage';
 import { SupportTicketsPage } from './pages/SupportTicketsPage';
+import { LandingPage } from './pages/LandingPage';
 import { useAuthStore } from './store/authStore';
 import { useDataStore } from './store/dataStore';
 import { connectSocket } from './utils/socket';
@@ -94,7 +95,7 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 
   if (userRole !== allowedRole) {
     // Redirect to appropriate dashboard based on actual role
-    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : userRole === 'SALESMAN' ? '/salesman' : '/shop';
+    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/app' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : userRole === 'SALESMAN' ? '/salesman' : '/shop';
     return <Navigate to={dest} replace />;
   }
 
@@ -121,7 +122,10 @@ const ProtectedRoute = ({ children, allowedRole }: { children: React.ReactNode, 
 const RetailerAuthOnly = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userRole } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (userRole !== 'RETAILER') return <Navigate to="/" replace />;
+  if (userRole !== 'RETAILER') {
+    const dest = userRole === 'ADMIN' ? '/admin' : userRole === 'WHOLESALER' ? '/app' : userRole === 'MAIN_WHOLESALER' ? '/wholesaler' : userRole === 'SALESMAN' ? '/salesman' : '/login';
+    return <Navigate to={dest} replace />;
+  }
   return <>{children}</>;
 };
 
@@ -148,6 +152,7 @@ function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginSelectorPage />} />
         <Route path="/login/wholesaler" element={<WholesalerLoginPage />} />
         <Route path="/login/retailer" element={<RetailerLoginPage />} />
@@ -223,7 +228,7 @@ function App() {
         } />
 
         {/* Sub-Wholesaler Routes */}
-        <Route path="/" element={
+        <Route path="/app" element={
           <ProtectedRoute allowedRole="WHOLESALER">
             <DashboardHome />
           </ProtectedRoute>

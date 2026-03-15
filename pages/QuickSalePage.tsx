@@ -266,7 +266,7 @@ export const QuickSalePage = () => {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/')} className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl transition-all shadow-sm">
+          <button onClick={() => navigate('/app')} className="p-2.5 bg-white hover:bg-slate-50 border border-slate-200/60 rounded-xl transition-all shadow-sm">
             <ArrowLeft size={16} className="text-slate-500" />
           </button>
           <div>

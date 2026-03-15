@@ -45,7 +45,7 @@ export const LoginPage = () => {
     try {
       if (role === 'WHOLESALER') {
         await loginWholesaler(loginId.trim(), loginPass);
-        navigate('/');
+        navigate('/app');
       } else {
         await loginRetailer(loginId.trim(), loginPass);
         navigate('/shop');
@@ -69,7 +69,7 @@ export const LoginPage = () => {
         name: reg.name.trim(), phone: reg.phone.trim(),
         email: reg.email.trim() || undefined, address: reg.address.trim() || undefined,
       });
-      navigate('/');
+      navigate('/app');
     } catch { } finally { setLoading(false); }
   };
 

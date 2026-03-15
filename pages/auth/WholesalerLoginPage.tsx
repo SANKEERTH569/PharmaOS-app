@@ -35,7 +35,7 @@ export const WholesalerLoginPage = () => {
             await loginWholesaler(loginId.trim(), loginPass);
             const w = useAuthStore.getState().wholesaler;
             initData(w?.id || '', 'WHOLESALER');
-            navigate('/');
+            navigate('/app');
         } catch { } finally { setLoading(false); }
     };
 
@@ -54,7 +54,7 @@ export const WholesalerLoginPage = () => {
             });
             const w = useAuthStore.getState().wholesaler;
             initData(w?.id || '', 'WHOLESALER');
-            navigate('/');
+            navigate('/app');
         } catch { } finally { setLoading(false); }
     };
 
