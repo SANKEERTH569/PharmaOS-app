@@ -4,6 +4,7 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import { Button } from "../ui/Button";
 import { cn } from "../../../utils/cn";
 import { motion, AnimatePresence } from "motion/react";
+import { PremiumAnimatedLogo } from "../../../components/ui/PremiumAnimatedLogo";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -40,11 +41,8 @@ export function Navbar() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold text-text-primary tracking-tight">
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-black">
-            P
-          </div>
-          Pharma Head
+        <Link to="/" className="flex items-center">
+          <PremiumAnimatedLogo size="sm" variant="morph" />
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
