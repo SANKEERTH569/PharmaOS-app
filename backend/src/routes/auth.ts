@@ -2,13 +2,73 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { verifyFirebasePhoneToken } from '../lib/firebaseAdmin';
+import { sendMail } from '../lib/mailer';
 
 const router = Router();
+const EMAIL_VERIFICATION_TTL_HOURS = Number(process.env.EMAIL_VERIFICATION_TTL_HOURS || 24);
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function createVerificationToken() {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const expiresAt = new Date(Date.now() + EMAIL_VERIFICATION_TTL_HOURS * 60 * 60 * 1000);
+  return { token, tokenHash, expiresAt };
+}
+
+function getFrontendUrl() {
+  return (
+    process.env.EMAIL_VERIFICATION_FRONTEND_URL ||
+    process.env.CLIENT_URL ||
+    'https://pharmahead.app'
+  ).replace(/\/$/, '');
+}
+
+async function sendVerificationEmail(args: { email: string; role: 'WHOLESALER' | 'MAIN_WHOLESALER'; token: string; name: string }) {
+  const verifyLink = `${getFrontendUrl()}/#/verify-email?token=${encodeURIComponent(args.token)}&role=${args.role}`;
+  const subject = 'Verify your Pharma Head account email';
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+      <p>Hi ${args.name},</p>
+      <p>Thanks for registering on Pharma Head. Please verify your email to activate login.</p>
+      <p>
+        <a href="${verifyLink}" style="display:inline-block;padding:10px 14px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;">Verify Email</a>
+      </p>
+      <p>If the button does not work, copy and paste this link:</p>
+      <p>${verifyLink}</p>
+      <p>This link expires in ${EMAIL_VERIFICATION_TTL_HOURS} hours.</p>
+      <p>If you did not create this account, please ignore this email.</p>
+    </div>
+  `;
+
+  await sendMail({
+    to: args.email,
+    subject,
+    html,
+    text: `Hi ${args.name}, verify your Pharma Head account: ${verifyLink} (expires in ${EMAIL_VERIFICATION_TTL_HOURS} hours).`,
+  });
+}
+
+function toComparablePhone(phone: string): string {
+  const raw = (phone || '').trim();
+  const digits = raw.replace(/\D/g, '');
+
+  // Default to India country code for 10-digit local mobile input.
+  if (!raw.startsWith('+') && digits.length === 10) {
+    return `+91${digits}`;
+  }
+
+  return `+${digits}`;
+}
 
 /**
  * POST /api/auth/register
  * Wholesaler self-registration.
- * Body: { username, password, name, phone, email?, address? }
+ * Body: { username, password, name, phone, email, address? }
  */
 router.post('/register', async (req, res) => {
   try {
@@ -17,16 +77,37 @@ router.post('/register', async (req, res) => {
       password: string;
       name: string;
       phone: string;
-      email?: string;
+      email: string;
       address?: string;
+      firebase_id_token?: string;
     };
 
-    if (!username || !password || !name || !phone) {
-      return res.status(400).json({ error: 'username, password, name and phone are required' });
+    const { firebase_id_token } = req.body as { firebase_id_token?: string };
+
+    if (!username || !password || !name || !phone || !email) {
+      return res.status(400).json({ error: 'username, password, name, phone and email are required' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (firebase_id_token) {
+      let verifiedPhone: string;
+      try {
+        verifiedPhone = await verifyFirebasePhoneToken(firebase_id_token);
+      } catch (e: any) {
+        return res.status(400).json({ error: e.message || 'Phone verification failed' });
+      }
+
+      if (toComparablePhone(verifiedPhone) !== toComparablePhone(phone)) {
+        return res.status(400).json({ error: 'Verified phone does not match entered phone number' });
+      }
     }
 
     const existing = await prisma.wholesaler.findUnique({ where: { username } });
@@ -39,20 +120,41 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Phone number already registered.' });
     }
 
+    const existingEmail = await prisma.wholesaler.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    });
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email already registered. Please use another email.' });
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
+    const { token, tokenHash, expiresAt } = createVerificationToken();
 
     const wholesaler = await prisma.wholesaler.create({
-      data: { username, password_hash, name, phone, email, address, plan: 'starter' },
+      data: {
+        username,
+        password_hash,
+        name,
+        phone,
+        email: normalizedEmail,
+        address,
+        plan: 'starter',
+        email_verified: false,
+        email_verification_token_hash: tokenHash,
+        email_verification_expires_at: expiresAt,
+        email_verification_sent_at: new Date(),
+      },
     });
 
-    const token = jwt.sign(
-      { id: wholesaler.id, role: 'WHOLESALER', wholesaler_id: wholesaler.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
-    );
+    await sendVerificationEmail({ email: normalizedEmail, role: 'WHOLESALER', token, name });
 
     const { password_hash: _pw, ...safeWholesaler } = wholesaler;
-    return res.status(201).json({ token, user: safeWholesaler, role: 'WHOLESALER' });
+    return res.status(201).json({
+      requires_email_verification: true,
+      message: 'Registration successful. Please verify your email before login.',
+      user: safeWholesaler,
+      role: 'WHOLESALER',
+    });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -70,7 +172,7 @@ router.post('/login', async (req, res) => {
       username?: string;
       phone?: string;
       password: string;
-      role: 'WHOLESALER' | 'RETAILER' | 'ADMIN';
+      role: 'WHOLESALER' | 'RETAILER' | 'ADMIN' | 'MAIN_WHOLESALER' | 'SALESMAN';
     };
 
     if (!password || !role) {
@@ -91,6 +193,15 @@ router.post('/login', async (req, res) => {
       const valid = await bcrypt.compare(password, wholesaler.password_hash);
       if (!valid) {
         return res.status(401).json({ error: 'Invalid username or password' });
+      }
+
+      if (wholesaler.email && !wholesaler.email_verified) {
+        return res.status(403).json({
+          error: 'Please verify your email before logging in.',
+          code: 'EMAIL_NOT_VERIFIED',
+          email: wholesaler.email,
+          role: 'WHOLESALER',
+        });
       }
 
       const token = jwt.sign(
@@ -185,6 +296,15 @@ router.post('/login', async (req, res) => {
       const valid = await bcrypt.compare(password, mw.password_hash);
       if (!valid) return res.status(401).json({ error: 'Invalid username or password' });
 
+      if (mw.email && !mw.email_verified) {
+        return res.status(403).json({
+          error: 'Please verify your email before logging in.',
+          code: 'EMAIL_NOT_VERIFIED',
+          email: mw.email,
+          role: 'MAIN_WHOLESALER',
+        });
+      }
+
       const token = jwt.sign(
         { id: mw.id, role: 'MAIN_WHOLESALER', main_wholesaler_id: mw.id, wholesaler_id: null },
         process.env.JWT_SECRET!,
@@ -205,25 +325,47 @@ router.post('/login', async (req, res) => {
 /**
  * POST /api/auth/register/main-wholesaler
  * Wholesaler (tier above sub-wholesaler) self-registration.
- * Body: { username, password, name, phone, address?, gstin? }
+ * Body: { username, password, name, phone, email, address?, gstin? }
  */
 router.post('/register/main-wholesaler', async (req, res) => {
   try {
-    const { username, password, name, phone, address, gstin } = req.body as {
+    const { username, password, name, phone, email, address, gstin } = req.body as {
       username: string;
       password: string;
       name: string;
       phone: string;
+      email: string;
       address?: string;
       gstin?: string;
+      firebase_id_token?: string;
     };
 
-    if (!username || !password || !name || !phone) {
-      return res.status(400).json({ error: 'username, password, name and phone are required' });
+    const { firebase_id_token } = req.body as { firebase_id_token?: string };
+
+    if (!username || !password || !name || !phone || !email) {
+      return res.status(400).json({ error: 'username, password, name, phone and email are required' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (firebase_id_token) {
+      let verifiedPhone: string;
+      try {
+        verifiedPhone = await verifyFirebasePhoneToken(firebase_id_token);
+      } catch (e: any) {
+        return res.status(400).json({ error: e.message || 'Phone verification failed' });
+      }
+
+      if (toComparablePhone(verifiedPhone) !== toComparablePhone(phone)) {
+        return res.status(400).json({ error: 'Verified phone does not match entered phone number' });
+      }
     }
 
     const existing = await prisma.mainWholesaler.findUnique({ where: { username } });
@@ -236,23 +378,181 @@ router.post('/register/main-wholesaler', async (req, res) => {
       return res.status(409).json({ error: 'Phone number already registered.' });
     }
 
+    const existingEmail = await prisma.mainWholesaler.findFirst({
+      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+    });
+    if (existingEmail) {
+      return res.status(409).json({ error: 'Email already registered. Please use another email.' });
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
+    const { token, tokenHash, expiresAt } = createVerificationToken();
 
     const mainWholesaler = await prisma.mainWholesaler.create({
-      data: { username, password_hash, name, phone, address, gstin },
+      data: {
+        username,
+        password_hash,
+        name,
+        phone,
+        email: normalizedEmail,
+        address,
+        gstin,
+        email_verified: false,
+        email_verification_token_hash: tokenHash,
+        email_verification_expires_at: expiresAt,
+        email_verification_sent_at: new Date(),
+      },
     });
 
-    const token = jwt.sign(
-      { id: mainWholesaler.id, role: 'MAIN_WHOLESALER', main_wholesaler_id: mainWholesaler.id },
-      process.env.JWT_SECRET!,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any }
-    );
+    await sendVerificationEmail({ email: normalizedEmail, role: 'MAIN_WHOLESALER', token, name });
 
     const { password_hash: _pw, ...safe } = mainWholesaler;
-    return res.status(201).json({ token, user: safe, role: 'MAIN_WHOLESALER' });
+    return res.status(201).json({
+      requires_email_verification: true,
+      message: 'Registration successful. Please verify your email before login.',
+      user: safe,
+      role: 'MAIN_WHOLESALER',
+    });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { token, role } = req.body as { token?: string; role?: 'WHOLESALER' | 'MAIN_WHOLESALER' };
+    if (!token) {
+      return res.status(400).json({ error: 'token is required' });
+    }
+    if (!role || !['WHOLESALER', 'MAIN_WHOLESALER'].includes(role)) {
+      return res.status(400).json({ error: 'role must be WHOLESALER or MAIN_WHOLESALER' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const now = new Date();
+
+    if (role === 'WHOLESALER') {
+      const wholesaler = await prisma.wholesaler.findFirst({
+        where: {
+          email_verification_token_hash: tokenHash,
+          email_verification_expires_at: { gt: now },
+        },
+      });
+
+      if (!wholesaler) {
+        return res.status(400).json({ error: 'Invalid or expired verification link' });
+      }
+
+      await prisma.wholesaler.update({
+        where: { id: wholesaler.id },
+        data: {
+          email_verified: true,
+          email_verification_token_hash: null,
+          email_verification_expires_at: null,
+        },
+      });
+    } else {
+      const mainWholesaler = await prisma.mainWholesaler.findFirst({
+        where: {
+          email_verification_token_hash: tokenHash,
+          email_verification_expires_at: { gt: now },
+        },
+      });
+
+      if (!mainWholesaler) {
+        return res.status(400).json({ error: 'Invalid or expired verification link' });
+      }
+
+      await prisma.mainWholesaler.update({
+        where: { id: mainWholesaler.id },
+        data: {
+          email_verified: true,
+          email_verification_token_hash: null,
+          email_verification_expires_at: null,
+        },
+      });
+    }
+
+    return res.json({ success: true, message: 'Email verified successfully. You can now log in.' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to verify email' });
+  }
+});
+
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email, role } = req.body as { email?: string; role?: 'WHOLESALER' | 'MAIN_WHOLESALER' };
+    if (!email || !role) {
+      return res.status(400).json({ error: 'email and role are required' });
+    }
+
+    const normalizedEmail = normalizeEmail(email);
+    const { token, tokenHash, expiresAt } = createVerificationToken();
+
+    if (role === 'WHOLESALER') {
+      const wholesaler = await prisma.wholesaler.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      });
+
+      if (!wholesaler || !wholesaler.email) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+
+      if (wholesaler.email_verified) {
+        return res.status(400).json({ error: 'Email is already verified' });
+      }
+
+      await prisma.wholesaler.update({
+        where: { id: wholesaler.id },
+        data: {
+          email_verification_token_hash: tokenHash,
+          email_verification_expires_at: expiresAt,
+          email_verification_sent_at: new Date(),
+        },
+      });
+
+      await sendVerificationEmail({
+        email: wholesaler.email,
+        role: 'WHOLESALER',
+        token,
+        name: wholesaler.name,
+      });
+    } else if (role === 'MAIN_WHOLESALER') {
+      const mainWholesaler = await prisma.mainWholesaler.findFirst({
+        where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
+      });
+
+      if (!mainWholesaler || !mainWholesaler.email) {
+        return res.status(404).json({ error: 'Account not found' });
+      }
+
+      if (mainWholesaler.email_verified) {
+        return res.status(400).json({ error: 'Email is already verified' });
+      }
+
+      await prisma.mainWholesaler.update({
+        where: { id: mainWholesaler.id },
+        data: {
+          email_verification_token_hash: tokenHash,
+          email_verification_expires_at: expiresAt,
+          email_verification_sent_at: new Date(),
+        },
+      });
+
+      await sendVerificationEmail({
+        email: mainWholesaler.email,
+        role: 'MAIN_WHOLESALER',
+        token,
+        name: mainWholesaler.name,
+      });
+    } else {
+      return res.status(400).json({ error: 'role must be WHOLESALER or MAIN_WHOLESALER' });
+    }
+
+    return res.json({ success: true, message: 'Verification email sent' });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Failed to resend verification email' });
   }
 });
 

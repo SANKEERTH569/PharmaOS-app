@@ -20,8 +20,10 @@ interface AuthState {
   loginRetailer: (phone: string, password: string) => Promise<void>;
   loginMainWholesaler: (username: string, password: string) => Promise<void>;
   loginSalesman: (username: string, password: string) => Promise<void>;
-  register: (data: { username: string; password: string; name: string; phone: string; email?: string; address?: string }) => Promise<void>;
-  registerMainWholesaler: (data: { username: string; password: string; name: string; phone: string; address?: string; gstin?: string }) => Promise<void>;
+  register: (data: { username: string; password: string; name: string; phone: string; email: string; address?: string; firebase_id_token?: string }) => Promise<{ requires_email_verification: boolean; email: string }>;
+  registerMainWholesaler: (data: { username: string; password: string; name: string; phone: string; email: string; address?: string; gstin?: string; firebase_id_token?: string }) => Promise<{ requires_email_verification: boolean; email: string }>;
+  verifyEmail: (token: string, role: 'WHOLESALER' | 'MAIN_WHOLESALER') => Promise<void>;
+  resendVerificationEmail: (email: string, role: 'WHOLESALER' | 'MAIN_WHOLESALER') => Promise<void>;
   registerRetailer: (data: { name: string; shop_name: string; phone: string; password: string; address?: string; gstin?: string; dl_number?: string }) => Promise<void>;
   logout: () => void;
   initFromStorage: () => void;
@@ -123,8 +125,12 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       if (data.role !== 'ADMIN') connectSocket(`${(data.role as string).toLowerCase()}_${data.user.id}`);
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Login failed. Check your connection.';
+      const error: any = new Error(msg);
+      error.code = err.response?.data?.code;
+      error.email = err.response?.data?.email;
+      error.role = err.response?.data?.role;
       set({ isLoading: false, authError: msg });
-      throw new Error(msg);
+      throw error;
     }
   },
 
@@ -159,17 +165,11 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ isLoading: true, authError: null });
     try {
       const { data } = await api.post('/auth/register', formData);
-      localStorage.setItem('pharma_token', data.token);
-      localStorage.setItem('pharma_auth', JSON.stringify({ role: data.role, user: data.user }));
-      set({
-        token: data.token,
-        userRole: 'WHOLESALER',
-        wholesaler: data.user,
-        retailer: null,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-      connectSocket(`wholesaler_${data.user.id}`);
+      set({ isLoading: false, authError: null });
+      return {
+        requires_email_verification: !!data.requires_email_verification,
+        email: data.user?.email || formData.email,
+      };
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Registration failed. Please try again.';
       set({ isLoading: false, authError: msg });
@@ -181,19 +181,37 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     set({ isLoading: true, authError: null });
     try {
       const { data } = await api.post('/auth/register/main-wholesaler', formData);
-      localStorage.setItem('pharma_token', data.token);
-      localStorage.setItem('pharma_auth', JSON.stringify({ role: data.role, user: data.user }));
-      set({
-        token: data.token,
-        userRole: 'MAIN_WHOLESALER',
-        mainWholesaler: data.user,
-        wholesaler: null,
-        retailer: null,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      set({ isLoading: false, authError: null });
+      return {
+        requires_email_verification: !!data.requires_email_verification,
+        email: data.user?.email || formData.email,
+      };
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Registration failed. Please try again.';
+      set({ isLoading: false, authError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  verifyEmail: async (token, role) => {
+    set({ isLoading: true, authError: null });
+    try {
+      await api.post('/auth/verify-email', { token, role });
+      set({ isLoading: false, authError: null });
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Email verification failed. Please try again.';
+      set({ isLoading: false, authError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  resendVerificationEmail: async (email, role) => {
+    set({ isLoading: true, authError: null });
+    try {
+      await api.post('/auth/resend-verification', { email, role });
+      set({ isLoading: false, authError: null });
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Unable to resend verification email.';
       set({ isLoading: false, authError: msg });
       throw new Error(msg);
     }

@@ -16,6 +16,11 @@ model MainWholesaler {
   password_hash String
   name          String
   phone         String   @unique
+  email         String?
+  email_verified Boolean @default(false)
+  email_verification_token_hash String?
+  email_verification_expires_at DateTime?
+  email_verification_sent_at DateTime?
   address       String?
   gstin         String?
   dl_number     String?
@@ -40,6 +45,10 @@ model Wholesaler {
   gstin         String?
   dl_number     String?
   email         String?
+  email_verified Boolean @default(false)
+  email_verification_token_hash String?
+  email_verification_expires_at DateTime?
+  email_verification_sent_at DateTime?
   bank_name     String?
   bank_account  String?
   ifsc          String?
