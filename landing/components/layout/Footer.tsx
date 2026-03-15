@@ -61,8 +61,8 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-text-primary mb-4">Contact</h4>
             <ul className="space-y-2.5 text-sm text-text-muted">
-              <li><a href="mailto:hello@pharmahead.in" className="hover:text-text-primary transition-colors">hello@pharmahead.in</a></li>
-              <li><a href="tel:+919876543210" className="hover:text-text-primary transition-colors">+91 98765 43210</a></li>
+              <li><a href="mailto:admin@pharmahead.app" className="hover:text-text-primary transition-colors">admin@pharmahead.app</a></li>
+              <li><a href="tel:9398958886" className="hover:text-text-primary transition-colors">+91 9398958886</a></li>
               <li className="pt-1 text-text-muted/70">Mon – Sat, 9am – 6pm</li>
             </ul>
           </div>
